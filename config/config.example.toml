@@ -1,0 +1,26 @@
+[tracker]
+http = "127.0.0.1:8081"
+udp_v4 = "0.0.0.0:6969"
+udp_v6 = "[::]:6969"
+max_peers = 2000000
+max_swarms = 2000000
+max_peers_per_swarm = 10000
+memory_budget_mib = 1024
+per_ip_rate = 20000
+http_concurrency = 4096
+maintenance_budget = 256
+
+[web]
+listen = "127.0.0.1:8080"
+data_dir = "/var/lib/tracker-v1"
+# Website links and deployment hostnames are instance templates; replace the
+# original site's domains in the source and Nginx templates for another site.
+
+[observatory]
+data_dir = "/var/lib/tracker-v1"
+sources_file = "/etc/tracker-v1/sources.toml"
+# Network concurrency is currently bounded by the scheduler, not a config key.
+interval_seconds = 1800
+own_hosts = ["announce.augrains.com", "tracker.augrains.com", "udp.augrains.com"]
+# These names are explicitly operated by this project and share one engine.
+service_aliases = { "tracker.augrains.com" = "announce.augrains.com", "udp.augrains.com" = "announce.augrains.com" }

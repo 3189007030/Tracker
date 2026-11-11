@@ -1,0 +1,11 @@
+{
+  "checked_utc": "2026-11-11T02:47:31.245408+00:00",
+  "charged_total_rx_tx_bytes": 8057006413,
+  "budget_limit_bytes": 21474836480,
+  "active_guard_stop_bytes": 19327352832,
+  "baseline_reset": false,
+  "includes_concurrent_natural_and_control_traffic": true,
+  "below_active_stop": true,
+  "below_total_budget": true,
+  "long_tests_cancelled_by_user": true
+}

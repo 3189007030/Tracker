@@ -1,0 +1,15 @@
+# Public candidate discovery and the optional operator-configured forum JSON
+# origin. Keep deployment-specific origins in private configuration.
+forum_api_origin = ""
+forum_navigation_roots = { fby_lt1 = "", fby_418 = "" }
+tracker_lists = [
+  "https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_all.txt",
+  "https://raw.githubusercontent.com/XIU2/TrackersListCollection/master/all.txt",
+  "https://newtrackon.com/api/all",
+]
+seed_endpoints = [
+  "http://announce.augrains.com/announce",
+  "https://announce.augrains.com/announce",
+  "udp://announce.augrains.com:6969/announce",
+]
+official_sample_hosts = ["cdimage.debian.org", "releases.ubuntu.com", "torrent.fedoraproject.org", "archlinux.org"]

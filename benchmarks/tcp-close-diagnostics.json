@@ -1,0 +1,89 @@
+{
+  "snapshots": [
+    {
+      "at_utc": "2026-11-10T23:30:38.706745+00:00",
+      "settings": {
+        "tcp_timestamps": 1,
+        "tcp_rfc1337": 0,
+        "tcp_tw_reuse": 2,
+        "tcp_max_tw_buckets": 16384,
+        "tcp_fin_timeout": 60
+      },
+      "tcp_ext_cumulative": {
+        "TW": 9514910,
+        "TWRecycled": 664608,
+        "TWKilled": 0,
+        "PAWSActive": 0,
+        "PAWSEstab": 63990,
+        "PAWSOldAck": null,
+        "TCPACKSkippedTimeWait": 51,
+        "TCPTimeWaitOverflow": 26736,
+        "EmbryonicRsts": 50916,
+        "TCPSynRetrans": 2973391,
+        "TCPTimeouts": 3613859,
+        "TCPAbortOnData": 24773,
+        "TCPAbortOnClose": 144593,
+        "TCPAbortOnTimeout": 305745,
+        "ListenDrops": 152880,
+        "ListenOverflows": 152313
+      },
+      "sampled_socket_state_counts": {
+        "ipv4": {
+          "18080_LISTEN": 1,
+          "18443_LISTEN": 1
+        },
+        "ipv6": {
+          "18080_LISTEN": 1,
+          "18443_LISTEN": 1,
+          "18080_TIME-WAIT": 4533,
+          "18080_FIN-WAIT-1": 20,
+          "18080_SYN-RECV": 19
+        }
+      },
+      "note": "cumulative kernel counters include other host traffic; socket addresses are not retained"
+    },
+    {
+      "at_utc": "2026-11-10T23:38:29.465851+00:00",
+      "settings": {
+        "tcp_timestamps": 1,
+        "tcp_rfc1337": 0,
+        "tcp_tw_reuse": 2,
+        "tcp_max_tw_buckets": 16384,
+        "tcp_fin_timeout": 60
+      },
+      "tcp_ext_cumulative": {
+        "TW": 9560044,
+        "TWRecycled": 664608,
+        "TWKilled": 0,
+        "PAWSActive": 0,
+        "PAWSEstab": 63990,
+        "PAWSOldAck": null,
+        "TCPACKSkippedTimeWait": 51,
+        "TCPTimeWaitOverflow": 26736,
+        "EmbryonicRsts": 50918,
+        "TCPSynRetrans": 2974529,
+        "TCPTimeouts": 3615371,
+        "TCPAbortOnData": 27732,
+        "TCPAbortOnClose": 144605,
+        "TCPAbortOnTimeout": 305746,
+        "ListenDrops": 152880,
+        "ListenOverflows": 152313
+      },
+      "sampled_socket_state_counts": {
+        "ipv4": {
+          "18080_LISTEN": 1,
+          "18443_LISTEN": 1,
+          "18443_ESTAB": 23,
+          "18443_FIN-WAIT-1": 45,
+          "18443_SYN-RECV": 29,
+          "18443_FIN-WAIT-2": 1
+        },
+        "ipv6": {
+          "18080_LISTEN": 1,
+          "18443_LISTEN": 1
+        }
+      },
+      "note": "cumulative kernel counters include other host traffic; socket addresses are not retained"
+    }
+  ]
+}

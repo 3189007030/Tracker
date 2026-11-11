@@ -1,0 +1,64 @@
+{
+  "browser_and_protocol_paths": [
+    {
+      "path": "/announce",
+      "accept": "text/html",
+      "status": 302,
+      "location": "https://tracker.augrains.com/tools?lang=en#native-trackers",
+      "body": "<html>\r\n<head><title>302 Found</title></head>\r\n<body>\r\n<center><h1>302 Found</h1></center>\r\n<hr><center>nginx</center>\r\n</body>\r\n</html>\r\n"
+    },
+    {
+      "path": "/announce",
+      "accept": "*/*",
+      "status": 200,
+      "location": null,
+      "body": "d14:failure reason24:invalid announce requeste"
+    },
+    {
+      "path": "/announce?info_hash=short",
+      "accept": "text/html",
+      "status": 200,
+      "location": null,
+      "body": "d14:failure reason24:invalid announce requeste"
+    }
+  ],
+  "page_checks": [
+    {
+      "lang": "en",
+      "status": 200,
+      "copy_rows": 5,
+      "script_referenced": true,
+      "cache_revision_present": true,
+      "guide_anchor": true,
+      "cf_cache": "DYNAMIC"
+    },
+    {
+      "lang": "zh",
+      "status": 200,
+      "copy_rows": 5,
+      "script_referenced": true,
+      "cache_revision_present": true,
+      "guide_anchor": true,
+      "cf_cache": "DYNAMIC"
+    },
+    {
+      "asset": "tools.js",
+      "status": 200,
+      "mime": "text/javascript; charset=utf-8",
+      "clipboard_and_manual_fallback": true
+    }
+  ],
+  "passed": true,
+  "checked_utc": "2026-11-11T03:49:41.188824+00:00",
+  "browser_interaction": {
+    "english_and_chinese_page_verified": true,
+    "http_immediate_clipboard_matches": true,
+    "https_immediate_clipboard_matches": true,
+    "udp_immediate_clipboard_matches": true,
+    "screenshot_captured": true,
+    "scope": "Public client guide in the in-app browser; no NZ submission"
+  },
+  "owned_temporary_routes_remaining": 0,
+  "owned_browser_daemon_session_completed": true,
+  "nz_request_sent": false
+}

@@ -1,0 +1,28 @@
+[package]
+name = "observatory"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+bt-protocol.workspace = true
+clap.workspace = true
+hex.workspace = true
+hickory-resolver = { version = "0.24", features = ["tokio-runtime", "system-config"] }
+httpdate = "1"
+percent-encoding = "2"
+rand.workspace = true
+reqwest.workspace = true
+rusqlite.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha1.workspace = true
+sha2.workspace = true
+tokio.workspace = true
+toml.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+tracker-model.workspace = true
+url.workspace = true
+

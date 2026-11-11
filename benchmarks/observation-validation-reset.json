@@ -1,0 +1,22 @@
+{
+  "at_utc": "2026-11-10T21:05:41.125532+00:00",
+  "before_counts": {
+    "observations": 7514,
+    "samples": 3284,
+    "observed_peers": 973,
+    "daily": 0
+  },
+  "after_counts": {
+    "observations": 0,
+    "samples": 0,
+    "observed_peers": 0,
+    "daily": 0
+  },
+  "endpoint_identities_preserved": true,
+  "official_catalog_samples_preserved": 12,
+  "announce_cooldowns_and_host_pauses_preserved": true,
+  "private_snapshot_created": true,
+  "native_pid_unchanged": true,
+  "bench_pid_unchanged": true,
+  "observatory_stopped_for_corrected_promotion": true
+}

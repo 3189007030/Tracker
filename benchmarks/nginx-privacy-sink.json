@@ -1,0 +1,9 @@
+{
+  "at_utc": "2026-11-10T20:17:44.398515+00:00",
+  "request_error_output_disabled": true,
+  "config_test_passed": true,
+  "graceful_reload": true,
+  "nginx_main_pid_unchanged": true,
+  "native_restarted": false,
+  "benchmark_protocol_during_transition": "udp"
+}

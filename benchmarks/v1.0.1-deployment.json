@@ -1,0 +1,23 @@
+{
+  "deployed_utc": "2026-11-11T06:06:33.731460+00:00",
+  "version": "1.0.1",
+  "source_commit": "09e8dd10556b294573a42122b09a7b88b94b8892",
+  "release": "1.0.1-09e8dd10",
+  "sha256": {
+    "tracker-server": "c94eb7f80c472030a2e008c4c11bfed63b0858135d0701ccc99edb38df779ff4",
+    "observatory": "cb2dc6f8251ddf547a7cea3cfd9a02b0c43c27223514aeda1d55f1ba2adba6b6",
+    "tracker-web": "ac9dcb205ab52632b6bd69bc243abc92a5344cea50ce137e931db3be0e67a628",
+    "tracker-loadgen": "393cce24c38644c1d7a73ac6364bbea2088484bcf4e851637350f666db3aa825"
+  },
+  "readiness": {
+    "8081": true,
+    "8080": true
+  },
+  "lab_absent": true,
+  "forum_origin_configured": true,
+  "database_backup_verified": true,
+  "rollback_required": false,
+  "native_pid_unchanged": true,
+  "pool_schedule_refreshed": true,
+  "independent_ssh_verified": true
+}

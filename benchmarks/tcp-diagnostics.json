@@ -1,0 +1,18 @@
+{
+  "scope": "host TCP counters; no per-port attribution",
+  "snapshots": [
+    {
+      "at_utc": "2026-11-10T22:06:31.089679+00:00",
+      "tcp_cumulative_since_boot": {
+        "TCPBacklogDrop": 0,
+        "TCPAbortOnMemory": 0,
+        "TCPMemoryPressures": 6,
+        "ListenDrops": 152880,
+        "TCPSynRetrans": 2968182,
+        "ListenOverflows": 152313,
+        "TCPReqQFullDoCookies": 0,
+        "TCPReqQFullDrop": 0
+      }
+    }
+  ]
+}

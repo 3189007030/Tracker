@@ -1,0 +1,7 @@
+{
+  "performed": false,
+  "user_cancelled": true,
+  "reason": "User requested only short tests and project completion; no one-hour or 24-hour endurance claim.",
+  "one_hour_performed": false,
+  "twenty_four_hour_performed": false
+}

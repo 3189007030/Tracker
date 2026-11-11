@@ -1,0 +1,470 @@
+{
+  "checked_utc": "2026-11-11T06:26:09.052741+00:00",
+  "version": "1.0.1",
+  "windows_six_case_passed": false,
+  "all_protocol_families_functionally_verified": true,
+  "verification_scope": "Windows HTTP/HTTPS IPv4/IPv6 and UDP IPv6 passed. UDP IPv4 full discovery, scrape and cleanup passed from a second owned external host. Short correctness results only.",
+  "limitation": "Windows-to-S1 IPv4 UDP repeatedly timed out. A bounded server metadata trace observed immediate responses; cause remains unresolved. Failed results are retained.",
+  "initial_windows_suite": {
+    "schema": 1,
+    "started_utc": "2026-11-11T06:04:18.409407+00:00",
+    "version": "1.0.1",
+    "client_version_verified": true,
+    "suite_completed": true,
+    "all_passed": false,
+    "cases": [
+      {
+        "family": "ipv4",
+        "protocol": "http",
+        "ok": true,
+        "exit_code": 0,
+        "elapsed_seconds": 8.002,
+        "tx_application_bytes": 2779,
+        "rx_application_bytes": 1091,
+        "strict_endpoint_check": true,
+        "checks": {
+          "zero_want": true,
+          "two_way_discovery": true,
+          "scrape_2_1_0": true,
+          "stopped_removal": true,
+          "unrelated_hash_empty": true
+        }
+      },
+      {
+        "family": "ipv4",
+        "protocol": "https",
+        "ok": true,
+        "exit_code": 0,
+        "elapsed_seconds": 6.438,
+        "tx_application_bytes": 2779,
+        "rx_application_bytes": 1091,
+        "strict_endpoint_check": true,
+        "checks": {
+          "zero_want": true,
+          "two_way_discovery": true,
+          "scrape_2_1_0": true,
+          "stopped_removal": true,
+          "unrelated_hash_empty": true
+        }
+      },
+      {
+        "family": "ipv4",
+        "protocol": "udp",
+        "ok": false,
+        "exit_code": 1,
+        "elapsed_seconds": 5.22,
+        "tx_application_bytes": null,
+        "rx_application_bytes": null,
+        "strict_endpoint_check": false,
+        "checks": {
+          "zero_want": false,
+          "two_way_discovery": false,
+          "scrape_2_1_0": false,
+          "stopped_removal": false,
+          "unrelated_hash_empty": false
+        }
+      },
+      {
+        "family": "ipv6",
+        "protocol": "http",
+        "ok": true,
+        "exit_code": 0,
+        "elapsed_seconds": 6.441,
+        "tx_application_bytes": 2779,
+        "rx_application_bytes": 1137,
+        "strict_endpoint_check": true,
+        "checks": {
+          "zero_want": true,
+          "two_way_discovery": true,
+          "scrape_2_1_0": true,
+          "stopped_removal": true,
+          "unrelated_hash_empty": true
+        }
+      },
+      {
+        "family": "ipv6",
+        "protocol": "https",
+        "ok": true,
+        "exit_code": 0,
+        "elapsed_seconds": 4.201,
+        "tx_application_bytes": 2779,
+        "rx_application_bytes": 1137,
+        "strict_endpoint_check": true,
+        "checks": {
+          "zero_want": true,
+          "two_way_discovery": true,
+          "scrape_2_1_0": true,
+          "stopped_removal": true,
+          "unrelated_hash_empty": true
+        }
+      },
+      {
+        "family": "ipv6",
+        "protocol": "udp",
+        "ok": true,
+        "exit_code": 0,
+        "elapsed_seconds": 3.884,
+        "tx_application_bytes": 1218,
+        "rx_application_bytes": 348,
+        "strict_endpoint_check": true,
+        "checks": {
+          "zero_want": true,
+          "two_way_discovery": true,
+          "scrape_2_1_0": true,
+          "stopped_removal": true,
+          "unrelated_hash_empty": true
+        }
+      }
+    ],
+    "baseline_reused": true,
+    "network_limit_bytes": 19327352832,
+    "application_budget_per_case_bytes": 1048576,
+    "source_proof": "Exact endpoint verification applies only to the individual case.",
+    "native_pid_unchanged": true,
+    "no_new_oom": true,
+    "route_cleanup_confirmed": true,
+    "ssh_after_cleanup": true,
+    "ssh_before_routes": true,
+    "ssh_after_routes": true,
+    "monitor_completed": true,
+    "monitor_samples": 7,
+    "nic_charged_bytes": 9393355441,
+    "owned_routes_created": 2,
+    "owned_routes_removed": 2,
+    "finished_utc": "2026-11-11T06:05:52.573596+00:00"
+  },
+  "windows_udp4_retries": [
+    {
+      "schema": 1,
+      "started_utc": "2026-11-11T06:10:53.085230+00:00",
+      "version": "1.0.1",
+      "client_version_verified": true,
+      "suite_completed": true,
+      "selection": "ipv4-udp",
+      "all_passed": false,
+      "cases": [
+        {
+          "family": "ipv4",
+          "protocol": "udp",
+          "ok": false,
+          "exit_code": 1,
+          "reason_code": "protocol_timeout",
+          "elapsed_seconds": 6.563,
+          "tx_application_bytes": null,
+          "rx_application_bytes": null,
+          "strict_endpoint_check": false,
+          "checks": {
+            "zero_want": false,
+            "two_way_discovery": false,
+            "scrape_2_1_0": false,
+            "stopped_removal": false,
+            "unrelated_hash_empty": false
+          }
+        }
+      ],
+      "baseline_reused": true,
+      "network_limit_bytes": 19327352832,
+      "application_budget_per_case_bytes": 1048576,
+      "source_proof": "Exact endpoint verification applies only to the individual case.",
+      "native_pid_unchanged": true,
+      "no_new_oom": true,
+      "route_cleanup_confirmed": true,
+      "ssh_after_cleanup": true,
+      "ssh_before_routes": true,
+      "ssh_after_routes": true,
+      "monitor_completed": true,
+      "monitor_samples": 1,
+      "nic_charged_bytes": 9458554133,
+      "owned_routes_created": 2,
+      "owned_routes_removed": 2,
+      "finished_utc": "2026-11-11T06:11:39.708363+00:00"
+    },
+    {
+      "schema": 1,
+      "started_utc": "2026-11-11T06:17:35.590001+00:00",
+      "version": "1.0.1",
+      "client_version_verified": true,
+      "suite_completed": true,
+      "selection": "ipv4-udp",
+      "all_passed": false,
+      "cases": [
+        {
+          "family": "ipv4",
+          "protocol": "udp",
+          "ok": false,
+          "exit_code": 1,
+          "reason_code": "protocol_timeout",
+          "elapsed_seconds": 5.835,
+          "tx_application_bytes": null,
+          "rx_application_bytes": null,
+          "strict_endpoint_check": false,
+          "checks": {
+            "zero_want": false,
+            "two_way_discovery": false,
+            "scrape_2_1_0": false,
+            "stopped_removal": false,
+            "unrelated_hash_empty": false
+          }
+        }
+      ],
+      "baseline_reused": true,
+      "network_limit_bytes": 19327352832,
+      "application_budget_per_case_bytes": 1048576,
+      "source_proof": "Exact endpoint verification applies only to the individual case.",
+      "native_pid_unchanged": false,
+      "no_new_oom": false,
+      "route_cleanup_confirmed": true,
+      "ssh_after_cleanup": true,
+      "ssh_before_routes": true,
+      "ssh_after_routes": true,
+      "monitor_completed": true,
+      "monitor_samples": 0,
+      "nic_charged_bytes": 9525483249,
+      "owned_routes_created": 2,
+      "owned_routes_removed": 2,
+      "finished_utc": "2026-11-11T06:18:11.489773+00:00",
+      "monitor_scope_note": "No periodic sample was collected in this short retry; PID/OOM booleans do not establish a change and are unverified for its continuous window."
+    },
+    {
+      "schema": 1,
+      "started_utc": "2026-11-11T06:19:43.258288+00:00",
+      "version": "1.0.1",
+      "client_version_verified": true,
+      "suite_completed": true,
+      "selection": "ipv4-udp",
+      "all_passed": false,
+      "cases": [
+        {
+          "family": "ipv4",
+          "protocol": "udp",
+          "ok": false,
+          "exit_code": 1,
+          "reason_code": "protocol_timeout",
+          "elapsed_seconds": 7.572,
+          "tx_application_bytes": null,
+          "rx_application_bytes": null,
+          "strict_endpoint_check": false,
+          "checks": {
+            "zero_want": false,
+            "two_way_discovery": false,
+            "scrape_2_1_0": false,
+            "stopped_removal": false,
+            "unrelated_hash_empty": false
+          }
+        }
+      ],
+      "baseline_reused": true,
+      "network_limit_bytes": 19327352832,
+      "application_budget_per_case_bytes": 1048576,
+      "source_proof": "Exact endpoint verification applies only to the individual case.",
+      "native_pid_unchanged": true,
+      "no_new_oom": true,
+      "route_cleanup_confirmed": true,
+      "ssh_after_cleanup": true,
+      "ssh_before_routes": true,
+      "ssh_after_routes": true,
+      "monitor_completed": true,
+      "monitor_samples": 4,
+      "nic_charged_bytes": 9548618584,
+      "owned_routes_created": 2,
+      "owned_routes_removed": 2,
+      "finished_utc": "2026-11-11T06:20:44.282181+00:00"
+    }
+  ],
+  "server_metadata_trace": {
+    "owned_udp4_events": [
+      {
+        "at_ms": 325,
+        "direction": "request",
+        "action": 0,
+        "bytes": 16,
+        "event": null
+      },
+      {
+        "at_ms": 326,
+        "direction": "response",
+        "action": 0,
+        "bytes": 16,
+        "event": null
+      },
+      {
+        "at_ms": 585,
+        "direction": "request",
+        "action": 1,
+        "bytes": 98,
+        "event": 2
+      },
+      {
+        "at_ms": 585,
+        "direction": "response",
+        "action": 1,
+        "bytes": 20,
+        "event": null
+      },
+      {
+        "at_ms": 939,
+        "direction": "request",
+        "action": 0,
+        "bytes": 16,
+        "event": null
+      },
+      {
+        "at_ms": 939,
+        "direction": "response",
+        "action": 0,
+        "bytes": 16,
+        "event": null
+      },
+      {
+        "at_ms": 1299,
+        "direction": "request",
+        "action": 1,
+        "bytes": 98,
+        "event": 2
+      },
+      {
+        "at_ms": 1299,
+        "direction": "response",
+        "action": 1,
+        "bytes": 26,
+        "event": null
+      },
+      {
+        "at_ms": 3947,
+        "direction": "request",
+        "action": 1,
+        "bytes": 98,
+        "event": 3
+      },
+      {
+        "at_ms": 3947,
+        "direction": "response",
+        "action": 1,
+        "bytes": 20,
+        "event": null
+      },
+      {
+        "at_ms": 4226,
+        "direction": "request",
+        "action": 0,
+        "bytes": 16,
+        "event": null
+      },
+      {
+        "at_ms": 4226,
+        "direction": "response",
+        "action": 0,
+        "bytes": 16,
+        "event": null
+      },
+      {
+        "at_ms": 4615,
+        "direction": "request",
+        "action": 1,
+        "bytes": 98,
+        "event": 3
+      },
+      {
+        "at_ms": 4616,
+        "direction": "response",
+        "action": 1,
+        "bytes": 20,
+        "event": null
+      },
+      {
+        "at_ms": 7277,
+        "direction": "request",
+        "action": 1,
+        "bytes": 98,
+        "event": 3
+      },
+      {
+        "at_ms": 7277,
+        "direction": "response",
+        "action": 1,
+        "bytes": 20,
+        "event": null
+      },
+      {
+        "at_ms": 7576,
+        "direction": "request",
+        "action": 1,
+        "bytes": 98,
+        "event": 3
+      },
+      {
+        "at_ms": 7577,
+        "direction": "response",
+        "action": 1,
+        "bytes": 20,
+        "event": null
+      }
+    ],
+    "window_seconds": 14
+  },
+  "independent_windows_udp": {
+    "version": "1.0.1",
+    "independent_client": "Python standard library BEP15",
+    "source": "Windows physical interface",
+    "all_passed": false,
+    "checks": [
+      {
+        "stage": "connect",
+        "ok": false,
+        "category": "TimeoutError"
+      }
+    ],
+    "cleanup_confirmed": true,
+    "tx_application_bytes": 16,
+    "rx_application_bytes": 0,
+    "elapsed_seconds": 3.002,
+    "long_test": false
+  },
+  "independent_external_udp4": {
+    "version": "1.0.1",
+    "independent_client": "Python standard library BEP15",
+    "source": "Owned independent external IPv4 host",
+    "all_passed": true,
+    "checks": [
+      {
+        "stage": "connect",
+        "ok": true
+      },
+      {
+        "stage": "zero_want",
+        "ok": true
+      },
+      {
+        "stage": "second_client_discovers_first",
+        "ok": true
+      },
+      {
+        "stage": "first_client_discovers_second",
+        "ok": true
+      },
+      {
+        "stage": "scrape_two",
+        "ok": true
+      },
+      {
+        "stage": "stopped_and_scrape_one",
+        "ok": true
+      },
+      {
+        "stage": "stopped_and_scrape_zero",
+        "ok": true
+      },
+      {
+        "stage": "unrelated_resource",
+        "ok": true
+      }
+    ],
+    "cleanup_confirmed": true,
+    "tx_application_bytes": 1120,
+    "rx_application_bytes": 304,
+    "elapsed_seconds": 0.011,
+    "long_test": false
+  },
+  "original_budget_baseline_reset": false,
+  "no_long_endurance_test": true
+}

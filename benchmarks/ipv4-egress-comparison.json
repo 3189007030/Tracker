@@ -1,0 +1,42 @@
+{
+  "suite_completed": true,
+  "strict_proxy_verify": true,
+  "route_restored": true,
+  "route_lease_renewed": true,
+  "ipv6_route_unchanged": true,
+  "family_ipv6_control": true,
+  "verify": {
+    "report": "run-54faf18cca6545629f20dc2d2842e8bc.json",
+    "completed": true,
+    "measurements": {
+      "tx_application_bytes": 2779,
+      "rx_application_bytes": 1091
+    }
+  },
+  "pressure": {
+    "report": "run-f9d5e91f7a5247bfa54215ec534098c7.json",
+    "completed": true,
+    "measurements": {
+      "attempted": 59438,
+      "completed": 59438,
+      "protocol_success": 28706,
+      "protocol_success_rate": 0.48295703085568154,
+      "tracker_business_error": 0,
+      "http_error": 0,
+      "timeout": 30732,
+      "transport_error": 0,
+      "invalid_protocol_reply": 0,
+      "actual_attempted_rps": 98.24554623222122,
+      "actual_success_rps": 47.44837730310815,
+      "elapsed_seconds": 604.9943461,
+      "tx_application_bytes": 13237484,
+      "rx_application_bytes": 2301248
+    }
+  },
+  "notes": [
+    "A successful strict check proves the observed source for that check only.",
+    "One pressure stage does not establish a unique cause for path differences.",
+    "A killed controller cannot execute finally; the private journal supports manual restore."
+  ],
+  "generated_utc": "2026-11-11T02:14:19.376413+00:00"
+}

@@ -1,0 +1,201 @@
+{
+  "suite_completed": true,
+  "cleanup_confirmed": true,
+  "binary_identity_verified": true,
+  "cases": [
+    {
+      "closuremode": "server-close",
+      "case_completed": true,
+      "process_exit_code": 0,
+      "probe": {
+        "attempted": 10292,
+        "completed": 9540,
+        "http200": 9540,
+        "successrate": 0.926934,
+        "connect_timeout": 557,
+        "other_timeout": 195,
+        "io_error": 0,
+        "invalid_reply": 0,
+        "bytes": 2763274,
+        "elapsed": 124.76142,
+        "actualrps": 82.49345,
+        "closuremode": "server-close",
+        "family": "ipv4"
+      },
+      "kernel_deltas": {
+        "TcpExt_TW": 10287,
+        "TcpExt_TWRecycled": 0,
+        "TcpExt_TWKilled": 0,
+        "TcpExt_ListenOverflows": 0,
+        "TcpExt_ListenDrops": 0,
+        "TcpExt_TCPSynRetrans": 1515,
+        "TcpExt_TCPAbortOnMemory": 0,
+        "Tcp_ActiveOpens": 107,
+        "Tcp_AttemptFails": 49,
+        "Tcp_EstabResets": 33,
+        "Tcp_OutRsts": 50,
+        "TCP_gauge_inuse": 33,
+        "TCP_gauge_orphan": 2,
+        "TCP_gauge_tw": 2359,
+        "TCP_gauge_alloc": 33,
+        "TCP_gauge_mem": 0
+      },
+      "source_restricted_counters": {
+        "v4_18080_syn_in": {
+          "packets": 14594,
+          "bytes": 758888
+        },
+        "v4_18080_synack_out": {
+          "packets": 11273,
+          "bytes": 586196
+        },
+        "v4_18080_rst_in": {
+          "packets": 3820,
+          "bytes": 152800
+        },
+        "v4_18080_rst_out": {
+          "packets": 0,
+          "bytes": 0
+        }
+      },
+      "source_syn_observed": true,
+      "charged_bytes_before": 6817700782,
+      "charged_bytes_after": 6835359935,
+      "pre_utc": "2026-11-10T23:59:17.640142+00:00",
+      "post_utc": "2026-11-11T00:01:26.450501+00:00"
+    },
+    {
+      "closuremode": "client-close",
+      "case_completed": true,
+      "process_exit_code": 0,
+      "probe": {
+        "attempted": 11875,
+        "completed": 11710,
+        "http200": 11710,
+        "successrate": 0.986105,
+        "connect_timeout": 116,
+        "other_timeout": 49,
+        "io_error": 0,
+        "invalid_reply": 0,
+        "bytes": 3210598,
+        "elapsed": 122.363535,
+        "actualrps": 97.046886,
+        "closuremode": "client-close",
+        "family": "ipv4"
+      },
+      "kernel_deltas": {
+        "TcpExt_TW": 634,
+        "TcpExt_TWRecycled": 0,
+        "TcpExt_TWKilled": 0,
+        "TcpExt_ListenOverflows": 0,
+        "TcpExt_ListenDrops": 0,
+        "TcpExt_TCPSynRetrans": 1835,
+        "TcpExt_TCPAbortOnMemory": 0,
+        "Tcp_ActiveOpens": 78,
+        "Tcp_AttemptFails": 38,
+        "Tcp_EstabResets": 28,
+        "Tcp_OutRsts": 34,
+        "TCP_gauge_inuse": -16,
+        "TCP_gauge_orphan": -2,
+        "TCP_gauge_tw": -2332,
+        "TCP_gauge_alloc": -15,
+        "TCP_gauge_mem": -148
+      },
+      "source_restricted_counters": {
+        "v4_18080_syn_in": {
+          "packets": 13895,
+          "bytes": 722540
+        },
+        "v4_18080_synack_out": {
+          "packets": 13590,
+          "bytes": 706680
+        },
+        "v4_18080_rst_in": {
+          "packets": 940,
+          "bytes": 37600
+        },
+        "v4_18080_rst_out": {
+          "packets": 0,
+          "bytes": 0
+        }
+      },
+      "source_syn_observed": true,
+      "charged_bytes_before": 6835480199,
+      "charged_bytes_after": 6852872952,
+      "pre_utc": "2026-11-11T00:01:35.383490+00:00",
+      "post_utc": "2026-11-11T00:03:43.522677+00:00"
+    },
+    {
+      "closuremode": "server-close",
+      "case_completed": true,
+      "process_exit_code": 0,
+      "probe": {
+        "attempted": 10239,
+        "completed": 9461,
+        "http200": 9461,
+        "successrate": 0.924016,
+        "connect_timeout": 554,
+        "other_timeout": 224,
+        "io_error": 0,
+        "invalid_reply": 0,
+        "bytes": 2742064,
+        "elapsed": 124.835457,
+        "actualrps": 82.019966,
+        "closuremode": "server-close",
+        "family": "ipv4"
+      },
+      "kernel_deltas": {
+        "TcpExt_TW": 10153,
+        "TcpExt_TWRecycled": 0,
+        "TcpExt_TWKilled": 0,
+        "TcpExt_ListenOverflows": 0,
+        "TcpExt_ListenDrops": 0,
+        "TcpExt_TCPSynRetrans": 1502,
+        "TcpExt_TCPAbortOnMemory": 0,
+        "Tcp_ActiveOpens": 80,
+        "Tcp_AttemptFails": 44,
+        "Tcp_EstabResets": 18,
+        "Tcp_OutRsts": 38,
+        "TCP_gauge_inuse": 17,
+        "TCP_gauge_orphan": 2,
+        "TCP_gauge_tw": 2287,
+        "TCP_gauge_alloc": 16,
+        "TCP_gauge_mem": 0
+      },
+      "source_restricted_counters": {
+        "v4_18080_syn_in": {
+          "packets": 14541,
+          "bytes": 756132
+        },
+        "v4_18080_synack_out": {
+          "packets": 11225,
+          "bytes": 583700
+        },
+        "v4_18080_rst_in": {
+          "packets": 3879,
+          "bytes": 155160
+        },
+        "v4_18080_rst_out": {
+          "packets": 0,
+          "bytes": 0
+        }
+      },
+      "source_syn_observed": true,
+      "charged_bytes_before": 6852959648,
+      "charged_bytes_after": 6870786225,
+      "pre_utc": "2026-11-11T00:03:54.207240+00:00",
+      "post_utc": "2026-11-11T00:06:02.101084+00:00"
+    }
+  ],
+  "scope": "IPv4 TCP HTTP health-only diagnostic; not Tracker announce or capacity",
+  "notes": [
+    "Direct path was requested but not bound or proven for the entire stage.",
+    "Receiver source-restricted SYN counts are packet evidence and include retransmissions.",
+    "FIN direction was not captured; differences do not establish cause.",
+    "NIC budget is checked before and after each stage; unrelated traffic can change during a stage."
+  ],
+  "server_sha256": "d4d1cf1df347482023c85a13045c7ae1f916fba69fea6547e9a3b0fa428db4b6",
+  "probe_sha256": "da20f12950160a9c83248a6f4a97f79e4d90622fad788372e6eb71dc1e7cbd1f",
+  "failure": null,
+  "generated_utc": "2026-11-11T00:06:07.384207+00:00"
+}

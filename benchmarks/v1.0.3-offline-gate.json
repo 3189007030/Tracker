@@ -1,0 +1,34 @@
+{
+  "version": "1.0.3",
+  "toolchain": "rustc 1.99.1",
+  "gates": {
+    "fmt": {
+      "checked_utc": "2026-11-11T13:14:11.549176+00:00",
+      "exit_code": 0,
+      "passed_tests": 0,
+      "loopback_only_network_namespace": false
+    },
+    "clippy": {
+      "checked_utc": "2026-11-11T13:19:44.701907+00:00",
+      "exit_code": 0,
+      "passed_tests": 0,
+      "loopback_only_network_namespace": false
+    },
+    "test": {
+      "checked_utc": "2026-11-11T13:12:04.246955+00:00",
+      "exit_code": 0,
+      "passed_tests": 119,
+      "loopback_only_network_namespace": true
+    },
+    "build": {
+      "checked_utc": "2026-11-11T13:22:28.092335+00:00",
+      "exit_code": 0,
+      "passed_tests": 0,
+      "loopback_only_network_namespace": false
+    }
+  },
+  "independent_wirecheck": true,
+  "public_pressure_or_endurance_test": false,
+  "new_capacity_claim": false,
+  "windows_release_binary_built": false
+}

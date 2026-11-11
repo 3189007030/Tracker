@@ -1,0 +1,29 @@
+[Unit]
+Description=Tracker v1 Rust evidence observatory
+After=network-online.target tracker-v1.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=tracker
+Group=tracker
+ExecStart=/opt/tracker-v1/current/observatory --config /etc/tracker-v1/config.toml --data-dir /var/lib/tracker-v1
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=30
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/tracker-v1
+MemoryMax=192M
+MemorySwapMax=0
+CPUWeight=10
+Nice=10
+TasksMax=64
+LimitNOFILE=4096
+LimitCORE=0
+Environment=RUST_LOG=observatory=info
+
+[Install]
+WantedBy=multi-user.target

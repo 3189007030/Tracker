@@ -1,0 +1,11 @@
+{
+  "checked_utc": "2026-11-11T04:53:55.602672+00:00",
+  "removed_lab_service": true,
+  "lab_listener_absent": true,
+  "experimental_endpoint_status": 404,
+  "native_pid_unchanged": true,
+  "native_active": true,
+  "website_active": true,
+  "config_section_removed": true,
+  "independent_ssh_verified": true
+}

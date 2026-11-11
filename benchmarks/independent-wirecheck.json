@@ -1,0 +1,165 @@
+{
+  "at_utc": "2026-11-10T19:47:24.326004+00:00",
+  "source_sha256": "4246b86cfd921027d733fa7d312d215b2ee0049f5b48b6f7a364a179a0598884",
+  "compiler_warnings_denied": true,
+  "cases": [
+    {
+      "case": "offline",
+      "exit": 0,
+      "results": [
+        {
+          "stage": "offline_parser",
+          "ok": true
+        },
+        {
+          "ok": true,
+          "network_used": false
+        }
+      ]
+    },
+    {
+      "case": "ipv4_core",
+      "exit": 0,
+      "results": [
+        {
+          "stage": "offline_parser",
+          "ok": true
+        },
+        {
+          "stage": "empty_scrape",
+          "ok": true
+        },
+        {
+          "stage": "udp_connect",
+          "ok": true
+        },
+        {
+          "stage": "udp_short_and_forged",
+          "ok": true
+        },
+        {
+          "stage": "udp_scrape_lengths",
+          "ok": true
+        },
+        {
+          "stage": "http_failure_and_lengths",
+          "ok": true
+        },
+        {
+          "stage": "http_scrape_lengths",
+          "ok": true
+        },
+        {
+          "stage": "binary_query_numwant_zero",
+          "ok": true
+        },
+        {
+          "stage": "udp_discovers_http",
+          "ok": true
+        },
+        {
+          "stage": "http_discovers_udp",
+          "ok": true
+        },
+        {
+          "stage": "scrape_no_mutation",
+          "ok": true
+        },
+        {
+          "stage": "stopped_two_to_one",
+          "ok": true
+        },
+        {
+          "stage": "stopped_one_to_zero",
+          "ok": true
+        },
+        {
+          "stage": "unrelated_hash_empty",
+          "ok": true
+        },
+        {
+          "stage": "cleanup",
+          "ok": true
+        },
+        {
+          "stage": "final",
+          "ok": true,
+          "application_bytes": 21032,
+          "elapsed_ms": 949
+        }
+      ]
+    },
+    {
+      "case": "ipv6_nginx",
+      "exit": 0,
+      "results": [
+        {
+          "stage": "offline_parser",
+          "ok": true
+        },
+        {
+          "stage": "empty_scrape",
+          "ok": true
+        },
+        {
+          "stage": "udp_connect",
+          "ok": true
+        },
+        {
+          "stage": "udp_short_and_forged",
+          "ok": true
+        },
+        {
+          "stage": "udp_scrape_lengths",
+          "ok": true
+        },
+        {
+          "stage": "http_failure_and_lengths",
+          "ok": true
+        },
+        {
+          "stage": "http_scrape_lengths",
+          "ok": true
+        },
+        {
+          "stage": "binary_query_numwant_zero",
+          "ok": true
+        },
+        {
+          "stage": "udp_discovers_http",
+          "ok": true
+        },
+        {
+          "stage": "http_discovers_udp",
+          "ok": true
+        },
+        {
+          "stage": "scrape_no_mutation",
+          "ok": true
+        },
+        {
+          "stage": "stopped_two_to_one",
+          "ok": true
+        },
+        {
+          "stage": "stopped_one_to_zero",
+          "ok": true
+        },
+        {
+          "stage": "unrelated_hash_empty",
+          "ok": true
+        },
+        {
+          "stage": "cleanup",
+          "ok": true
+        },
+        {
+          "stage": "final",
+          "ok": true,
+          "application_bytes": 21353,
+          "elapsed_ms": 957
+        }
+      ]
+    }
+  ]
+}

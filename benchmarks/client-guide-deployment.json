@@ -1,0 +1,30 @@
+{
+  "deployed_utc": "2026-11-11T03:41:05.247582+00:00",
+  "source_commit": "69bed920ed8ac7032dcc4f4ec949baf99668449a",
+  "directory": "1.0.0-tools-69bed920",
+  "web_restarted": true,
+  "native_pid_unchanged": true,
+  "native_sha256": "d4d1cf1df347482023c85a13045c7ae1f916fba69fea6547e9a3b0fa428db4b6",
+  "browser_map_installed": true,
+  "nginx_config_test_passed": true,
+  "web_sha256": "89bb1d088be7c2f81240f053f24b517758a8e749e984c359f987e06228fed344",
+  "final_read_only_checks": {
+    "services_active": {
+      "tracker-v1.service": true,
+      "tracker-observatory.service": true,
+      "tracker-web.service": true,
+      "tracker-lab.service": true,
+      "nginx.service": true,
+      "ssh.service": true
+    },
+    "native_pid_unchanged": true,
+    "native_sha256": "d4d1cf1df347482023c85a13045c7ae1f916fba69fea6547e9a3b0fa428db4b6",
+    "readiness_passed": {
+      "8080": true,
+      "8081": true
+    },
+    "nginx_config_test_passed": true,
+    "current_release": "1.0.0-tools-69bed920",
+    "independent_ssh_after_route_cleanup": true
+  }
+}

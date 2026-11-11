@@ -1,0 +1,63 @@
+{
+  "checked_utc": "2026-11-11T03:32:34.129339+00:00",
+  "source_path": "Temporary owned S1-only physical-interface routes; original known expected exits, no proxy-wide changes",
+  "checks": [
+    {
+      "family": "ipv4",
+      "protocol": "http",
+      "passed": true,
+      "exit_code": 0,
+      "failure_category": null,
+      "tx_application_bytes": 2779,
+      "rx_application_bytes": 1091
+    },
+    {
+      "family": "ipv4",
+      "protocol": "https",
+      "passed": true,
+      "exit_code": 0,
+      "failure_category": null,
+      "tx_application_bytes": 2779,
+      "rx_application_bytes": 1091
+    },
+    {
+      "family": "ipv4",
+      "protocol": "udp",
+      "passed": true,
+      "exit_code": 0,
+      "failure_category": null,
+      "tx_application_bytes": 1218,
+      "rx_application_bytes": 324
+    },
+    {
+      "family": "ipv6",
+      "protocol": "http",
+      "passed": true,
+      "exit_code": 0,
+      "failure_category": null,
+      "tx_application_bytes": 2779,
+      "rx_application_bytes": 1137
+    },
+    {
+      "family": "ipv6",
+      "protocol": "https",
+      "passed": true,
+      "exit_code": 0,
+      "failure_category": null,
+      "tx_application_bytes": 2779,
+      "rx_application_bytes": 1137
+    },
+    {
+      "family": "ipv6",
+      "protocol": "udp",
+      "passed": true,
+      "exit_code": 0,
+      "failure_category": null,
+      "tx_application_bytes": 1218,
+      "rx_application_bytes": 348
+    }
+  ],
+  "passed": true,
+  "no_pressure_or_endurance": true,
+  "raw_peer_data_recorded": false
+}

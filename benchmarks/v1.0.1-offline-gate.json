@@ -1,0 +1,27 @@
+{
+  "checked_utc": "2026-11-11T06:04:14.866727+00:00",
+  "gate": "test",
+  "exit_code": 0,
+  "passed_tests": 116,
+  "loopback_only_network_namespace": true,
+  "scope": "Full workspace in a fresh loopback-only network namespace; Cargo offline; cancelled lab excluded.",
+  "long_endurance_test_performed": false,
+  "gates": {
+    "fmt": {
+      "checked_utc": "2026-11-11T06:03:51.365176+00:00",
+      "exit_code": 0
+    },
+    "clippy": {
+      "checked_utc": "2026-11-11T06:03:58.884915+00:00",
+      "exit_code": 0
+    },
+    "build": {
+      "checked_utc": "2026-11-11T06:06:03.768261+00:00",
+      "exit_code": 0
+    },
+    "windows": {
+      "checked_utc": "2026-11-11T05:26:23.217471+00:00",
+      "exit_code": 0
+    }
+  }
+}

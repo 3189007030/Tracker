@@ -1,0 +1,31 @@
+{
+  "checked_utc": "2026-11-11T06:11:58.977358+00:00",
+  "version": "1.0.1",
+  "all_passed": true,
+  "http_checks": {
+    "brand.svg": true,
+    "brand.png": true,
+    "favicon.ico": true,
+    "history_24h": true,
+    "history_7d": true,
+    "history_30d": true,
+    "/api/v1/experiments/peers": true,
+    "/api/v1/relay/stats": true
+  },
+  "browser_checks": {
+    "four_pages_zh_en": true,
+    "icon_declarations_versioned": true,
+    "local_flags_with_registration_country_note": true,
+    "icon_only_copy_feedback_and_clipboard": true,
+    "minimal_sample_magnet_copy": true,
+    "anonymous_node_and_sample_linkage": true,
+    "chart_24h_7d_30d_selector": true,
+    "fixed_calendar_axis_observed": true,
+    "mobile_no_horizontal_overflow": true,
+    "mobile_nav_items": 4,
+    "public_pool_count": 100,
+    "forum_pool_count": 0,
+    "cancelled_feature_absent_from_status": true
+  },
+  "browser_scope": "Representative copy controls, source counts, desktop charts and 390px viewport; no endurance or maximum-capacity measurement."
+}

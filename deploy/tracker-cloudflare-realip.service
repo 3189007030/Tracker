@@ -1,0 +1,14 @@
+[Unit]
+Description=Refresh validated Cloudflare trusted ingress ranges
+After=network-online.target nginx.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/tracker-v1/deploy/refresh-cloudflare-realip.py
+TimeoutStartSec=60
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/etc/nginx/conf.d /var/log/nginx /run

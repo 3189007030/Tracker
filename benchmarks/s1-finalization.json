@@ -1,0 +1,20 @@
+{
+  "completed_utc": "2026-11-11T02:42:32.996550+00:00",
+  "benchmark_units_removed": [
+    "tracker-bench.service",
+    "tracker-v1-canary.service",
+    "tracker-v1-soak.service"
+  ],
+  "temporary_listeners_absent": true,
+  "owned_firewall_rules_removed": true,
+  "firewall_persisted_and_checked": true,
+  "release_route_installed": true,
+  "native_pid_unchanged": true,
+  "native_sha256": "d4d1cf1df347482023c85a13045c7ae1f916fba69fea6547e9a3b0fa428db4b6",
+  "website_ready": true,
+  "independent_ssh_after_cleanup": true,
+  "unrelated_services_modified": false,
+  "s2_modified": false,
+  "evidence_preserved_private": true,
+  "initial_finalization_check_interrupted_then_independently_verified": true
+}

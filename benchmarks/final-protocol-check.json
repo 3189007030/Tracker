@@ -1,0 +1,29 @@
+{
+  "source_commit": "a828e42537fe8166a2616b87488615b926aa6faa",
+  "native_sha256": "d4d1cf1df347482023c85a13045c7ae1f916fba69fea6547e9a3b0fa428db4b6",
+  "windows_client_sha256": "c4b3ace2ea420f614d289dcab228fb922a6ffc9eb74362f34a2a06ebda1d306c",
+  "checked_utc": "2026-11-11T02:35:29.877651+00:00",
+  "passed": true,
+  "checks": [
+    {
+      "family": "ipv4",
+      "protocol": "HTTPS plus UDP",
+      "exit_code": 0,
+      "passed": true,
+      "exact_observed_client_endpoint_checked": true,
+      "tx_application_bytes": 2395,
+      "rx_application_bytes": 939
+    },
+    {
+      "family": "ipv6",
+      "protocol": "HTTPS plus UDP",
+      "exit_code": 0,
+      "passed": true,
+      "exact_observed_client_endpoint_checked": true,
+      "tx_application_bytes": 2395,
+      "rx_application_bytes": 974
+    }
+  ],
+  "scope": "Short production HTTPS/UDP real registration, exact endpoint discovery, stopped, scrape and unrelated-resource checks; no capacity or endurance claim.",
+  "raw_peer_data_recorded": false
+}

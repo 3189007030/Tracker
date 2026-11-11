@@ -1,0 +1,67 @@
+{
+  "measured_at": "2026-11-10T18:16:21.838800+00:00",
+  "scope": "S1 in-process synthetic state; not network capacity",
+  "shape": "hot",
+  "logical_budget_mib": 1024,
+  "process_memory_max_mib": 1536,
+  "binary_sha256": "b9003d0a0244b408fa1256cfbb3f821d56dca8a42090eef3bfab3a3281d71bd9",
+  "cases": [
+    {
+      "requested": 10000,
+      "unique_swarms": 1,
+      "exit_code": 0,
+      "records": [
+        {
+          "kind": "state_benchmark",
+          "network_used": false,
+          "qualification": "in-process logical-time admission; not end-to-end tracker throughput or an S1 capacity guarantee",
+          "requested_peers": 10000,
+          "requested_swarms": 1,
+          "memory_budget_mib": 1024,
+          "accepted": 10000,
+          "stop_reason": null,
+          "elapsed_seconds": 0.022465928,
+          "in_process_admissions_per_second": 445118.49232313037,
+          "sample_every_n_admissions": 100,
+          "sampled_p95_ms_upper_bound": 1,
+          "sampled_p99_ms_upper_bound": 1,
+          "histogram_note": "1 ms buckets; 60000 means >= 60 s",
+          "engine_stats_before_cleanup": {
+            "peers": 10000,
+            "swarms": 1,
+            "estimated_bytes": 5120640,
+            "announces": 10000,
+            "scrapes": 0,
+            "expired": 0,
+            "stopped": 0,
+            "rejected_peers": 0,
+            "rejected_swarms": 0,
+            "rejected_memory": 0,
+            "rejected_swarm_peers": 0,
+            "rejected_busy": 0
+          },
+          "rss_before_cleanup_kib": 7988,
+          "peak_rss_kib": 7988,
+          "logical_delayed_peer_visible_600s": true,
+          "logical_delayed_peer_visible_1800s": true,
+          "maintenance_calls": 40,
+          "max_maintenance_us": 376,
+          "engine_stats_after_cleanup": {
+            "peers": 0,
+            "swarms": 0,
+            "estimated_bytes": 0,
+            "announces": 10004,
+            "scrapes": 0,
+            "expired": 10000,
+            "stopped": 2,
+            "rejected_peers": 0,
+            "rejected_swarms": 0,
+            "rejected_memory": 0,
+            "rejected_swarm_peers": 0,
+            "rejected_busy": 0
+          }
+        }
+      ]
+    }
+  ]
+}

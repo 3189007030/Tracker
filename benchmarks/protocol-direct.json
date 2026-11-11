@@ -1,0 +1,63 @@
+{
+  "scope": "Windows physical WLAN to S1; temporary destination-specific routes; no relaxed peer address policy",
+  "cases": [
+    {
+      "case": "direct_ipv4_mixed",
+      "exit": 0,
+      "result": {
+        "accounting_note": "HTTP request target/body and UDP payload only; monitor host NIC for actual traffic",
+        "allow_private_test": false,
+        "checks": [
+          "zero_want",
+          "two_way_discovery",
+          "scrape_2_1_0",
+          "stopped_removal",
+          "unrelated_hash_empty"
+        ],
+        "delay_model": "real_wall_time",
+        "delayed_retention_checked": false,
+        "family_a": "ipv4",
+        "family_b": "ipv4",
+        "http_resolve_override_a": true,
+        "http_resolve_override_b": false,
+        "kind": "verify",
+        "mixed_transports": true,
+        "ok": true,
+        "real_wait_seconds": null,
+        "remaining_application_budget_bytes": 67105530,
+        "rx_application_bytes": 939,
+        "tx_application_bytes": 2395
+      },
+      "error": ""
+    },
+    {
+      "case": "direct_dual_http",
+      "exit": 0,
+      "result": {
+        "accounting_note": "HTTP request target/body and UDP payload only; monitor host NIC for actual traffic",
+        "allow_private_test": false,
+        "checks": [
+          "zero_want",
+          "two_way_discovery",
+          "scrape_2_1_0",
+          "stopped_removal",
+          "unrelated_hash_empty"
+        ],
+        "delay_model": "real_wall_time",
+        "delayed_retention_checked": false,
+        "family_a": "ipv4",
+        "family_b": "ipv6",
+        "http_resolve_override_a": true,
+        "http_resolve_override_b": true,
+        "kind": "verify",
+        "mixed_transports": false,
+        "ok": true,
+        "real_wait_seconds": null,
+        "remaining_application_budget_bytes": 67104971,
+        "rx_application_bytes": 1114,
+        "tx_application_bytes": 2779
+      },
+      "error": ""
+    }
+  ]
+}

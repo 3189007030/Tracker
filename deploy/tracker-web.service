@@ -1,0 +1,26 @@
+[Unit]
+Description=Tracker v1 Rust public website
+After=network-online.target tracker-v1.service
+
+[Service]
+Type=simple
+User=tracker
+Group=tracker
+ExecStart=/opt/tracker-v1/current/tracker-web --config /etc/tracker-v1/config.toml --data-dir /var/lib/tracker-v1 --listen 127.0.0.1:8080
+Restart=on-failure
+RestartSec=2
+TimeoutStopSec=20
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+MemoryMax=128M
+MemorySwapMax=0
+CPUWeight=100
+TasksMax=64
+LimitNOFILE=4096
+LimitCORE=0
+Environment=RUST_LOG=tracker_web=info
+
+[Install]
+WantedBy=multi-user.target

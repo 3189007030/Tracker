@@ -1,0 +1,64 @@
+{
+  "scope": "isolated loopback intentional memory admission diagnostic",
+  "measured_utc": "2026-11-10T23:52:27.637895+00:00",
+  "server_sha256_verified": "d4d1cf1df347482023c85a13045c7ae1f916fba69fea6547e9a3b0fa428db4b6",
+  "filler_sha256_verified": "822a14125892ffab614bafedadd73b7281fdfb82544afa47380d4c4186798fb0",
+  "guard_source_sha256": "0d1db7c20a09af38ec3a34a8d73e8c37426dec649af99ee1e28eac534f939729",
+  "guard_binary_sha256_verified": "657ef8f4563fc2afd7a323fe5ff17c7c91e96c00fe6acc9aaa50d58dd8aaf2f5",
+  "unit_exit_code": 0,
+  "core": {
+    "passed": true,
+    "failure": null,
+    "checks": [
+      "armed",
+      "check",
+      "recover"
+    ],
+    "filler_final": {
+      "elapsed_seconds": 120.001676136,
+      "configured_rps": 16000,
+      "attempted": 1911122,
+      "completed": 1911122,
+      "protocol_success": 1843188,
+      "protocol_success_rate": 0.9644533420681672,
+      "tracker_business_error": 67934,
+      "timeout": 0,
+      "transport_error": 0,
+      "invalid_protocol_reply": 0,
+      "actual_attempted_rps": 15925.794218358184,
+      "tx_application_bytes": 187302244,
+      "rx_application_bytes": 38846134,
+      "budget_exhausted": false
+    },
+    "samples": 61,
+    "charged_bytes_last": 6792987841,
+    "available_kib_last": 1035432,
+    "engine_last": {
+      "peers": 932066,
+      "swarms": 932066,
+      "estimated_bytes": 1073741696,
+      "rejected_memory": 67935
+    },
+    "engine_at_refusal": {
+      "peers": 932068,
+      "swarms": 932067,
+      "estimated_bytes": 1073741696,
+      "rejected_memory": 18801
+    },
+    "elapsed_seconds": 120.967
+  },
+  "cleanup": {
+    "needed": true,
+    "bench_restart_ok": true,
+    "canary_start_ok": true,
+    "bench_active": true,
+    "canary_active": true,
+    "empty": true,
+    "native_identity_unchanged": true,
+    "ok": true
+  },
+  "passed": true,
+  "native_identity_unchanged": true,
+  "benchmark_cleanup_succeeded": true,
+  "limitations": "Transient service limits child lifetime; host failure or interrupted cleanup may still require manual recovery. No source commit identity is inferred from binary hashes."
+}

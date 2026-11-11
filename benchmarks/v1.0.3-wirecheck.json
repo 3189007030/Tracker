@@ -1,0 +1,158 @@
+{
+  "checked_utc": "2026-11-11T13:16:46.877475+00:00",
+  "source_scope": "1.0.3 isolated native binary; independent standalone codec",
+  "wirecheck_sha256": "6a644ef35e2ba0ea30e8b7cc52952f7fcb1d7f097c5a02e8af1d20fea764edce",
+  "offline_selftest_passed": true,
+  "native_production_pid_unchanged": true,
+  "passed": true,
+  "checks": [
+    {
+      "family": "ipv4",
+      "exit_code": 0,
+      "checks": [
+        {
+          "stage": "offline_parser",
+          "ok": true
+        },
+        {
+          "stage": "empty_scrape",
+          "ok": true
+        },
+        {
+          "stage": "udp_connect",
+          "ok": true
+        },
+        {
+          "stage": "udp_short_and_forged",
+          "ok": true
+        },
+        {
+          "stage": "udp_scrape_lengths",
+          "ok": true
+        },
+        {
+          "stage": "http_failure_and_lengths",
+          "ok": true
+        },
+        {
+          "stage": "http_scrape_lengths",
+          "ok": true
+        },
+        {
+          "stage": "binary_query_numwant_zero",
+          "ok": true
+        },
+        {
+          "stage": "udp_discovers_http",
+          "ok": true
+        },
+        {
+          "stage": "http_discovers_udp",
+          "ok": true
+        },
+        {
+          "stage": "scrape_no_mutation",
+          "ok": true
+        },
+        {
+          "stage": "stopped_two_to_one",
+          "ok": true
+        },
+        {
+          "stage": "stopped_one_to_zero",
+          "ok": true
+        },
+        {
+          "stage": "unrelated_hash_empty",
+          "ok": true
+        },
+        {
+          "stage": "cleanup",
+          "ok": true
+        },
+        {
+          "stage": "final",
+          "ok": true,
+          "application_bytes": 21032,
+          "elapsed_ms": 945
+        }
+      ],
+      "passed": true
+    },
+    {
+      "family": "ipv6",
+      "exit_code": 0,
+      "checks": [
+        {
+          "stage": "offline_parser",
+          "ok": true
+        },
+        {
+          "stage": "empty_scrape",
+          "ok": true
+        },
+        {
+          "stage": "udp_connect",
+          "ok": true
+        },
+        {
+          "stage": "udp_short_and_forged",
+          "ok": true
+        },
+        {
+          "stage": "udp_scrape_lengths",
+          "ok": true
+        },
+        {
+          "stage": "http_failure_and_lengths",
+          "ok": true
+        },
+        {
+          "stage": "http_scrape_lengths",
+          "ok": true
+        },
+        {
+          "stage": "binary_query_numwant_zero",
+          "ok": true
+        },
+        {
+          "stage": "udp_discovers_http",
+          "ok": true
+        },
+        {
+          "stage": "http_discovers_udp",
+          "ok": true
+        },
+        {
+          "stage": "scrape_no_mutation",
+          "ok": true
+        },
+        {
+          "stage": "stopped_two_to_one",
+          "ok": true
+        },
+        {
+          "stage": "stopped_one_to_zero",
+          "ok": true
+        },
+        {
+          "stage": "unrelated_hash_empty",
+          "ok": true
+        },
+        {
+          "stage": "cleanup",
+          "ok": true
+        },
+        {
+          "stage": "final",
+          "ok": true,
+          "application_bytes": 21066,
+          "elapsed_ms": 949
+        }
+      ],
+      "passed": true
+    }
+  ],
+  "public_traffic_used": false,
+  "pressure_or_endurance_test": false
+}

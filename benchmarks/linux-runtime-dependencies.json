@@ -1,0 +1,64 @@
+{
+  "measured_utc": "2026-11-11T01:56:46.746925+00:00",
+  "source_commit": "a828e42537fe8166a2616b87488615b926aa6faa",
+  "architecture": "x86_64-unknown-linux-gnu",
+  "debian_version": "12.0",
+  "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+  "binaries": {
+    "tracker-server": {
+      "bytes": 2408592,
+      "sha256": "d4d1cf1df347482023c85a13045c7ae1f916fba69fea6547e9a3b0fa428db4b6",
+      "dynamic_library_names": [
+        "libc.so.6",
+        "libgcc_s.so.1",
+        "libm.so.6",
+        "linux-vdso.so.1"
+      ],
+      "dependencies_resolved": true
+    },
+    "observatory": {
+      "bytes": 7495184,
+      "sha256": "750567e89adfae80466a7c588dc9c74b087799f62352fee49e0b772eb9bef5a3",
+      "dynamic_library_names": [
+        "libc.so.6",
+        "libgcc_s.so.1",
+        "libm.so.6",
+        "linux-vdso.so.1"
+      ],
+      "dependencies_resolved": true
+    },
+    "tracker-web": {
+      "bytes": 6756336,
+      "sha256": "f3b4a2d2a53f4fc10ac6c62fbb2a953012c8962c2c826f1c4adae80c8b467508",
+      "dynamic_library_names": [
+        "libc.so.6",
+        "libgcc_s.so.1",
+        "libm.so.6",
+        "linux-vdso.so.1"
+      ],
+      "dependencies_resolved": true
+    },
+    "tracker-lab": {
+      "bytes": 3956360,
+      "sha256": "570fde679900e8eff5856fec827cca2e5d2c9592abec550bc2ae59ea6765d225",
+      "dynamic_library_names": [
+        "libc.so.6",
+        "libgcc_s.so.1",
+        "libm.so.6",
+        "linux-vdso.so.1"
+      ],
+      "dependencies_resolved": true
+    },
+    "tracker-loadgen": {
+      "bytes": 3659008,
+      "sha256": "822a14125892ffab614bafedadd73b7281fdfb82544afa47380d4c4186798fb0",
+      "dynamic_library_names": [
+        "libc.so.6",
+        "libgcc_s.so.1",
+        "libm.so.6",
+        "linux-vdso.so.1"
+      ],
+      "dependencies_resolved": true
+    }
+  }
+}

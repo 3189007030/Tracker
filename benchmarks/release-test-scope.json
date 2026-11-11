@@ -1,0 +1,16 @@
+{
+  "policy": "short-tests-user-directed",
+  "user_short_tests_requested": true,
+  "long_duration_tests_performed": false,
+  "recorded_utc": "2026-11-11T02:33:47.903979+00:00",
+  "user_instruction": "\u6d4b\u8bd5\u7528\u51e0\u5206\u949f\u7684\u6d4b\u8bd5\u5c31\u884c\u4e86\uff0c\u4e0d\u8981\u8fdb\u884c\u957f\u65f6\u95f4\u7684\u6d4b\u8bd5\uff0c\u5148\u5b8c\u6210\u9879\u76ee",
+  "one_hour_capacity_verified": false,
+  "twenty_four_hour_endurance_verified": false,
+  "existing_ten_minute_results_preserved": true,
+  "observer_stop": {
+    "stopped_utc": "2026-11-11T02:33:47.899377+00:00",
+    "passive_recorder_stopped": true,
+    "canary_stopped": true,
+    "native_stopped": false
+  }
+}

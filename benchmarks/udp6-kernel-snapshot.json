@@ -1,0 +1,12 @@
+{
+  "at_utc": "2026-11-10T20:08:24.797412+00:00",
+  "scope": "host cumulative since boot; no per-stage attribution",
+  "udp6": {
+    "Udp6InDatagrams": 2484918,
+    "Udp6NoPorts": 12520857,
+    "Udp6InErrors": 3414,
+    "Udp6OutDatagrams": 2488468,
+    "Udp6RcvbufErrors": 0,
+    "Udp6SndbufErrors": 0
+  }
+}

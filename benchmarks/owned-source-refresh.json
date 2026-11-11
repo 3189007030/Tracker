@@ -1,0 +1,10 @@
+{
+  "at_utc": "2026-11-10T21:36:30.740861+00:00",
+  "physical_source_changed": true,
+  "independent_ssh_sources_agree": true,
+  "owned_ipv4_exception_refreshed": true,
+  "old_ipv4_exception_removed": true,
+  "scope": "isolated benchmark ingress only",
+  "nic_baseline_reset": false,
+  "native_restarted": false
+}

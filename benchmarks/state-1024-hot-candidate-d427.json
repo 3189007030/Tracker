@@ -1,0 +1,78 @@
+{
+  "measured_at": "2026-11-11T00:26:41.219321+00:00",
+  "scope": "S1 in-process synthetic state; not network capacity",
+  "shape": "hot",
+  "logical_budget_mib": 1024,
+  "process_memory_max_mib": 1536,
+  "binary_sha256": "822a14125892ffab614bafedadd73b7281fdfb82544afa47380d4c4186798fb0",
+  "cases": [
+    {
+      "requested": 10000,
+      "unique_swarms": 1,
+      "exit_code": 0,
+      "records": [
+        {
+          "accepted": 10000,
+          "admission_phase_vmhwm_kib": 5956,
+          "elapsed_seconds": 0.023371139,
+          "engine_stats_after_cleanup": {
+            "announces": 10004,
+            "estimated_bytes": 0,
+            "expired": 10000,
+            "peers": 0,
+            "rejected_busy": 0,
+            "rejected_memory": 0,
+            "rejected_peers": 0,
+            "rejected_swarm_peers": 0,
+            "rejected_swarms": 0,
+            "scrapes": 0,
+            "stopped": 2,
+            "swarms": 0
+          },
+          "engine_stats_before_cleanup": {
+            "announces": 10000,
+            "estimated_bytes": 5120640,
+            "expired": 0,
+            "peers": 10000,
+            "rejected_busy": 0,
+            "rejected_memory": 0,
+            "rejected_peers": 0,
+            "rejected_swarm_peers": 0,
+            "rejected_swarms": 0,
+            "scrapes": 0,
+            "stopped": 0,
+            "swarms": 1
+          },
+          "full_run_vmhwm_kib": 5956,
+          "histogram_note": "1 ms buckets; 60000 means >= 60 s",
+          "in_process_admissions_per_second": 427878.1620356629,
+          "kind": "state_benchmark",
+          "logical_admission_end_seconds": 1,
+          "logical_admission_start_seconds": 1,
+          "logical_cleanup_seconds": 3602,
+          "logical_delayed_observation_origin_seconds": 1,
+          "logical_delayed_peer_visible_1800s": true,
+          "logical_delayed_peer_visible_600s": true,
+          "logical_last_attempt_seconds": 1,
+          "maintenance_calls": 40,
+          "max_maintenance_us": 634,
+          "memory_budget_mib": 1024,
+          "network_used": false,
+          "peak_rss_kib": 5956,
+          "qualification": "in-process logical-time admission; not end-to-end tracker throughput or an S1 capacity guarantee",
+          "requested_peers": 10000,
+          "requested_swarms": 1,
+          "rss_after_cleanup_kib": 4260,
+          "rss_before_cleanup_kib": 5956,
+          "rss_sample_every_operations": 1000,
+          "sample_every_n_admissions": 100,
+          "sampled_max_rss_kib": 5956,
+          "sampled_p95_ms_upper_bound": 1,
+          "sampled_p99_ms_upper_bound": 1,
+          "state_workload": "baseline",
+          "stop_reason": null
+        }
+      ]
+    }
+  ]
+}

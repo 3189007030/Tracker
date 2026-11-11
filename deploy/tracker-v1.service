@@ -1,0 +1,29 @@
+[Unit]
+Description=Tracker v1 Rust HTTP and UDP service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=tracker
+Group=tracker
+ExecStart=/opt/tracker-v1/current/tracker-server --config /etc/tracker-v1/config.toml
+Restart=on-failure
+RestartSec=2
+KillSignal=SIGTERM
+TimeoutStopSec=20
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+MemoryMax=1536M
+MemoryHigh=1408M
+MemorySwapMax=0
+CPUWeight=1000
+TasksMax=256
+LimitNOFILE=65536
+LimitCORE=0
+Environment=RUST_LOG=tracker_server=info
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,23 @@
+[package]
+name = "tracker-loadgen"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+bt-protocol.workspace = true
+clap.workspace = true
+cpu-time = "1"
+futures-util = "0.3"
+hex.workspace = true
+rand.workspace = true
+reqwest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha1.workspace = true
+swarm-engine.workspace = true
+tokio.workspace = true
+tokio-util = { version = "0.7", features = ["io"] }
+url.workspace = true

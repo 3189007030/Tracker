@@ -1,0 +1,22 @@
+{
+  "measured_at": "2026-11-10T18:03:16.831838+00:00",
+  "scope": "consistent copy of fresh Rust development data; no network probes",
+  "exit_code": 0,
+  "before_counts": {
+    "endpoints": 310,
+    "observations": 1046,
+    "samples": 793,
+    "observed_peers": 144
+  },
+  "after_counts": {
+    "endpoints": 310,
+    "observations": 1046,
+    "samples": 793,
+    "observed_peers": 144
+  },
+  "private_rows_preserved": true,
+  "integrity_ok": true,
+  "added_activity_columns": 4,
+  "network_used": false,
+  "rust_validation_ok": true
+}

@@ -1,0 +1,129 @@
+{
+  "measured_at": "2026-11-10T17:57:50.997179+00:00",
+  "scope": "S1 isolated loopback; actual unrefreshed wall-clock retention",
+  "canaries": [
+    {
+      "name": "tracker-bench-retain-600-ipv4",
+      "records": [
+        {
+          "kind": "verify_phase",
+          "planned_seconds": 600,
+          "stage": "retention_wait_started",
+          "timestamp_utc": 1794331567
+        },
+        {
+          "actual_seconds": 600.000497142,
+          "kind": "verify_phase",
+          "stage": "retention_wait_completed",
+          "timestamp_utc": 1794332167
+        },
+        {
+          "accounting_note": "HTTP request target/body and UDP payload only; monitor host NIC for actual traffic",
+          "allow_private_test": true,
+          "checks": [
+            "zero_want",
+            "two_way_discovery",
+            "scrape_2_1_0",
+            "stopped_removal",
+            "unrelated_hash_empty"
+          ],
+          "delay_model": "real_wall_time",
+          "delayed_retention_checked": true,
+          "family_a": "ipv4",
+          "family_b": "ipv4",
+          "http_resolve_override_a": false,
+          "http_resolve_override_b": false,
+          "kind": "verify",
+          "mixed_transports": true,
+          "ok": true,
+          "real_wait_seconds": 600.000497142,
+          "remaining_application_budget_bytes": 1044158,
+          "rx_application_bytes": 1228,
+          "tx_application_bytes": 3190
+        }
+      ]
+    },
+    {
+      "name": "tracker-bench-retain-1800-ipv4",
+      "records": [
+        {
+          "kind": "verify_phase",
+          "planned_seconds": 1800,
+          "stage": "retention_wait_started",
+          "timestamp_utc": 1794331567
+        },
+        {
+          "actual_seconds": 1800.005834636,
+          "kind": "verify_phase",
+          "stage": "retention_wait_completed",
+          "timestamp_utc": 1794333367
+        },
+        {
+          "accounting_note": "HTTP request target/body and UDP payload only; monitor host NIC for actual traffic",
+          "allow_private_test": true,
+          "checks": [
+            "zero_want",
+            "two_way_discovery",
+            "scrape_2_1_0",
+            "stopped_removal",
+            "unrelated_hash_empty"
+          ],
+          "delay_model": "real_wall_time",
+          "delayed_retention_checked": true,
+          "family_a": "ipv4",
+          "family_b": "ipv4",
+          "http_resolve_override_a": false,
+          "http_resolve_override_b": false,
+          "kind": "verify",
+          "mixed_transports": true,
+          "ok": true,
+          "real_wait_seconds": 1800.005834636,
+          "remaining_application_budget_bytes": 1044158,
+          "rx_application_bytes": 1228,
+          "tx_application_bytes": 3190
+        }
+      ]
+    },
+    {
+      "name": "tracker-bench-retain-600-ipv6",
+      "records": [
+        {
+          "kind": "verify_phase",
+          "planned_seconds": 600,
+          "stage": "retention_wait_started",
+          "timestamp_utc": 1794331567
+        },
+        {
+          "actual_seconds": 600.001791272,
+          "kind": "verify_phase",
+          "stage": "retention_wait_completed",
+          "timestamp_utc": 1794332167
+        },
+        {
+          "accounting_note": "HTTP request target/body and UDP payload only; monitor host NIC for actual traffic",
+          "allow_private_test": true,
+          "checks": [
+            "zero_want",
+            "two_way_discovery",
+            "scrape_2_1_0",
+            "stopped_removal",
+            "unrelated_hash_empty"
+          ],
+          "delay_model": "real_wall_time",
+          "delayed_retention_checked": true,
+          "family_a": "ipv6",
+          "family_b": "ipv6",
+          "http_resolve_override_a": false,
+          "http_resolve_override_b": false,
+          "kind": "verify",
+          "mixed_transports": true,
+          "ok": true,
+          "real_wait_seconds": 600.001791272,
+          "remaining_application_budget_bytes": 1044054,
+          "rx_application_bytes": 1332,
+          "tx_application_bytes": 3190
+        }
+      ]
+    }
+  ]
+}

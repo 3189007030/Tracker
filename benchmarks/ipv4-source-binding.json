@@ -1,0 +1,26 @@
+{
+  "scope": "short IPv4 explicitly bound local socket; no ten-minute or causal capacity claim",
+  "first_verification_report": "run-c90cca3aa12f4ea588f6d0316e7dc580.json",
+  "first_verification_passed": false,
+  "strict_verification_retry_passed": true,
+  "source_binding_requested": true,
+  "report": "run-c3a293cfbed84f2490d658004761e396.json",
+  "controller": {
+    "completed": true,
+    "reason": "completed",
+    "exit_code": 0,
+    "samples": 123,
+    "report": "run-c3a293cfbed84f2490d658004761e396.json"
+  },
+  "metrics": {
+    "elapsed_seconds": 124.969628,
+    "attempted": 12000,
+    "completed": 12000,
+    "protocol_success": 10759,
+    "protocol_success_rate": 0.8965833333333333,
+    "timeout": 1241,
+    "transport_error": 0,
+    "invalid_protocol_reply": 0,
+    "actual_attempted_rps": 96.02333136496173
+  }
+}

@@ -1,0 +1,127 @@
+{
+  "measured_utc": "2026-11-11T01:54:28.907880+00:00",
+  "exit_code": 0,
+  "loopback_only_network_namespace": true,
+  "cargo_offline": true,
+  "frozen_input_files_verified": 37,
+  "test_suites": [
+    {
+      "ok": true,
+      "passed": 0,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "ok": true,
+      "passed": 11,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "ok": true,
+      "passed": 30,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "ok": true,
+      "passed": 0,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "ok": true,
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "ok": true,
+      "passed": 13,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "ok": true,
+      "passed": 17,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "ok": true,
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "ok": true,
+      "passed": 17,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "ok": true,
+      "passed": 0,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "ok": true,
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "ok": true,
+      "passed": 16,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "ok": true,
+      "passed": 0,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "ok": true,
+      "passed": 0,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "ok": true,
+      "passed": 0,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "ok": true,
+      "passed": 0,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "ok": true,
+      "passed": 0,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "ok": true,
+      "passed": 0,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "ok": true,
+      "passed": 0,
+      "failed": 0,
+      "ignored": 0
+    }
+  ],
+  "passed_tests": 118,
+  "failed_tests": 0,
+  "source_commit": "a828e42537fe8166a2616b87488615b926aa6faa",
+  "passed": true
+}

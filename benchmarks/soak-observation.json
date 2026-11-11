@@ -1,0 +1,2034 @@
+{
+  "checked_at_utc": "2026-11-11T02:33:52.674219+00:00",
+  "result": {
+    "source_matches_expected": true,
+    "same_boot_and_session": true,
+    "start_utc_epoch_seconds": 1794362128,
+    "last_sample_utc_epoch_seconds": 1794364408,
+    "elapsed_monotonic_seconds": 2280.000329373,
+    "duration_24h_reached": false,
+    "observation_24h_complete": false,
+    "samples": 39,
+    "expected_slots": 39,
+    "missing_slots": 0,
+    "coverage_fraction": 1.0,
+    "invalid_records": 0,
+    "partial_last_record": false,
+    "clock_discontinuities": 0,
+    "critical_telemetry_missing_samples": 0,
+    "production_service_continuity_observed_24h": false,
+    "session_end_seen": true,
+    "web_unready_samples": 0,
+    "web_unknown_samples": 0,
+    "production": {
+      "engine": {
+        "peers": {
+          "first": 132304,
+          "last": 143012,
+          "min": 132304,
+          "max": 143525,
+          "present_samples": 39,
+          "missing_samples": 0
+        },
+        "swarms": {
+          "first": 79510,
+          "last": 82763,
+          "min": 79510,
+          "max": 82763,
+          "present_samples": 39,
+          "missing_samples": 0
+        },
+        "estimated_bytes": {
+          "first": 118813824,
+          "last": 126941440,
+          "min": 118813824,
+          "max": 126941440,
+          "present_samples": 39,
+          "missing_samples": 0
+        }
+      },
+      "process_rss_bytes": {
+        "first": 111902720,
+        "last": 115806208,
+        "min": 111902720,
+        "max": 115806208,
+        "present_samples": 39,
+        "missing_samples": 0
+      },
+      "logical_budget_input_bytes": 1073741824,
+      "logical_estimate_peak_fraction": 0.11822342872619629,
+      "logical_budget_operator_declared": true,
+      "logical_budget_is_rss_limit": false,
+      "requests": {
+        "http_announces": {
+          "segments": 1,
+          "listed_segments": 1,
+          "segments_truncated": false,
+          "missing_samples": 0,
+          "counter_resets": 0,
+          "identity_changes": 0,
+          "gaps": 0,
+          "whole_observed_window": {
+            "duration_seconds": 2279.998789792,
+            "delta": 132255,
+            "mean_per_second": 58.006609736869805
+          },
+          "segment_windows": [
+            {
+              "duration_seconds": 2279.998789792,
+              "delta": 132255,
+              "mean_per_second": 58.006609736869805
+            }
+          ]
+        },
+        "udp_connects": {
+          "segments": 1,
+          "listed_segments": 1,
+          "segments_truncated": false,
+          "missing_samples": 0,
+          "counter_resets": 0,
+          "identity_changes": 0,
+          "gaps": 0,
+          "whole_observed_window": {
+            "duration_seconds": 2279.998789792,
+            "delta": 19,
+            "mean_per_second": 0.008333337756610534
+          },
+          "segment_windows": [
+            {
+              "duration_seconds": 2279.998789792,
+              "delta": 19,
+              "mean_per_second": 0.008333337756610534
+            }
+          ]
+        },
+        "udp_announces": {
+          "segments": 1,
+          "listed_segments": 1,
+          "segments_truncated": false,
+          "missing_samples": 0,
+          "counter_resets": 0,
+          "identity_changes": 0,
+          "gaps": 0,
+          "whole_observed_window": {
+            "duration_seconds": 2279.998789792,
+            "delta": 18,
+            "mean_per_second": 0.007894741032578402
+          },
+          "segment_windows": [
+            {
+              "duration_seconds": 2279.998789792,
+              "delta": 18,
+              "mean_per_second": 0.007894741032578402
+            }
+          ]
+        },
+        "scrapes": {
+          "segments": 1,
+          "listed_segments": 1,
+          "segments_truncated": false,
+          "missing_samples": 0,
+          "counter_resets": 0,
+          "identity_changes": 0,
+          "gaps": 0,
+          "whole_observed_window": {
+            "duration_seconds": 2279.998789792,
+            "delta": 18574,
+            "mean_per_second": 8.146495552172846
+          },
+          "segment_windows": [
+            {
+              "duration_seconds": 2279.998789792,
+              "delta": 18574,
+              "mean_per_second": 8.146495552172846
+            }
+          ]
+        },
+        "accepted_announces": {
+          "segments": 1,
+          "listed_segments": 1,
+          "segments_truncated": false,
+          "missing_samples": 0,
+          "counter_resets": 0,
+          "identity_changes": 0,
+          "gaps": 0,
+          "whole_observed_window": {
+            "duration_seconds": 2279.998789792,
+            "delta": 131362,
+            "mean_per_second": 57.61494286230911
+          },
+          "segment_windows": [
+            {
+              "duration_seconds": 2279.998789792,
+              "delta": 131362,
+              "mean_per_second": 57.61494286230911
+            }
+          ]
+        },
+        "business_failures": {
+          "segments": 1,
+          "listed_segments": 1,
+          "segments_truncated": false,
+          "missing_samples": 0,
+          "counter_resets": 0,
+          "identity_changes": 0,
+          "gaps": 0,
+          "whole_observed_window": {
+            "duration_seconds": 2279.998789792,
+            "delta": 0,
+            "mean_per_second": 0.0
+          },
+          "segment_windows": [
+            {
+              "duration_seconds": 2279.998789792,
+              "delta": 0,
+              "mean_per_second": 0.0
+            }
+          ]
+        },
+        "invalid_packets": {
+          "segments": 1,
+          "listed_segments": 1,
+          "segments_truncated": false,
+          "missing_samples": 0,
+          "counter_resets": 0,
+          "identity_changes": 0,
+          "gaps": 0,
+          "whole_observed_window": {
+            "duration_seconds": 2279.998789792,
+            "delta": 911,
+            "mean_per_second": 0.3995616155932735
+          },
+          "segment_windows": [
+            {
+              "duration_seconds": 2279.998789792,
+              "delta": 911,
+              "mean_per_second": 0.3995616155932735
+            }
+          ]
+        },
+        "rate_limited": {
+          "segments": 1,
+          "listed_segments": 1,
+          "segments_truncated": false,
+          "missing_samples": 0,
+          "counter_resets": 0,
+          "identity_changes": 0,
+          "gaps": 0,
+          "whole_observed_window": {
+            "duration_seconds": 2279.998789792,
+            "delta": 0,
+            "mean_per_second": 0.0
+          },
+          "segment_windows": [
+            {
+              "duration_seconds": 2279.998789792,
+              "delta": 0,
+              "mean_per_second": 0.0
+            }
+          ]
+        },
+        "http_busy": {
+          "segments": 1,
+          "listed_segments": 1,
+          "segments_truncated": false,
+          "missing_samples": 0,
+          "counter_resets": 0,
+          "identity_changes": 0,
+          "gaps": 0,
+          "whole_observed_window": {
+            "duration_seconds": 2279.998789792,
+            "delta": 0,
+            "mean_per_second": 0.0
+          },
+          "segment_windows": [
+            {
+              "duration_seconds": 2279.998789792,
+              "delta": 0,
+              "mean_per_second": 0.0
+            }
+          ]
+        },
+        "udp_send_errors": {
+          "segments": 1,
+          "listed_segments": 1,
+          "segments_truncated": false,
+          "missing_samples": 0,
+          "counter_resets": 0,
+          "identity_changes": 0,
+          "gaps": 0,
+          "whole_observed_window": {
+            "duration_seconds": 2279.998789792,
+            "delta": 0,
+            "mean_per_second": 0.0
+          },
+          "segment_windows": [
+            {
+              "duration_seconds": 2279.998789792,
+              "delta": 0,
+              "mean_per_second": 0.0
+            }
+          ]
+        },
+        "udp_v4_packets": {
+          "segments": 1,
+          "listed_segments": 1,
+          "segments_truncated": false,
+          "missing_samples": 0,
+          "counter_resets": 0,
+          "identity_changes": 0,
+          "gaps": 0,
+          "whole_observed_window": {
+            "duration_seconds": 2279.998789792,
+            "delta": 24,
+            "mean_per_second": 0.010526321376771203
+          },
+          "segment_windows": [
+            {
+              "duration_seconds": 2279.998789792,
+              "delta": 24,
+              "mean_per_second": 0.010526321376771203
+            }
+          ]
+        },
+        "udp_v6_packets": {
+          "segments": 1,
+          "listed_segments": 1,
+          "segments_truncated": false,
+          "missing_samples": 0,
+          "counter_resets": 0,
+          "identity_changes": 0,
+          "gaps": 0,
+          "whole_observed_window": {
+            "duration_seconds": 2279.998789792,
+            "delta": 13,
+            "mean_per_second": 0.0057017574124177345
+          },
+          "segment_windows": [
+            {
+              "duration_seconds": 2279.998789792,
+              "delta": 13,
+              "mean_per_second": 0.0057017574124177345
+            }
+          ]
+        },
+        "udp_bytes_received": {
+          "segments": 1,
+          "listed_segments": 1,
+          "segments_truncated": false,
+          "missing_samples": 0,
+          "counter_resets": 0,
+          "identity_changes": 0,
+          "gaps": 0,
+          "whole_observed_window": {
+            "duration_seconds": 2279.998789792,
+            "delta": 2068,
+            "mean_per_second": 0.9070180252984519
+          },
+          "segment_windows": [
+            {
+              "duration_seconds": 2279.998789792,
+              "delta": 2068,
+              "mean_per_second": 0.9070180252984519
+            }
+          ]
+        },
+        "udp_bytes_sent": {
+          "segments": 1,
+          "listed_segments": 1,
+          "segments_truncated": false,
+          "missing_samples": 0,
+          "counter_resets": 0,
+          "identity_changes": 0,
+          "gaps": 0,
+          "whole_observed_window": {
+            "duration_seconds": 2279.998789792,
+            "delta": 688,
+            "mean_per_second": 0.3017545461341078
+          },
+          "segment_windows": [
+            {
+              "duration_seconds": 2279.998789792,
+              "delta": 688,
+              "mean_per_second": 0.3017545461341078
+            }
+          ]
+        }
+      },
+      "stats_missing_samples": 0,
+      "pressure_active_samples": 0,
+      "pressure_unknown_samples": 0,
+      "uptime_resets": 0
+    },
+    "bench": {
+      "engine": {
+        "peers": {
+          "first": 257000,
+          "last": 0,
+          "min": 0,
+          "max": 2000000,
+          "present_samples": 39,
+          "missing_samples": 0
+        },
+        "swarms": {
+          "first": 131001,
+          "last": 0,
+          "min": 0,
+          "max": 139928,
+          "present_samples": 39,
+          "missing_samples": 0
+        },
+        "estimated_bytes": {
+          "first": 215455616,
+          "last": 0,
+          "min": 0,
+          "max": 1025280000,
+          "present_samples": 39,
+          "missing_samples": 0
+        }
+      },
+      "process_rss_bytes": {
+        "first": 176140288,
+        "last": 3682304,
+        "min": 3682304,
+        "max": 471109632,
+        "present_samples": 39,
+        "missing_samples": 0
+      },
+      "logical_budget_input_bytes": 1073741824,
+      "logical_estimate_peak_fraction": 0.9548664093017578,
+      "logical_budget_operator_declared": true,
+      "logical_budget_is_rss_limit": false,
+      "requests": {
+        "http_announces": {
+          "segments": 3,
+          "listed_segments": 3,
+          "segments_truncated": false,
+          "missing_samples": 0,
+          "counter_resets": 0,
+          "identity_changes": 2,
+          "gaps": 0,
+          "whole_observed_window": null,
+          "segment_windows": [
+            {
+              "duration_seconds": 1259.999652737,
+              "delta": 36253,
+              "mean_per_second": 28.7722301520087
+            },
+            {
+              "duration_seconds": 539.999792418,
+              "delta": 0,
+              "mean_per_second": 0.0
+            },
+            {
+              "duration_seconds": 359.99938177,
+              "delta": 48,
+              "mean_per_second": 0.13333356230780063
+            }
+          ]
+        },
+        "udp_connects": {
+          "segments": 3,
+          "listed_segments": 3,
+          "segments_truncated": false,
+          "missing_samples": 0,
+          "counter_resets": 0,
+          "identity_changes": 2,
+          "gaps": 0,
+          "whole_observed_window": null,
+          "segment_windows": [
+            {
+              "duration_seconds": 1259.999652737,
+              "delta": 21,
+              "mean_per_second": 0.01666667126009386
+            },
+            {
+              "duration_seconds": 539.999792418,
+              "delta": 2560,
+              "mean_per_second": 4.740742563134857
+            },
+            {
+              "duration_seconds": 359.99938177,
+              "delta": 6,
+              "mean_per_second": 0.01666669528847508
+            }
+          ]
+        },
+        "udp_announces": {
+          "segments": 3,
+          "listed_segments": 3,
+          "segments_truncated": false,
+          "missing_samples": 0,
+          "counter_resets": 0,
+          "identity_changes": 2,
+          "gaps": 0,
+          "whole_observed_window": null,
+          "segment_windows": [
+            {
+              "duration_seconds": 1259.999652737,
+              "delta": 63,
+              "mean_per_second": 0.05000001378028158
+            },
+            {
+              "duration_seconds": 539.999792418,
+              "delta": 8123768,
+              "mean_per_second": 15044.020597903489
+            },
+            {
+              "duration_seconds": 359.99938177,
+              "delta": 18,
+              "mean_per_second": 0.05000008586542523
+            }
+          ]
+        },
+        "scrapes": {
+          "segments": 3,
+          "listed_segments": 3,
+          "segments_truncated": false,
+          "missing_samples": 0,
+          "counter_resets": 0,
+          "identity_changes": 2,
+          "gaps": 0,
+          "whole_observed_window": null,
+          "segment_windows": [
+            {
+              "duration_seconds": 1259.999652737,
+              "delta": 66,
+              "mean_per_second": 0.05238096681743785
+            },
+            {
+              "duration_seconds": 539.999792418,
+              "delta": 0,
+              "mean_per_second": 0.0
+            },
+            {
+              "duration_seconds": 359.99938177,
+              "delta": 18,
+              "mean_per_second": 0.05000008586542523
+            }
+          ]
+        },
+        "accepted_announces": {
+          "segments": 3,
+          "listed_segments": 3,
+          "segments_truncated": false,
+          "missing_samples": 0,
+          "counter_resets": 0,
+          "identity_changes": 2,
+          "gaps": 0,
+          "whole_observed_window": null,
+          "segment_windows": [
+            {
+              "duration_seconds": 1259.999652737,
+              "delta": 36316,
+              "mean_per_second": 28.82223016578898
+            },
+            {
+              "duration_seconds": 539.999792418,
+              "delta": 8123769,
+              "mean_per_second": 15044.022449756054
+            },
+            {
+              "duration_seconds": 359.99938177,
+              "delta": 66,
+              "mean_per_second": 0.18333364817322587
+            }
+          ]
+        },
+        "business_failures": {
+          "segments": 3,
+          "listed_segments": 3,
+          "segments_truncated": false,
+          "missing_samples": 0,
+          "counter_resets": 0,
+          "identity_changes": 2,
+          "gaps": 0,
+          "whole_observed_window": null,
+          "segment_windows": [
+            {
+              "duration_seconds": 1259.999652737,
+              "delta": 0,
+              "mean_per_second": 0.0
+            },
+            {
+              "duration_seconds": 539.999792418,
+              "delta": 0,
+              "mean_per_second": 0.0
+            },
+            {
+              "duration_seconds": 359.99938177,
+              "delta": 0,
+              "mean_per_second": 0.0
+            }
+          ]
+        },
+        "invalid_packets": {
+          "segments": 3,
+          "listed_segments": 3,
+          "segments_truncated": false,
+          "missing_samples": 0,
+          "counter_resets": 0,
+          "identity_changes": 2,
+          "gaps": 0,
+          "whole_observed_window": null,
+          "segment_windows": [
+            {
+              "duration_seconds": 1259.999652737,
+              "delta": 0,
+              "mean_per_second": 0.0
+            },
+            {
+              "duration_seconds": 539.999792418,
+              "delta": 0,
+              "mean_per_second": 0.0
+            },
+            {
+              "duration_seconds": 359.99938177,
+              "delta": 0,
+              "mean_per_second": 0.0
+            }
+          ]
+        },
+        "rate_limited": {
+          "segments": 3,
+          "listed_segments": 3,
+          "segments_truncated": false,
+          "missing_samples": 0,
+          "counter_resets": 0,
+          "identity_changes": 2,
+          "gaps": 0,
+          "whole_observed_window": null,
+          "segment_windows": [
+            {
+              "duration_seconds": 1259.999652737,
+              "delta": 0,
+              "mean_per_second": 0.0
+            },
+            {
+              "duration_seconds": 539.999792418,
+              "delta": 0,
+              "mean_per_second": 0.0
+            },
+            {
+              "duration_seconds": 359.99938177,
+              "delta": 0,
+              "mean_per_second": 0.0
+            }
+          ]
+        },
+        "http_busy": {
+          "segments": 3,
+          "listed_segments": 3,
+          "segments_truncated": false,
+          "missing_samples": 0,
+          "counter_resets": 0,
+          "identity_changes": 2,
+          "gaps": 0,
+          "whole_observed_window": null,
+          "segment_windows": [
+            {
+              "duration_seconds": 1259.999652737,
+              "delta": 0,
+              "mean_per_second": 0.0
+            },
+            {
+              "duration_seconds": 539.999792418,
+              "delta": 0,
+              "mean_per_second": 0.0
+            },
+            {
+              "duration_seconds": 359.99938177,
+              "delta": 0,
+              "mean_per_second": 0.0
+            }
+          ]
+        },
+        "udp_send_errors": {
+          "segments": 3,
+          "listed_segments": 3,
+          "segments_truncated": false,
+          "missing_samples": 0,
+          "counter_resets": 0,
+          "identity_changes": 2,
+          "gaps": 0,
+          "whole_observed_window": null,
+          "segment_windows": [
+            {
+              "duration_seconds": 1259.999652737,
+              "delta": 0,
+              "mean_per_second": 0.0
+            },
+            {
+              "duration_seconds": 539.999792418,
+              "delta": 0,
+              "mean_per_second": 0.0
+            },
+            {
+              "duration_seconds": 359.99938177,
+              "delta": 0,
+              "mean_per_second": 0.0
+            }
+          ]
+        },
+        "udp_v4_packets": {
+          "segments": 3,
+          "listed_segments": 3,
+          "segments_truncated": false,
+          "missing_samples": 0,
+          "counter_resets": 0,
+          "identity_changes": 2,
+          "gaps": 0,
+          "whole_observed_window": null,
+          "segment_windows": [
+            {
+              "duration_seconds": 1259.999652737,
+              "delta": 84,
+              "mean_per_second": 0.06666668504037544
+            },
+            {
+              "duration_seconds": 539.999792418,
+              "delta": 8126328,
+              "mean_per_second": 15048.761340466624
+            },
+            {
+              "duration_seconds": 359.99938177,
+              "delta": 24,
+              "mean_per_second": 0.06666678115390032
+            }
+          ]
+        },
+        "udp_v6_packets": {
+          "segments": 3,
+          "listed_segments": 3,
+          "segments_truncated": false,
+          "missing_samples": 0,
+          "counter_resets": 0,
+          "identity_changes": 2,
+          "gaps": 0,
+          "whole_observed_window": null,
+          "segment_windows": [
+            {
+              "duration_seconds": 1259.999652737,
+              "delta": 0,
+              "mean_per_second": 0.0
+            },
+            {
+              "duration_seconds": 539.999792418,
+              "delta": 0,
+              "mean_per_second": 0.0
+            },
+            {
+              "duration_seconds": 359.99938177,
+              "delta": 0,
+              "mean_per_second": 0.0
+            }
+          ]
+        },
+        "udp_bytes_received": {
+          "segments": 3,
+          "listed_segments": 3,
+          "segments_truncated": false,
+          "missing_samples": 0,
+          "counter_resets": 0,
+          "identity_changes": 2,
+          "gaps": 0,
+          "whole_observed_window": null,
+          "segment_windows": [
+            {
+              "duration_seconds": 1259.999652737,
+              "delta": 6510,
+              "mean_per_second": 5.166668090629097
+            },
+            {
+              "duration_seconds": 539.999792418,
+              "delta": 796170224,
+              "mean_per_second": 1474389.870475552
+            },
+            {
+              "duration_seconds": 359.99938177,
+              "delta": 1860,
+              "mean_per_second": 5.166675539427274
+            }
+          ]
+        },
+        "udp_bytes_sent": {
+          "segments": 3,
+          "listed_segments": 3,
+          "segments_truncated": false,
+          "missing_samples": 0,
+          "counter_resets": 0,
+          "identity_changes": 2,
+          "gaps": 0,
+          "whole_observed_window": null,
+          "segment_windows": [
+            {
+              "duration_seconds": 1259.999652737,
+              "delta": 1722,
+              "mean_per_second": 1.3666670433276964
+            },
+            {
+              "duration_seconds": 539.999792418,
+              "delta": 2588309420,
+              "mean_per_second": 4793167.435139412
+            },
+            {
+              "duration_seconds": 359.99938177,
+              "delta": 492,
+              "mean_per_second": 1.3666690136549564
+            }
+          ]
+        }
+      },
+      "stats_missing_samples": 0,
+      "pressure_active_samples": 8,
+      "pressure_unknown_samples": 0,
+      "uptime_resets": 2
+    },
+    "services": {
+      "native": {
+        "memory_bytes": {
+          "first": 113332224,
+          "last": 117366784,
+          "min": 113332224,
+          "max": 117366784,
+          "present_samples": 39,
+          "missing_samples": 0
+        },
+        "swap_bytes": {
+          "first": null,
+          "last": null,
+          "min": null,
+          "max": null,
+          "present_samples": 0,
+          "missing_samples": 39
+        },
+        "cpu_average_cores": {
+          "segments": 1,
+          "listed_segments": 1,
+          "segments_truncated": false,
+          "missing_samples": 0,
+          "counter_resets": 0,
+          "identity_changes": 0,
+          "gaps": 0,
+          "whole_observed_window": {
+            "duration_seconds": 2279.998789792,
+            "delta": 40317759000,
+            "mean_per_second": 0.017683237017717065
+          },
+          "segment_windows": [
+            {
+              "duration_seconds": 2279.998789792,
+              "delta": 40317759000,
+              "mean_per_second": 0.017683237017717065
+            }
+          ]
+        },
+        "restart_counter": {
+          "segments": 1,
+          "listed_segments": 1,
+          "segments_truncated": false,
+          "missing_samples": 0,
+          "counter_resets": 0,
+          "identity_changes": 0,
+          "gaps": 0,
+          "whole_observed_window": {
+            "duration_seconds": 2279.998789792,
+            "delta": 0,
+            "mean_per_second": 0.0
+          },
+          "segment_windows": [
+            {
+              "duration_seconds": 2279.998789792,
+              "delta": 0,
+              "mean_per_second": 0.0
+            }
+          ]
+        },
+        "cgroup_events": {
+          "oom": {
+            "segments": 1,
+            "listed_segments": 1,
+            "segments_truncated": false,
+            "missing_samples": 0,
+            "counter_resets": 0,
+            "identity_changes": 0,
+            "gaps": 0,
+            "whole_observed_window": {
+              "duration_seconds": 2279.998789792,
+              "delta": 0,
+              "mean_per_second": 0.0
+            },
+            "segment_windows": [
+              {
+                "duration_seconds": 2279.998789792,
+                "delta": 0,
+                "mean_per_second": 0.0
+              }
+            ]
+          },
+          "oom_kill": {
+            "segments": 1,
+            "listed_segments": 1,
+            "segments_truncated": false,
+            "missing_samples": 0,
+            "counter_resets": 0,
+            "identity_changes": 0,
+            "gaps": 0,
+            "whole_observed_window": {
+              "duration_seconds": 2279.998789792,
+              "delta": 0,
+              "mean_per_second": 0.0
+            },
+            "segment_windows": [
+              {
+                "duration_seconds": 2279.998789792,
+                "delta": 0,
+                "mean_per_second": 0.0
+              }
+            ]
+          },
+          "high": {
+            "segments": 1,
+            "listed_segments": 1,
+            "segments_truncated": false,
+            "missing_samples": 0,
+            "counter_resets": 0,
+            "identity_changes": 0,
+            "gaps": 0,
+            "whole_observed_window": {
+              "duration_seconds": 2279.998789792,
+              "delta": 0,
+              "mean_per_second": 0.0
+            },
+            "segment_windows": [
+              {
+                "duration_seconds": 2279.998789792,
+                "delta": 0,
+                "mean_per_second": 0.0
+              }
+            ]
+          },
+          "max": {
+            "segments": 1,
+            "listed_segments": 1,
+            "segments_truncated": false,
+            "missing_samples": 0,
+            "counter_resets": 0,
+            "identity_changes": 0,
+            "gaps": 0,
+            "whole_observed_window": {
+              "duration_seconds": 2279.998789792,
+              "delta": 0,
+              "mean_per_second": 0.0
+            },
+            "segment_windows": [
+              {
+                "duration_seconds": 2279.998789792,
+                "delta": 0,
+                "mean_per_second": 0.0
+              }
+            ]
+          }
+        },
+        "missing_samples": 0,
+        "inactive_samples": 0,
+        "pid_changes": 0,
+        "binary_inode_changes": 0,
+        "observed_restart_increments": 0,
+        "restart_counter_resets": 0,
+        "binary_match_samples": 39,
+        "binary_mismatch_samples": 0,
+        "binary_unknown_samples": 0
+      },
+      "web": {
+        "memory_bytes": {
+          "first": 3514368,
+          "last": 3600384,
+          "min": 3514368,
+          "max": 3645440,
+          "present_samples": 39,
+          "missing_samples": 0
+        },
+        "swap_bytes": {
+          "first": null,
+          "last": null,
+          "min": null,
+          "max": null,
+          "present_samples": 0,
+          "missing_samples": 39
+        },
+        "cpu_average_cores": {
+          "segments": 1,
+          "listed_segments": 1,
+          "segments_truncated": false,
+          "missing_samples": 0,
+          "counter_resets": 0,
+          "identity_changes": 0,
+          "gaps": 0,
+          "whole_observed_window": {
+            "duration_seconds": 2279.998789792,
+            "delta": 291553000,
+            "mean_per_second": 0.0001278741906817406
+          },
+          "segment_windows": [
+            {
+              "duration_seconds": 2279.998789792,
+              "delta": 291553000,
+              "mean_per_second": 0.0001278741906817406
+            }
+          ]
+        },
+        "restart_counter": {
+          "segments": 1,
+          "listed_segments": 1,
+          "segments_truncated": false,
+          "missing_samples": 0,
+          "counter_resets": 0,
+          "identity_changes": 0,
+          "gaps": 0,
+          "whole_observed_window": {
+            "duration_seconds": 2279.998789792,
+            "delta": 0,
+            "mean_per_second": 0.0
+          },
+          "segment_windows": [
+            {
+              "duration_seconds": 2279.998789792,
+              "delta": 0,
+              "mean_per_second": 0.0
+            }
+          ]
+        },
+        "cgroup_events": {
+          "oom": {
+            "segments": 1,
+            "listed_segments": 1,
+            "segments_truncated": false,
+            "missing_samples": 0,
+            "counter_resets": 0,
+            "identity_changes": 0,
+            "gaps": 0,
+            "whole_observed_window": {
+              "duration_seconds": 2279.998789792,
+              "delta": 0,
+              "mean_per_second": 0.0
+            },
+            "segment_windows": [
+              {
+                "duration_seconds": 2279.998789792,
+                "delta": 0,
+                "mean_per_second": 0.0
+              }
+            ]
+          },
+          "oom_kill": {
+            "segments": 1,
+            "listed_segments": 1,
+            "segments_truncated": false,
+            "missing_samples": 0,
+            "counter_resets": 0,
+            "identity_changes": 0,
+            "gaps": 0,
+            "whole_observed_window": {
+              "duration_seconds": 2279.998789792,
+              "delta": 0,
+              "mean_per_second": 0.0
+            },
+            "segment_windows": [
+              {
+                "duration_seconds": 2279.998789792,
+                "delta": 0,
+                "mean_per_second": 0.0
+              }
+            ]
+          },
+          "high": {
+            "segments": 1,
+            "listed_segments": 1,
+            "segments_truncated": false,
+            "missing_samples": 0,
+            "counter_resets": 0,
+            "identity_changes": 0,
+            "gaps": 0,
+            "whole_observed_window": {
+              "duration_seconds": 2279.998789792,
+              "delta": 0,
+              "mean_per_second": 0.0
+            },
+            "segment_windows": [
+              {
+                "duration_seconds": 2279.998789792,
+                "delta": 0,
+                "mean_per_second": 0.0
+              }
+            ]
+          },
+          "max": {
+            "segments": 1,
+            "listed_segments": 1,
+            "segments_truncated": false,
+            "missing_samples": 0,
+            "counter_resets": 0,
+            "identity_changes": 0,
+            "gaps": 0,
+            "whole_observed_window": {
+              "duration_seconds": 2279.998789792,
+              "delta": 0,
+              "mean_per_second": 0.0
+            },
+            "segment_windows": [
+              {
+                "duration_seconds": 2279.998789792,
+                "delta": 0,
+                "mean_per_second": 0.0
+              }
+            ]
+          }
+        },
+        "missing_samples": 0,
+        "inactive_samples": 0,
+        "pid_changes": 0,
+        "binary_inode_changes": 0,
+        "observed_restart_increments": 0,
+        "restart_counter_resets": 0,
+        "binary_match_samples": 39,
+        "binary_mismatch_samples": 0,
+        "binary_unknown_samples": 0
+      },
+      "observatory": {
+        "memory_bytes": {
+          "first": 5763072,
+          "last": 15314944,
+          "min": 5763072,
+          "max": 15314944,
+          "present_samples": 39,
+          "missing_samples": 0
+        },
+        "swap_bytes": {
+          "first": null,
+          "last": null,
+          "min": null,
+          "max": null,
+          "present_samples": 0,
+          "missing_samples": 39
+        },
+        "cpu_average_cores": {
+          "segments": 1,
+          "listed_segments": 1,
+          "segments_truncated": false,
+          "missing_samples": 0,
+          "counter_resets": 0,
+          "identity_changes": 0,
+          "gaps": 0,
+          "whole_observed_window": {
+            "duration_seconds": 2279.998789792,
+            "delta": 14070303000,
+            "mean_per_second": 0.006171188801939499
+          },
+          "segment_windows": [
+            {
+              "duration_seconds": 2279.998789792,
+              "delta": 14070303000,
+              "mean_per_second": 0.006171188801939499
+            }
+          ]
+        },
+        "restart_counter": {
+          "segments": 1,
+          "listed_segments": 1,
+          "segments_truncated": false,
+          "missing_samples": 0,
+          "counter_resets": 0,
+          "identity_changes": 0,
+          "gaps": 0,
+          "whole_observed_window": {
+            "duration_seconds": 2279.998789792,
+            "delta": 0,
+            "mean_per_second": 0.0
+          },
+          "segment_windows": [
+            {
+              "duration_seconds": 2279.998789792,
+              "delta": 0,
+              "mean_per_second": 0.0
+            }
+          ]
+        },
+        "cgroup_events": {
+          "oom": {
+            "segments": 1,
+            "listed_segments": 1,
+            "segments_truncated": false,
+            "missing_samples": 0,
+            "counter_resets": 0,
+            "identity_changes": 0,
+            "gaps": 0,
+            "whole_observed_window": {
+              "duration_seconds": 2279.998789792,
+              "delta": 0,
+              "mean_per_second": 0.0
+            },
+            "segment_windows": [
+              {
+                "duration_seconds": 2279.998789792,
+                "delta": 0,
+                "mean_per_second": 0.0
+              }
+            ]
+          },
+          "oom_kill": {
+            "segments": 1,
+            "listed_segments": 1,
+            "segments_truncated": false,
+            "missing_samples": 0,
+            "counter_resets": 0,
+            "identity_changes": 0,
+            "gaps": 0,
+            "whole_observed_window": {
+              "duration_seconds": 2279.998789792,
+              "delta": 0,
+              "mean_per_second": 0.0
+            },
+            "segment_windows": [
+              {
+                "duration_seconds": 2279.998789792,
+                "delta": 0,
+                "mean_per_second": 0.0
+              }
+            ]
+          },
+          "high": {
+            "segments": 1,
+            "listed_segments": 1,
+            "segments_truncated": false,
+            "missing_samples": 0,
+            "counter_resets": 0,
+            "identity_changes": 0,
+            "gaps": 0,
+            "whole_observed_window": {
+              "duration_seconds": 2279.998789792,
+              "delta": 0,
+              "mean_per_second": 0.0
+            },
+            "segment_windows": [
+              {
+                "duration_seconds": 2279.998789792,
+                "delta": 0,
+                "mean_per_second": 0.0
+              }
+            ]
+          },
+          "max": {
+            "segments": 1,
+            "listed_segments": 1,
+            "segments_truncated": false,
+            "missing_samples": 0,
+            "counter_resets": 0,
+            "identity_changes": 0,
+            "gaps": 0,
+            "whole_observed_window": {
+              "duration_seconds": 2279.998789792,
+              "delta": 0,
+              "mean_per_second": 0.0
+            },
+            "segment_windows": [
+              {
+                "duration_seconds": 2279.998789792,
+                "delta": 0,
+                "mean_per_second": 0.0
+              }
+            ]
+          }
+        },
+        "missing_samples": 0,
+        "inactive_samples": 0,
+        "pid_changes": 0,
+        "binary_inode_changes": 0,
+        "observed_restart_increments": 0,
+        "restart_counter_resets": 0,
+        "binary_match_samples": 39,
+        "binary_mismatch_samples": 0,
+        "binary_unknown_samples": 0
+      },
+      "lab": {
+        "memory_bytes": {
+          "first": 2236416,
+          "last": 2236416,
+          "min": 2236416,
+          "max": 2236416,
+          "present_samples": 39,
+          "missing_samples": 0
+        },
+        "swap_bytes": {
+          "first": null,
+          "last": null,
+          "min": null,
+          "max": null,
+          "present_samples": 0,
+          "missing_samples": 39
+        },
+        "cpu_average_cores": {
+          "segments": 1,
+          "listed_segments": 1,
+          "segments_truncated": false,
+          "missing_samples": 0,
+          "counter_resets": 0,
+          "identity_changes": 0,
+          "gaps": 0,
+          "whole_observed_window": {
+            "duration_seconds": 2279.998789792,
+            "delta": 2030000,
+            "mean_per_second": 8.903513497852309e-07
+          },
+          "segment_windows": [
+            {
+              "duration_seconds": 2279.998789792,
+              "delta": 2030000,
+              "mean_per_second": 8.903513497852309e-07
+            }
+          ]
+        },
+        "restart_counter": {
+          "segments": 1,
+          "listed_segments": 1,
+          "segments_truncated": false,
+          "missing_samples": 0,
+          "counter_resets": 0,
+          "identity_changes": 0,
+          "gaps": 0,
+          "whole_observed_window": {
+            "duration_seconds": 2279.998789792,
+            "delta": 0,
+            "mean_per_second": 0.0
+          },
+          "segment_windows": [
+            {
+              "duration_seconds": 2279.998789792,
+              "delta": 0,
+              "mean_per_second": 0.0
+            }
+          ]
+        },
+        "cgroup_events": {
+          "oom": {
+            "segments": 1,
+            "listed_segments": 1,
+            "segments_truncated": false,
+            "missing_samples": 0,
+            "counter_resets": 0,
+            "identity_changes": 0,
+            "gaps": 0,
+            "whole_observed_window": {
+              "duration_seconds": 2279.998789792,
+              "delta": 0,
+              "mean_per_second": 0.0
+            },
+            "segment_windows": [
+              {
+                "duration_seconds": 2279.998789792,
+                "delta": 0,
+                "mean_per_second": 0.0
+              }
+            ]
+          },
+          "oom_kill": {
+            "segments": 1,
+            "listed_segments": 1,
+            "segments_truncated": false,
+            "missing_samples": 0,
+            "counter_resets": 0,
+            "identity_changes": 0,
+            "gaps": 0,
+            "whole_observed_window": {
+              "duration_seconds": 2279.998789792,
+              "delta": 0,
+              "mean_per_second": 0.0
+            },
+            "segment_windows": [
+              {
+                "duration_seconds": 2279.998789792,
+                "delta": 0,
+                "mean_per_second": 0.0
+              }
+            ]
+          },
+          "high": {
+            "segments": 1,
+            "listed_segments": 1,
+            "segments_truncated": false,
+            "missing_samples": 0,
+            "counter_resets": 0,
+            "identity_changes": 0,
+            "gaps": 0,
+            "whole_observed_window": {
+              "duration_seconds": 2279.998789792,
+              "delta": 0,
+              "mean_per_second": 0.0
+            },
+            "segment_windows": [
+              {
+                "duration_seconds": 2279.998789792,
+                "delta": 0,
+                "mean_per_second": 0.0
+              }
+            ]
+          },
+          "max": {
+            "segments": 1,
+            "listed_segments": 1,
+            "segments_truncated": false,
+            "missing_samples": 0,
+            "counter_resets": 0,
+            "identity_changes": 0,
+            "gaps": 0,
+            "whole_observed_window": {
+              "duration_seconds": 2279.998789792,
+              "delta": 0,
+              "mean_per_second": 0.0
+            },
+            "segment_windows": [
+              {
+                "duration_seconds": 2279.998789792,
+                "delta": 0,
+                "mean_per_second": 0.0
+              }
+            ]
+          }
+        },
+        "missing_samples": 0,
+        "inactive_samples": 0,
+        "pid_changes": 0,
+        "binary_inode_changes": 0,
+        "observed_restart_increments": 0,
+        "restart_counter_resets": 0,
+        "binary_match_samples": 39,
+        "binary_mismatch_samples": 0,
+        "binary_unknown_samples": 0
+      },
+      "nginx": {
+        "memory_bytes": {
+          "first": 27074560,
+          "last": 26779648,
+          "min": 26710016,
+          "max": 27406336,
+          "present_samples": 39,
+          "missing_samples": 0
+        },
+        "swap_bytes": {
+          "first": null,
+          "last": null,
+          "min": null,
+          "max": null,
+          "present_samples": 0,
+          "missing_samples": 39
+        },
+        "cpu_average_cores": {
+          "segments": 1,
+          "listed_segments": 1,
+          "segments_truncated": false,
+          "missing_samples": 0,
+          "counter_resets": 0,
+          "identity_changes": 0,
+          "gaps": 0,
+          "whole_observed_window": {
+            "duration_seconds": 2279.998789792,
+            "delta": 45272333000,
+            "mean_per_second": 0.019856296943091847
+          },
+          "segment_windows": [
+            {
+              "duration_seconds": 2279.998789792,
+              "delta": 45272333000,
+              "mean_per_second": 0.019856296943091847
+            }
+          ]
+        },
+        "restart_counter": {
+          "segments": 1,
+          "listed_segments": 1,
+          "segments_truncated": false,
+          "missing_samples": 0,
+          "counter_resets": 0,
+          "identity_changes": 0,
+          "gaps": 0,
+          "whole_observed_window": {
+            "duration_seconds": 2279.998789792,
+            "delta": 0,
+            "mean_per_second": 0.0
+          },
+          "segment_windows": [
+            {
+              "duration_seconds": 2279.998789792,
+              "delta": 0,
+              "mean_per_second": 0.0
+            }
+          ]
+        },
+        "cgroup_events": {
+          "oom": {
+            "segments": 1,
+            "listed_segments": 1,
+            "segments_truncated": false,
+            "missing_samples": 0,
+            "counter_resets": 0,
+            "identity_changes": 0,
+            "gaps": 0,
+            "whole_observed_window": {
+              "duration_seconds": 2279.998789792,
+              "delta": 0,
+              "mean_per_second": 0.0
+            },
+            "segment_windows": [
+              {
+                "duration_seconds": 2279.998789792,
+                "delta": 0,
+                "mean_per_second": 0.0
+              }
+            ]
+          },
+          "oom_kill": {
+            "segments": 1,
+            "listed_segments": 1,
+            "segments_truncated": false,
+            "missing_samples": 0,
+            "counter_resets": 0,
+            "identity_changes": 0,
+            "gaps": 0,
+            "whole_observed_window": {
+              "duration_seconds": 2279.998789792,
+              "delta": 0,
+              "mean_per_second": 0.0
+            },
+            "segment_windows": [
+              {
+                "duration_seconds": 2279.998789792,
+                "delta": 0,
+                "mean_per_second": 0.0
+              }
+            ]
+          },
+          "high": {
+            "segments": 1,
+            "listed_segments": 1,
+            "segments_truncated": false,
+            "missing_samples": 0,
+            "counter_resets": 0,
+            "identity_changes": 0,
+            "gaps": 0,
+            "whole_observed_window": {
+              "duration_seconds": 2279.998789792,
+              "delta": 0,
+              "mean_per_second": 0.0
+            },
+            "segment_windows": [
+              {
+                "duration_seconds": 2279.998789792,
+                "delta": 0,
+                "mean_per_second": 0.0
+              }
+            ]
+          },
+          "max": {
+            "segments": 1,
+            "listed_segments": 1,
+            "segments_truncated": false,
+            "missing_samples": 0,
+            "counter_resets": 0,
+            "identity_changes": 0,
+            "gaps": 0,
+            "whole_observed_window": {
+              "duration_seconds": 2279.998789792,
+              "delta": 0,
+              "mean_per_second": 0.0
+            },
+            "segment_windows": [
+              {
+                "duration_seconds": 2279.998789792,
+                "delta": 0,
+                "mean_per_second": 0.0
+              }
+            ]
+          }
+        },
+        "missing_samples": 0,
+        "inactive_samples": 0,
+        "pid_changes": 0,
+        "binary_inode_changes": 0,
+        "observed_restart_increments": 0,
+        "restart_counter_resets": 0,
+        "binary_match_samples": 0,
+        "binary_mismatch_samples": 0,
+        "binary_unknown_samples": 0
+      },
+      "bench": {
+        "memory_bytes": {
+          "first": 173637632,
+          "last": 692224,
+          "min": 659456,
+          "max": 469098496,
+          "present_samples": 39,
+          "missing_samples": 0
+        },
+        "swap_bytes": {
+          "first": null,
+          "last": null,
+          "min": null,
+          "max": null,
+          "present_samples": 0,
+          "missing_samples": 39
+        },
+        "cpu_average_cores": {
+          "segments": 3,
+          "listed_segments": 3,
+          "segments_truncated": false,
+          "missing_samples": 0,
+          "counter_resets": 0,
+          "identity_changes": 2,
+          "gaps": 0,
+          "whole_observed_window": null,
+          "segment_windows": [
+            {
+              "duration_seconds": 1259.999652737,
+              "delta": 7015606000,
+              "mean_per_second": 0.00556794280439724
+            },
+            {
+              "duration_seconds": 539.999792418,
+              "delta": 444558398000,
+              "mean_per_second": 0.8232566090615805
+            },
+            {
+              "duration_seconds": 359.99938177,
+              "delta": 205138000,
+              "mean_per_second": 0.0005698287563478668
+            }
+          ]
+        },
+        "restart_counter": {
+          "segments": 3,
+          "listed_segments": 3,
+          "segments_truncated": false,
+          "missing_samples": 0,
+          "counter_resets": 0,
+          "identity_changes": 2,
+          "gaps": 0,
+          "whole_observed_window": null,
+          "segment_windows": [
+            {
+              "duration_seconds": 1259.999652737,
+              "delta": 0,
+              "mean_per_second": 0.0
+            },
+            {
+              "duration_seconds": 539.999792418,
+              "delta": 0,
+              "mean_per_second": 0.0
+            },
+            {
+              "duration_seconds": 359.99938177,
+              "delta": 0,
+              "mean_per_second": 0.0
+            }
+          ]
+        },
+        "cgroup_events": {
+          "oom": {
+            "segments": 3,
+            "listed_segments": 3,
+            "segments_truncated": false,
+            "missing_samples": 0,
+            "counter_resets": 0,
+            "identity_changes": 2,
+            "gaps": 0,
+            "whole_observed_window": null,
+            "segment_windows": [
+              {
+                "duration_seconds": 1259.999652737,
+                "delta": 0,
+                "mean_per_second": 0.0
+              },
+              {
+                "duration_seconds": 539.999792418,
+                "delta": 0,
+                "mean_per_second": 0.0
+              },
+              {
+                "duration_seconds": 359.99938177,
+                "delta": 0,
+                "mean_per_second": 0.0
+              }
+            ]
+          },
+          "oom_kill": {
+            "segments": 3,
+            "listed_segments": 3,
+            "segments_truncated": false,
+            "missing_samples": 0,
+            "counter_resets": 0,
+            "identity_changes": 2,
+            "gaps": 0,
+            "whole_observed_window": null,
+            "segment_windows": [
+              {
+                "duration_seconds": 1259.999652737,
+                "delta": 0,
+                "mean_per_second": 0.0
+              },
+              {
+                "duration_seconds": 539.999792418,
+                "delta": 0,
+                "mean_per_second": 0.0
+              },
+              {
+                "duration_seconds": 359.99938177,
+                "delta": 0,
+                "mean_per_second": 0.0
+              }
+            ]
+          },
+          "high": {
+            "segments": 3,
+            "listed_segments": 3,
+            "segments_truncated": false,
+            "missing_samples": 0,
+            "counter_resets": 0,
+            "identity_changes": 2,
+            "gaps": 0,
+            "whole_observed_window": null,
+            "segment_windows": [
+              {
+                "duration_seconds": 1259.999652737,
+                "delta": 0,
+                "mean_per_second": 0.0
+              },
+              {
+                "duration_seconds": 539.999792418,
+                "delta": 0,
+                "mean_per_second": 0.0
+              },
+              {
+                "duration_seconds": 359.99938177,
+                "delta": 0,
+                "mean_per_second": 0.0
+              }
+            ]
+          },
+          "max": {
+            "segments": 3,
+            "listed_segments": 3,
+            "segments_truncated": false,
+            "missing_samples": 0,
+            "counter_resets": 0,
+            "identity_changes": 2,
+            "gaps": 0,
+            "whole_observed_window": null,
+            "segment_windows": [
+              {
+                "duration_seconds": 1259.999652737,
+                "delta": 0,
+                "mean_per_second": 0.0
+              },
+              {
+                "duration_seconds": 539.999792418,
+                "delta": 0,
+                "mean_per_second": 0.0
+              },
+              {
+                "duration_seconds": 359.99938177,
+                "delta": 0,
+                "mean_per_second": 0.0
+              }
+            ]
+          }
+        },
+        "missing_samples": 0,
+        "inactive_samples": 0,
+        "pid_changes": 2,
+        "binary_inode_changes": 1,
+        "observed_restart_increments": 0,
+        "restart_counter_resets": 0,
+        "binary_match_samples": 39,
+        "binary_mismatch_samples": 0,
+        "binary_unknown_samples": 0
+      },
+      "canary": {
+        "memory_bytes": {
+          "first": 12857344,
+          "last": 8572928,
+          "min": 8253440,
+          "max": 12914688,
+          "present_samples": 29,
+          "missing_samples": 10
+        },
+        "swap_bytes": {
+          "first": null,
+          "last": null,
+          "min": null,
+          "max": null,
+          "present_samples": 0,
+          "missing_samples": 39
+        },
+        "cpu_average_cores": {
+          "segments": 2,
+          "listed_segments": 2,
+          "segments_truncated": false,
+          "missing_samples": 10,
+          "counter_resets": 0,
+          "identity_changes": 0,
+          "gaps": 0,
+          "whole_observed_window": null,
+          "segment_windows": [
+            {
+              "duration_seconds": 1259.999652737,
+              "delta": 671010000,
+              "mean_per_second": 0.000532547765820742
+            },
+            {
+              "duration_seconds": 359.99938177,
+              "delta": 156670000,
+              "mean_per_second": 0.0004351951918075651
+            }
+          ]
+        },
+        "restart_counter": {
+          "segments": 2,
+          "listed_segments": 2,
+          "segments_truncated": false,
+          "missing_samples": 10,
+          "counter_resets": 0,
+          "identity_changes": 0,
+          "gaps": 0,
+          "whole_observed_window": null,
+          "segment_windows": [
+            {
+              "duration_seconds": 1259.999652737,
+              "delta": 0,
+              "mean_per_second": 0.0
+            },
+            {
+              "duration_seconds": 359.99938177,
+              "delta": 0,
+              "mean_per_second": 0.0
+            }
+          ]
+        },
+        "cgroup_events": {
+          "oom": {
+            "segments": 2,
+            "listed_segments": 2,
+            "segments_truncated": false,
+            "missing_samples": 10,
+            "counter_resets": 0,
+            "identity_changes": 0,
+            "gaps": 0,
+            "whole_observed_window": null,
+            "segment_windows": [
+              {
+                "duration_seconds": 1259.999652737,
+                "delta": 0,
+                "mean_per_second": 0.0
+              },
+              {
+                "duration_seconds": 359.99938177,
+                "delta": 0,
+                "mean_per_second": 0.0
+              }
+            ]
+          },
+          "oom_kill": {
+            "segments": 2,
+            "listed_segments": 2,
+            "segments_truncated": false,
+            "missing_samples": 10,
+            "counter_resets": 0,
+            "identity_changes": 0,
+            "gaps": 0,
+            "whole_observed_window": null,
+            "segment_windows": [
+              {
+                "duration_seconds": 1259.999652737,
+                "delta": 0,
+                "mean_per_second": 0.0
+              },
+              {
+                "duration_seconds": 359.99938177,
+                "delta": 0,
+                "mean_per_second": 0.0
+              }
+            ]
+          },
+          "high": {
+            "segments": 2,
+            "listed_segments": 2,
+            "segments_truncated": false,
+            "missing_samples": 10,
+            "counter_resets": 0,
+            "identity_changes": 0,
+            "gaps": 0,
+            "whole_observed_window": null,
+            "segment_windows": [
+              {
+                "duration_seconds": 1259.999652737,
+                "delta": 0,
+                "mean_per_second": 0.0
+              },
+              {
+                "duration_seconds": 359.99938177,
+                "delta": 0,
+                "mean_per_second": 0.0
+              }
+            ]
+          },
+          "max": {
+            "segments": 2,
+            "listed_segments": 2,
+            "segments_truncated": false,
+            "missing_samples": 10,
+            "counter_resets": 0,
+            "identity_changes": 0,
+            "gaps": 0,
+            "whole_observed_window": null,
+            "segment_windows": [
+              {
+                "duration_seconds": 1259.999652737,
+                "delta": 0,
+                "mean_per_second": 0.0
+              },
+              {
+                "duration_seconds": 359.99938177,
+                "delta": 0,
+                "mean_per_second": 0.0
+              }
+            ]
+          }
+        },
+        "missing_samples": 0,
+        "inactive_samples": 10,
+        "pid_changes": 1,
+        "binary_inode_changes": 0,
+        "observed_restart_increments": 0,
+        "restart_counter_resets": 0,
+        "binary_match_samples": 0,
+        "binary_mismatch_samples": 0,
+        "binary_unknown_samples": 0
+      }
+    },
+    "host": {
+      "mem_available_bytes": {
+        "first": 1941553152,
+        "last": 2109546496,
+        "min": 1637216256,
+        "max": 2125955072,
+        "present_samples": 39,
+        "missing_samples": 0
+      },
+      "swap_used_bytes": {
+        "first": 9179136,
+        "last": 9441280,
+        "min": 9179136,
+        "max": 9441280,
+        "present_samples": 39,
+        "missing_samples": 0
+      },
+      "swap_total_bytes": {
+        "first": 1342173184,
+        "last": 1342173184,
+        "min": 1342173184,
+        "max": 1342173184,
+        "present_samples": 39,
+        "missing_samples": 0
+      },
+      "cpu_steal_ticks": {
+        "segments": 1,
+        "listed_segments": 1,
+        "segments_truncated": false,
+        "missing_samples": 0,
+        "counter_resets": 0,
+        "identity_changes": 0,
+        "gaps": 0,
+        "whole_observed_window": {
+          "duration_seconds": 2279.998789792,
+          "delta": 84,
+          "mean_per_second": 0.03684212481869921
+        },
+        "segment_windows": [
+          {
+            "duration_seconds": 2279.998789792,
+            "delta": 84,
+            "mean_per_second": 0.03684212481869921
+          }
+        ]
+      },
+      "cpu_total_ticks": {
+        "segments": 1,
+        "listed_segments": 1,
+        "segments_truncated": false,
+        "missing_samples": 0,
+        "counter_resets": 0,
+        "identity_changes": 0,
+        "gaps": 0,
+        "whole_observed_window": {
+          "duration_seconds": 2279.998789792,
+          "delta": 452074,
+          "mean_per_second": 198.27817542010268
+        },
+        "segment_windows": [
+          {
+            "duration_seconds": 2279.998789792,
+            "delta": 452074,
+            "mean_per_second": 198.27817542010268
+          }
+        ]
+      },
+      "cpu_steal_fraction": 0.00018581028769626212,
+      "network_rx_bytes": {
+        "segments": 1,
+        "listed_segments": 1,
+        "segments_truncated": false,
+        "missing_samples": 0,
+        "counter_resets": 0,
+        "identity_changes": 0,
+        "gaps": 0,
+        "whole_observed_window": {
+          "duration_seconds": 2279.998789792,
+          "delta": 208305402,
+          "mean_per_second": 91362.06691539662
+        },
+        "segment_windows": [
+          {
+            "duration_seconds": 2279.998789792,
+            "delta": 208305402,
+            "mean_per_second": 91362.06691539662
+          }
+        ]
+      },
+      "network_tx_bytes": {
+        "segments": 1,
+        "listed_segments": 1,
+        "segments_truncated": false,
+        "missing_samples": 0,
+        "counter_resets": 0,
+        "identity_changes": 0,
+        "gaps": 0,
+        "whole_observed_window": {
+          "duration_seconds": 2279.998789792,
+          "delta": 175127524,
+          "mean_per_second": 76810.35831425882
+        },
+        "segment_windows": [
+          {
+            "duration_seconds": 2279.998789792,
+            "delta": 175127524,
+            "mean_per_second": 76810.35831425882
+          }
+        ]
+      },
+      "uptime_resets": 0,
+      "network_interface_count_changes": 0
+    },
+    "load_profile_known": false,
+    "sustained_full_load_proven": false,
+    "end_to_end_success_rate_available": false
+  },
+  "source_commit": "a828e42537fe8166a2616b87488615b926aa6faa"
+}

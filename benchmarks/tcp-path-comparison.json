@@ -1,0 +1,362 @@
+{
+  "source_commit": "d427294acd737d590e641e94986f8a4fc010a0e4",
+  "generated_utc": "2026-11-10T23:49:24.817429+00:00",
+  "scope": "Windows requested direct path to isolated S1 benchmark ports; source-restricted receiver counters without payload capture",
+  "native_and_generator_binary_identity_verified": true,
+  "suite_completed": true,
+  "counter_install_kept_service_identity": true,
+  "counter_removal_kept_service_identity": true,
+  "cleanup_confirmation_required": false,
+  "notes": [
+    "SYN and SYNACK retransmissions are counted; these are packet counts, not unique connections.",
+    "Counters do not establish whether client, network or server caused a missing operation.",
+    "120-second rows are diagnostics and do not qualify as ten-minute capacity grades.",
+    "Private addresses, raw hashes and request contents are not recorded."
+  ],
+  "rows": [
+    {
+      "family": "ipv4",
+      "protocol": "http",
+      "new_connections": true,
+      "requested_seconds": 120,
+      "report": "run-3df1ea1fc67242e8a81871efa7d6146d.json",
+      "intact_duration": true,
+      "reason": "completed",
+      "attempted": 12000,
+      "completed": 12000,
+      "protocol_success": 11225,
+      "protocol_success_rate": 0.9354166666666667,
+      "timeouts": 775,
+      "actual_rps": 96.06196473192554,
+      "counter_start_utc": "2026-11-10T23:24:05.244686+00:00",
+      "counter_end_utc": "2026-11-10T23:26:28.105046+00:00",
+      "path_requested": "direct",
+      "source_restricted_syn_packets_observed": true,
+      "counter_reset_observed": false,
+      "counter_deltas": {
+        "v4_18080_syn_in": {
+          "packets": 16932,
+          "bytes": 880464
+        },
+        "v4_18080_synack_out": {
+          "packets": 13004,
+          "bytes": 676208
+        },
+        "v4_18080_rst_in": {
+          "packets": 4524,
+          "bytes": 180960
+        },
+        "v4_18080_rst_out": {
+          "packets": 0,
+          "bytes": 0
+        },
+        "v4_18443_syn_in": {
+          "packets": 0,
+          "bytes": 0
+        },
+        "v4_18443_synack_out": {
+          "packets": 0,
+          "bytes": 0
+        },
+        "v4_18443_rst_in": {
+          "packets": 0,
+          "bytes": 0
+        },
+        "v4_18443_rst_out": {
+          "packets": 0,
+          "bytes": 0
+        },
+        "v6_18080_syn_in": {
+          "packets": 0,
+          "bytes": 0
+        },
+        "v6_18080_synack_out": {
+          "packets": 0,
+          "bytes": 0
+        },
+        "v6_18080_rst_in": {
+          "packets": 0,
+          "bytes": 0
+        },
+        "v6_18080_rst_out": {
+          "packets": 0,
+          "bytes": 0
+        },
+        "v6_18443_syn_in": {
+          "packets": 0,
+          "bytes": 0
+        },
+        "v6_18443_synack_out": {
+          "packets": 0,
+          "bytes": 0
+        },
+        "v6_18443_rst_in": {
+          "packets": 0,
+          "bytes": 0
+        },
+        "v6_18443_rst_out": {
+          "packets": 0,
+          "bytes": 0
+        }
+      }
+    },
+    {
+      "family": "ipv6",
+      "protocol": "http",
+      "new_connections": true,
+      "requested_seconds": 600,
+      "report": "run-fa467bfcebcf44589f53103fb9af4bf9.json",
+      "intact_duration": true,
+      "reason": "completed",
+      "attempted": 60000,
+      "completed": 60000,
+      "protocol_success": 60000,
+      "protocol_success_rate": 1.0,
+      "timeouts": 0,
+      "actual_rps": 99.92911553172037,
+      "counter_start_utc": "2026-11-10T23:26:34.120165+00:00",
+      "counter_end_utc": "2026-11-10T23:36:44.817962+00:00",
+      "path_requested": "direct",
+      "source_restricted_syn_packets_observed": true,
+      "counter_reset_observed": false,
+      "counter_deltas": {
+        "v4_18080_syn_in": {
+          "packets": 0,
+          "bytes": 0
+        },
+        "v4_18080_synack_out": {
+          "packets": 6,
+          "bytes": 312
+        },
+        "v4_18080_rst_in": {
+          "packets": 0,
+          "bytes": 0
+        },
+        "v4_18080_rst_out": {
+          "packets": 0,
+          "bytes": 0
+        },
+        "v4_18443_syn_in": {
+          "packets": 0,
+          "bytes": 0
+        },
+        "v4_18443_synack_out": {
+          "packets": 0,
+          "bytes": 0
+        },
+        "v4_18443_rst_in": {
+          "packets": 0,
+          "bytes": 0
+        },
+        "v4_18443_rst_out": {
+          "packets": 0,
+          "bytes": 0
+        },
+        "v6_18080_syn_in": {
+          "packets": 60000,
+          "bytes": 4320000
+        },
+        "v6_18080_synack_out": {
+          "packets": 60000,
+          "bytes": 4320000
+        },
+        "v6_18080_rst_in": {
+          "packets": 0,
+          "bytes": 0
+        },
+        "v6_18080_rst_out": {
+          "packets": 0,
+          "bytes": 0
+        },
+        "v6_18443_syn_in": {
+          "packets": 0,
+          "bytes": 0
+        },
+        "v6_18443_synack_out": {
+          "packets": 0,
+          "bytes": 0
+        },
+        "v6_18443_rst_in": {
+          "packets": 0,
+          "bytes": 0
+        },
+        "v6_18443_rst_out": {
+          "packets": 0,
+          "bytes": 0
+        }
+      }
+    },
+    {
+      "family": "ipv4",
+      "protocol": "https",
+      "new_connections": true,
+      "requested_seconds": 120,
+      "report": "run-f59325299b184baf9ce37c2116003b96.json",
+      "intact_duration": true,
+      "reason": "completed",
+      "attempted": 12000,
+      "completed": 12000,
+      "protocol_success": 11926,
+      "protocol_success_rate": 0.9938333333333333,
+      "timeouts": 74,
+      "actual_rps": 96.54484185565104,
+      "counter_start_utc": "2026-11-10T23:36:48.581546+00:00",
+      "counter_end_utc": "2026-11-10T23:39:04.533020+00:00",
+      "path_requested": "direct",
+      "source_restricted_syn_packets_observed": true,
+      "counter_reset_observed": false,
+      "counter_deltas": {
+        "v4_18080_syn_in": {
+          "packets": 0,
+          "bytes": 0
+        },
+        "v4_18080_synack_out": {
+          "packets": 0,
+          "bytes": 0
+        },
+        "v4_18080_rst_in": {
+          "packets": 0,
+          "bytes": 0
+        },
+        "v4_18080_rst_out": {
+          "packets": 0,
+          "bytes": 0
+        },
+        "v4_18443_syn_in": {
+          "packets": 12880,
+          "bytes": 669760
+        },
+        "v4_18443_synack_out": {
+          "packets": 13358,
+          "bytes": 694616
+        },
+        "v4_18443_rst_in": {
+          "packets": 2346,
+          "bytes": 93840
+        },
+        "v4_18443_rst_out": {
+          "packets": 24432,
+          "bytes": 977280
+        },
+        "v6_18080_syn_in": {
+          "packets": 0,
+          "bytes": 0
+        },
+        "v6_18080_synack_out": {
+          "packets": 0,
+          "bytes": 0
+        },
+        "v6_18080_rst_in": {
+          "packets": 0,
+          "bytes": 0
+        },
+        "v6_18080_rst_out": {
+          "packets": 0,
+          "bytes": 0
+        },
+        "v6_18443_syn_in": {
+          "packets": 0,
+          "bytes": 0
+        },
+        "v6_18443_synack_out": {
+          "packets": 0,
+          "bytes": 0
+        },
+        "v6_18443_rst_in": {
+          "packets": 0,
+          "bytes": 0
+        },
+        "v6_18443_rst_out": {
+          "packets": 0,
+          "bytes": 0
+        }
+      }
+    },
+    {
+      "family": "ipv6",
+      "protocol": "https",
+      "new_connections": true,
+      "requested_seconds": 600,
+      "report": "run-9929da95ad0f4a93820561bdd11b63db.json",
+      "intact_duration": true,
+      "reason": "completed",
+      "attempted": 59999,
+      "completed": 59999,
+      "protocol_success": 59999,
+      "protocol_success_rate": 1.0,
+      "timeouts": 0,
+      "actual_rps": 99.89031226596823,
+      "counter_start_utc": "2026-11-10T23:39:09.200789+00:00",
+      "counter_end_utc": "2026-11-10T23:49:20.641352+00:00",
+      "path_requested": "direct",
+      "source_restricted_syn_packets_observed": true,
+      "counter_reset_observed": false,
+      "counter_deltas": {
+        "v4_18080_syn_in": {
+          "packets": 0,
+          "bytes": 0
+        },
+        "v4_18080_synack_out": {
+          "packets": 0,
+          "bytes": 0
+        },
+        "v4_18080_rst_in": {
+          "packets": 0,
+          "bytes": 0
+        },
+        "v4_18080_rst_out": {
+          "packets": 0,
+          "bytes": 0
+        },
+        "v4_18443_syn_in": {
+          "packets": 0,
+          "bytes": 0
+        },
+        "v4_18443_synack_out": {
+          "packets": 0,
+          "bytes": 0
+        },
+        "v4_18443_rst_in": {
+          "packets": 0,
+          "bytes": 0
+        },
+        "v4_18443_rst_out": {
+          "packets": 0,
+          "bytes": 0
+        },
+        "v6_18080_syn_in": {
+          "packets": 0,
+          "bytes": 0
+        },
+        "v6_18080_synack_out": {
+          "packets": 0,
+          "bytes": 0
+        },
+        "v6_18080_rst_in": {
+          "packets": 0,
+          "bytes": 0
+        },
+        "v6_18080_rst_out": {
+          "packets": 0,
+          "bytes": 0
+        },
+        "v6_18443_syn_in": {
+          "packets": 59999,
+          "bytes": 4319928
+        },
+        "v6_18443_synack_out": {
+          "packets": 59999,
+          "bytes": 4319928
+        },
+        "v6_18443_rst_in": {
+          "packets": 6889,
+          "bytes": 413340
+        },
+        "v6_18443_rst_out": {
+          "packets": 122162,
+          "bytes": 7329720
+        }
+      }
+    }
+  ]
+}

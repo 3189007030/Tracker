@@ -1,0 +1,76 @@
+{
+  "at_utc": "2026-11-10T22:25:06.181086+00:00",
+  "scope": "corrected candidate; isolated loopback; third observer precedes refresh; not public throughput",
+  "cases": [
+    {
+      "requested_real_wait_seconds": 600,
+      "completed_and_passed": true,
+      "unit_active": false,
+      "unit_exit_code": 0,
+      "records": [
+        {
+          "kind": "verify_phase",
+          "stage": "retention_wait_started"
+        },
+        {
+          "kind": "verify_phase",
+          "stage": "retention_wait_completed"
+        },
+        {
+          "kind": "verify",
+          "ok": true,
+          "delayed_retention_checked": true,
+          "allow_private_test": true,
+          "mixed_transports": true,
+          "real_wait_seconds": 600.001138716,
+          "tx_application_bytes": 3190,
+          "rx_application_bytes": 1332,
+          "family_a": "ipv6",
+          "family_b": "ipv6",
+          "checks": [
+            "zero_want",
+            "two_way_discovery",
+            "scrape_2_1_0",
+            "stopped_removal",
+            "unrelated_hash_empty"
+          ]
+        }
+      ]
+    },
+    {
+      "requested_real_wait_seconds": 1800,
+      "completed_and_passed": true,
+      "unit_active": false,
+      "unit_exit_code": 0,
+      "records": [
+        {
+          "kind": "verify_phase",
+          "stage": "retention_wait_started"
+        },
+        {
+          "kind": "verify_phase",
+          "stage": "retention_wait_completed"
+        },
+        {
+          "kind": "verify",
+          "ok": true,
+          "delayed_retention_checked": true,
+          "allow_private_test": true,
+          "mixed_transports": true,
+          "real_wait_seconds": 1800.001306742,
+          "tx_application_bytes": 3190,
+          "rx_application_bytes": 1228,
+          "family_a": "ipv4",
+          "family_b": "ipv4",
+          "checks": [
+            "zero_want",
+            "two_way_discovery",
+            "scrape_2_1_0",
+            "stopped_removal",
+            "unrelated_hash_empty"
+          ]
+        }
+      ]
+    }
+  ]
+}

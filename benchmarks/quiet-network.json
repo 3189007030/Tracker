@@ -1,0 +1,14 @@
+{
+  "scope": "all S1 NIC RX+TX during a no-generator interval; natural service/observer/canary/SSH remain active",
+  "first_utc": "2026-11-11T00:14:17.679388+00:00",
+  "last_utc": "2026-11-11T00:24:17.222146+00:00",
+  "duration_monotonic_seconds": 599.5427015684545,
+  "samples": 21,
+  "charged_bytes_before": 6920919380,
+  "charged_bytes_after": 6958806115,
+  "nic_bytes_delta": 37886735,
+  "mean_bytes_per_second": 63192.72155408629,
+  "peak_30s_bytes_per_second": 81983.93088561177,
+  "baseline_reset": false,
+  "sustained_full_load_proven": false
+}

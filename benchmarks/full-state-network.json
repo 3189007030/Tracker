@@ -1,0 +1,71 @@
+{
+  "source_commit": "a828e42537fe8166a2616b87488615b926aa6faa",
+  "started_utc": "2026-11-11T02:16:45.987748+00:00",
+  "stage_completed": true,
+  "cleanup_succeeded": true,
+  "scope": "Isolated S1 IPv4 UDP loopback; two million logical registrations in 2000 dense swarms; client and tracker share two CPUs.",
+  "shape": {
+    "target_rps": 16000,
+    "duration_seconds": 600,
+    "unique_hashes": 2000,
+    "peers_per_hash": 1000,
+    "numwant": 50,
+    "concurrency": 256
+  },
+  "limits": "Synthetic registrations are not independent real devices. State grows during this run; only the measured plateau duration has full state. A planned isolated reset is not an optimization or public-native restart.",
+  "allow_private_test": true,
+  "preparation": {
+    "checked_utc": "2026-11-11T02:16:50.650272+00:00",
+    "native_identity_unchanged": true,
+    "isolated_empty_before_canary": true,
+    "canary_resumed": false,
+    "native_sha256": "d4d1cf1df347482023c85a13045c7ae1f916fba69fea6547e9a3b0fa428db4b6",
+    "client_sha256": "822a14125892ffab614bafedadd73b7281fdfb82544afa47380d4c4186798fb0"
+  },
+  "report": "run-0c4db0e0e4e24925a809b7ff58710730.json",
+  "controller_exit_code": 0,
+  "reason": "completed",
+  "monitor_status": "healthy",
+  "guard_causes": [],
+  "post_exit_causes": [],
+  "exit_code": 0,
+  "metrics": {
+    "attempted": 9038216,
+    "completed": 9038216,
+    "protocol_success": 9038216,
+    "protocol_success_rate": 1.0,
+    "elapsed_seconds": 600.022294577,
+    "actual_attempted_rps": 15063.133623012633,
+    "actual_success_rps": 15063.133623012633,
+    "timeout": 0,
+    "transport_error": 0,
+    "http_error": 0,
+    "tracker_business_error": 0,
+    "invalid_protocol_reply": 0,
+    "generator_cpu_cores": 0.5738578184561323,
+    "success_latency_p50_ms_upper_bound": 9,
+    "success_latency_p95_ms_upper_bound": 22,
+    "success_latency_p99_ms_upper_bound": 26
+  },
+  "qualifies_ten_minute_rate": false,
+  "no_restart": true,
+  "no_oom": true,
+  "observed_state": {
+    "maximum_peers": 2000000,
+    "maximum_swarms": 2000,
+    "maximum_estimated_bytes": 1025280000,
+    "sampled_peak_rss_kib": 460068,
+    "full_state_plateau_seconds": 468.60934114456177,
+    "plateau_missing_or_nonfull_samples": 0,
+    "plateau_clock": "S1 sampled wall time; total generator duration is separately monotonic"
+  },
+  "cleanup": {
+    "checked_utc": "2026-11-11T02:26:57.722171+00:00",
+    "native_identity_unchanged": true,
+    "isolated_empty_before_canary": true,
+    "canary_resumed": true,
+    "native_sha256": "d4d1cf1df347482023c85a13045c7ae1f916fba69fea6547e9a3b0fa428db4b6",
+    "client_sha256": "822a14125892ffab614bafedadd73b7281fdfb82544afa47380d4c4186798fb0"
+  },
+  "finished_utc": "2026-11-11T02:26:57.775427+00:00"
+}

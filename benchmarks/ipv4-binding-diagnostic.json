@@ -1,0 +1,13 @@
+{
+  "scope": "bounded diagnostic of the earlier failed source-bound verification; raw error and query discarded",
+  "exit_code": 0,
+  "timed_out": false,
+  "unexpected_peer": false,
+  "decode_error": false,
+  "os_10049": false,
+  "os_10060": false,
+  "proxy_exit_literal_present": false,
+  "expected_exit_literal_present": false,
+  "stderr_present": false,
+  "verification_ok": true
+}

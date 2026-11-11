@@ -1,0 +1,99 @@
+{
+  "at_utc": "2026-11-11T02:44:13.572855+00:00",
+  "scope": "read-only aggregate snapshot; queued checks are not remote failures",
+  "private_counts": {
+    "endpoints": 310,
+    "observations": 12508,
+    "samples": 4855,
+    "observed_peers": 1296
+  },
+  "stage_results": [
+    {
+      "stage": "announce",
+      "result": "accepted",
+      "count": 1018,
+      "latest_age_seconds": 2
+    },
+    {
+      "stage": "announce",
+      "result": "failed",
+      "count": 1824,
+      "latest_age_seconds": 33
+    },
+    {
+      "stage": "announce",
+      "result": "unknown",
+      "count": 3717,
+      "latest_age_seconds": 3
+    },
+    {
+      "stage": "handshake",
+      "result": "accepted",
+      "count": 735,
+      "latest_age_seconds": 163
+    },
+    {
+      "stage": "handshake",
+      "result": "failed",
+      "count": 359,
+      "latest_age_seconds": 84
+    },
+    {
+      "stage": "sample_announce",
+      "result": "accepted",
+      "count": 1052,
+      "latest_age_seconds": 84
+    },
+    {
+      "stage": "sample_announce",
+      "result": "empty",
+      "count": 241,
+      "latest_age_seconds": 1
+    },
+    {
+      "stage": "sample_announce",
+      "result": "failed",
+      "count": 2015,
+      "latest_age_seconds": 3
+    },
+    {
+      "stage": "sample_announce",
+      "result": "unknown",
+      "count": 1547,
+      "latest_age_seconds": 1
+    }
+  ],
+  "official_samples": [
+    {
+      "source": "arch",
+      "samples": 1
+    },
+    {
+      "source": "debian",
+      "samples": 3
+    },
+    {
+      "source": "fedora",
+      "samples": 4
+    },
+    {
+      "source": "ubuntu",
+      "samples": 4
+    }
+  ],
+  "health_due_rows": 12,
+  "oldest_health_due_seconds": 698,
+  "publication_oldest_age_seconds": 34947,
+  "publication_latest_age_seconds": 17,
+  "public_endpoints": 310,
+  "public_events_privacy_checked": 500,
+  "forbidden_private_fields_found": 0,
+  "overview_http_status": 200,
+  "overview": {
+    "endpoints": 310,
+    "generated_at": 1794365050,
+    "services": 288,
+    "version": "1.0.0",
+    "warming": false
+  }
+}

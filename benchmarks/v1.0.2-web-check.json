@@ -1,0 +1,33 @@
+{
+  "checked_utc": "2026-11-11T09:54:56.328139+00:00",
+  "version": "1.0.2",
+  "all_passed": true,
+  "http_path": "S1 loopback Nginx virtual host; public website separately checked in browser",
+  "http_checks": {
+    "chart_count": true,
+    "hero_removed": true,
+    "chart_before_addresses": true,
+    "runtime_above_charts": true,
+    "text_subscriptions_only": true,
+    "six_subscriptions": true,
+    "two_panel_container": true,
+    "/api/v1/samples/retired": true,
+    "/api/v1/trackers/d31b5445418d00503b859dcfcf99602a889f9940bff16f1a1e7880a71ded7245/runs": true,
+    "compact_network": true,
+    "sample_details_removed": true,
+    "no_sample_requests": true,
+    "source_repositories": true,
+    "declaration": true,
+    "status_redirects_home": true,
+    "data_migration": true
+  },
+  "migration": {
+    "public_sample_tables_absent": true,
+    "obsolete_private_trace_absent": true,
+    "aggregate_history_rows": 225,
+    "private_verification_rows": 10346,
+    "upstream_due_rows": 7173
+  },
+  "browser_review": "Public browser: Chinese home/list/source/detail/statement, English statement; 390px home/list, charts, side-by-side panels, 14px network row, source links and clipboard controls.",
+  "no_endurance_or_capacity_claim": true
+}

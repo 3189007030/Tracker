@@ -1,0 +1,11 @@
+[package]
+name = "swarm-engine"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+bt-protocol.workspace = true
+rand.workspace = true
+serde.workspace = true

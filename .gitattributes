@@ -1,0 +1,5 @@
+* text=auto eol=lf
+*.png binary
+*.woff2 binary
+# Preserve embedded upstream license bytes and their SHA-256 values.
+docs/third-party-notices.txt -text -eol

@@ -1,0 +1,11 @@
+{
+  "ok": true,
+  "at_utc": "2026-11-11T00:48:01.855338+00:00",
+  "scope": "planned isolated-state disposal before workload retry; no performance improvement inferred",
+  "native_identity_unchanged": true,
+  "isolated_empty_before_canary": true,
+  "benchmark_active": true,
+  "benchmark_hash_matches": true,
+  "control_ssh_family": "ipv6",
+  "first_preparation_failed_after_isolated_restart": true
+}
