@@ -12,7 +12,7 @@ New unit regressions cover independent cookie vectors and full-slot wraparound, 
 
 ## Short comparison on S1
 
-All network benchmarks ran inside a namespace with only loopback. Load generator and test server shared S1's two CPUs with ordinary production; each case started fresh state, used a bounded 128 MiB logical test budget and at most 1,000 configured resources with 32 endpoints each. Actual final states are recorded. Synthetic registrations did not enter the public registry and active public pressure bytes were zero. The full matrix used twelve 10â€“15 second cases, 152 configured test seconds in total.
+All network benchmarks ran inside a namespace with only loopback. Load generator and test server shared S1's two CPUs with ordinary production; each case started fresh state, used a bounded 128 MiB logical test budget and at most 1,000 configured resources with 32 endpoints each. Actual final states are recorded. Synthetic registrations did not enter the public registry and active public pressure bytes were zero. The full matrix used twelve 10–15 second cases, 152 configured test seconds in total.
 
 | Case | Baseline success/s | Candidate success/s | Baseline/candidate success p99 upper ms | Baseline/candidate server CPU cores |
 |---|---:|---:|---:|---:|

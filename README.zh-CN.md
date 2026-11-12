@@ -31,3 +31,5 @@ cargo build --workspace --release --locked
 配置示例位于 `config/`。部署前请复制并按实际环境修改，检查监听地址和来源设置，并阅读[部署指南](docs/deployment.md)、[API](docs/api.md)和[发布打包](docs/release-packaging.md)。部分示例配置和网站链接目前仍绑定原站；使用其他域名前请阅读[开源审查](docs/open-source-review.md)。不要让两个观测器同时写入同一数据目录。
 
 另见[贡献指南](CONTRIBUTING.md)、[安全说明](SECURITY.md)、[开源审查](docs/open-source-review.md)和[第三方许可声明](docs/third-party-notices.txt)。项目代码使用 [MIT 许可证](LICENSE)，内置组件另有各自的许可说明。
+
+原生通告优化与实测边界：[1.0.4 验证](docs/validation-1.0.4.md)、[参考项目研究](docs/optimization-1.0.4.md)及[日请求量与状态容量](docs/billion-request-envelope.md)。

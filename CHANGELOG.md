@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.0.4 — bounded native hot paths and rejection diagnostics
+## 1.0.4 â€” bounded native hot paths and rejection diagnostics
 
 - Reuse keyed HMAC state and validate one authenticated time slot per UDP connection ID, preserving source binding, wire format and the existing validity window.
 - Reuse per-socket UDP response buffers; keep unauthenticated invalid IDs silent and response sizes bounded.
