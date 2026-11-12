@@ -84,35 +84,13 @@ impl PublicStore {
             .collect())
     }
 
-    /// A single published minute bucket, never a live request to the native engine.
+    /// A single published minute bucket plus the trailing 24-hour window, never
+    /// a live request to the native engine.
     pub fn native_summary(&self, now: i64) -> Result<Option<serde_json::Value>, StoreError> {
         let Some(db) = self.open()? else {
             return Ok(None);
         };
-        if !has_table(&db, "stats_history")? {
-            return Ok(None);
-        }
-        let raw: Option<String> = db.query_row(
-            "SELECT payload FROM stats_history WHERE length(CAST(payload AS BLOB))<=16384 ORDER BY bucket DESC LIMIT 1",
-            [], |row| row.get(0)
-        ).optional().map_err(|_| StoreError)?;
-        let point = raw
-            .and_then(|p| serde_json::from_str::<StatsPoint>(&p).ok())
-            .and_then(|p| sanitize_point(p, now.saturating_sub(180), now));
-        let Some(point) = point else {
-            return Ok(None);
-        };
-        let mut result = serde_json::Map::new();
-        for key in ["peers", "swarms"] {
-            if let Some(value) = point.gauges.get(key).filter(|v| **v <= u64::MAX as f64) {
-                result.insert(key.into(), serde_json::json!(*value as u64));
-            }
-        }
-        if let Some(value) = point.counters.get("accepted_announces") {
-            result.insert("announces".into(), serde_json::json!(value));
-        }
-        result.insert("sampled_at".into(), serde_json::json!(point.at));
-        Ok(Some(serde_json::Value::Object(result)))
+        native_summary_from(&db, now)
     }
 
     pub fn history(&self, window: &str, now: i64) -> Result<StatsHistory, StoreError> {
@@ -367,6 +345,149 @@ impl PublicStore {
             .collect();
         Ok(Some(entries))
     }
+}
+
+/// The summary document, read from an already opened read-only connection.
+fn native_summary_from(db: &Connection, now: i64) -> Result<Option<serde_json::Value>, StoreError> {
+    if !has_table(db, "stats_history")? {
+        return Ok(None);
+    }
+    let raw: Option<String> = db.query_row(
+        "SELECT payload FROM stats_history WHERE length(CAST(payload AS BLOB))<=16384 ORDER BY bucket DESC LIMIT 1",
+        [], |row| row.get(0)
+    ).optional().map_err(|_| StoreError)?;
+    let point = raw
+        .and_then(|p| serde_json::from_str::<StatsPoint>(&p).ok())
+        .and_then(|p| sanitize_point(p, now.saturating_sub(180), now));
+    let Some(point) = point else {
+        return Ok(None);
+    };
+    let mut result = serde_json::Map::new();
+    for key in ["peers", "swarms"] {
+        if let Some(value) = point.gauges.get(key).filter(|v| **v <= u64::MAX as f64) {
+            result.insert(key.into(), serde_json::json!(*value as u64));
+        }
+    }
+    if let Some(value) = point.counters.get("accepted_announces") {
+        result.insert("announces".into(), serde_json::json!(value));
+    }
+    result.insert("sampled_at".into(), serde_json::json!(point.at));
+    // The window keys are always present, zeros included: the page reads them
+    // unconditionally once a summary exists.
+    window_metrics(db, now)?.insert_into(&mut result);
+    Ok(Some(serde_json::Value::Object(result)))
+}
+
+/// Trailing window for the published announce counters.
+const SUMMARY_WINDOW_SECS: i64 = 86_400;
+/// A wider spacing between two neighbouring buckets means the sampler was down.
+const SUMMARY_MAX_GAP_SECS: u64 = 300;
+/// One bucket per minute plus headroom: the window read is always bounded.
+const SUMMARY_WINDOW_LIMIT: i64 = 2_000;
+
+/// The published counters the window reports, in [`WindowMetrics`] slot order.
+const SUMMARY_COUNTERS: [&str; 4] = [
+    "accepted_announces",
+    "http_announces",
+    "udp_announces",
+    "accepted_ipv6",
+];
+
+/// The trailing window, accumulated from adjacent published buckets.
+///
+/// The stored counters are process-lifetime totals, so one point says nothing
+/// about the last day: only positive deltas between two neighbouring buckets of
+/// the same observatory instance are added up, and the coverage is the time
+/// those usable pairs actually span.
+#[derive(Debug, Default, Clone, Copy)]
+struct WindowMetrics {
+    announces: u64,
+    http_announces: u64,
+    udp_announces: u64,
+    accepted_ipv6: u64,
+    covered_seconds: u64,
+}
+
+impl WindowMetrics {
+    fn add_pair(&mut self, gap: u64, deltas: [u64; 4]) {
+        let [announces, http, udp, ipv6] = deltas;
+        self.announces = self.announces.saturating_add(announces);
+        self.http_announces = self.http_announces.saturating_add(http);
+        self.udp_announces = self.udp_announces.saturating_add(udp);
+        self.accepted_ipv6 = self.accepted_ipv6.saturating_add(ipv6);
+        self.covered_seconds = self.covered_seconds.saturating_add(gap);
+    }
+
+    /// Announces per covered second, rounded to one decimal place.
+    fn rate(&self) -> f64 {
+        let covered = self.covered_seconds.max(1) as f64;
+        (self.announces as f64 / covered * 10.0).round() / 10.0
+    }
+
+    fn insert_into(&self, result: &mut serde_json::Map<String, serde_json::Value>) {
+        for (key, value) in [
+            ("announces_24h", self.announces),
+            ("http_announces_24h", self.http_announces),
+            ("udp_announces_24h", self.udp_announces),
+            ("accepted_ipv6_24h", self.accepted_ipv6),
+            ("covered_seconds_24h", self.covered_seconds),
+        ] {
+            result.insert(key.to_owned(), serde_json::json!(value));
+        }
+        result.insert("rate_24h".to_owned(), serde_json::json!(self.rate()));
+    }
+}
+
+/// The increment one pair of adjacent buckets contributes, or `None` when the
+/// pair cannot be used: another instance, a sampling gap, a repeated or reversed
+/// timestamp, or a counter that went backwards instead of forwards.
+fn window_pair(prev: &StatsPoint, next: &StatsPoint) -> Option<(u64, [u64; 4])> {
+    if prev.instance != next.instance {
+        return None;
+    }
+    let gap = u64::try_from(next.at.checked_sub(prev.at)?).ok()?;
+    if !(1..=SUMMARY_MAX_GAP_SECS).contains(&gap) {
+        return None;
+    }
+    let mut deltas = [0u64; 4];
+    for (delta, key) in deltas.iter_mut().zip(SUMMARY_COUNTERS) {
+        let before = prev.counters.get(key);
+        let after = next.counters.get(key);
+        let (Some(before), Some(after)) = (before, after) else {
+            // A counter published by only one side has no usable delta.
+            continue;
+        };
+        if *after < *before {
+            // The counter was reset inside this pair: neither the increment nor
+            // the elapsed time can be attributed to it.
+            return None;
+        }
+        *delta = *after - *before;
+    }
+    Some((gap, deltas))
+}
+
+/// Sums the trailing window in one bounded read of `stats_history`.
+fn window_metrics(db: &Connection, now: i64) -> Result<WindowMetrics, StoreError> {
+    let start = now.saturating_sub(SUMMARY_WINDOW_SECS);
+    let mut statement = db.prepare("SELECT payload FROM stats_history WHERE bucket>=?1 AND length(CAST(payload AS BLOB))<=16384 ORDER BY bucket ASC LIMIT ?2").map_err(|_| StoreError)?;
+    let rows = statement
+        .query_map(params![start, SUMMARY_WINDOW_LIMIT], |row| {
+            row.get::<_, String>(0)
+        })
+        .map_err(|_| StoreError)?;
+    let points: Vec<StatsPoint> = rows
+        .flatten()
+        .filter_map(|payload| serde_json::from_str::<StatsPoint>(&payload).ok())
+        .filter_map(|point| sanitize_point(point, start, now))
+        .collect();
+    let mut metrics = WindowMetrics::default();
+    for pair in points.windows(2) {
+        if let Some((gap, deltas)) = window_pair(&pair[0], &pair[1]) {
+            metrics.add_pair(gap, deltas);
+        }
+    }
+    Ok(metrics)
 }
 
 fn has_table(db: &Connection, name: &str) -> Result<bool, StoreError> {
@@ -727,4 +848,184 @@ fn sanitize_observation(mut observation: Observation, id: &str, now: i64) -> Opt
         observation.latency_ms = None;
     }
     Some(observation)
+}
+
+#[cfg(test)]
+mod window_tests {
+    use super::*;
+
+    /// A minute boundary, so the published bucket of a test point is `at`.
+    const NOW: i64 = 1_700_000_040;
+
+    type SqlResult = rusqlite::Result<()>;
+
+    fn memory_db() -> rusqlite::Result<Connection> {
+        let db = Connection::open_in_memory()?;
+        db.execute_batch(
+            "CREATE TABLE stats_history(bucket INTEGER PRIMARY KEY, instance TEXT NOT NULL, payload TEXT NOT NULL);",
+        )?;
+        Ok(db)
+    }
+
+    /// Publishes one bucket; `counters` is `[accepted, http, udp, ipv6]`.
+    fn put_point(db: &Connection, at: i64, boot: &str, counters: [u64; 4]) -> SqlResult {
+        let [accepted, http, udp, ipv6] = counters;
+        let payload = serde_json::json!({
+            "at": at,
+            "instance": boot,
+            "gauges": {"peers": 2.0, "swarms": 3.0},
+            "counters": {
+                "accepted_announces": accepted,
+                "accepted_ipv4": accepted.saturating_sub(ipv6),
+                "accepted_ipv6": ipv6,
+                "http_announces": http,
+                "udp_announces": udp,
+                "business_failures": 0,
+            },
+        });
+        db.execute(
+            "INSERT INTO stats_history VALUES(?1,?2,?3)",
+            params![at - at.rem_euclid(60), boot, payload.to_string()],
+        )?;
+        Ok(())
+    }
+
+    fn field(summary: &serde_json::Value, key: &str) -> serde_json::Value {
+        summary.get(key).cloned().unwrap_or(serde_json::Value::Null)
+    }
+
+    fn summary_of(db: &Connection, now: i64) -> anyhow::Result<serde_json::Value> {
+        let value = match native_summary_from(db, now) {
+            Ok(value) => value,
+            Err(error) => anyhow::bail!("{error:?}"),
+        };
+        value.ok_or_else(|| anyhow::anyhow!("no summary for this window"))
+    }
+
+    fn metrics_of(db: &Connection, now: i64) -> anyhow::Result<WindowMetrics> {
+        match window_metrics(db, now) {
+            Ok(metrics) => Ok(metrics),
+            Err(error) => anyhow::bail!("{error:?}"),
+        }
+    }
+
+    #[test]
+    fn continuous_buckets_sum_deltas_and_real_coverage() -> anyhow::Result<()> {
+        let db = memory_db()?;
+        // Older than the window: never fetched, never counted.
+        put_point(&db, NOW - 172_800, "boot-a", [9_000, 4_000, 5_000, 900])?;
+        put_point(&db, NOW - 120, "boot-a", [100, 40, 60, 10])?;
+        put_point(&db, NOW - 60, "boot-a", [130, 50, 80, 13])?;
+        put_point(&db, NOW, "boot-a", [175, 70, 105, 18])?;
+        let summary = summary_of(&db, NOW)?;
+        assert_eq!(field(&summary, "announces_24h").as_u64(), Some(75));
+        assert_eq!(field(&summary, "http_announces_24h").as_u64(), Some(30));
+        assert_eq!(field(&summary, "udp_announces_24h").as_u64(), Some(45));
+        assert_eq!(field(&summary, "accepted_ipv6_24h").as_u64(), Some(8));
+        assert_eq!(field(&summary, "covered_seconds_24h").as_u64(), Some(120));
+        assert_eq!(field(&summary, "rate_24h").as_f64(), Some(0.6));
+        // The pre-existing keys keep their "since process start" meaning.
+        assert_eq!(field(&summary, "announces").as_u64(), Some(175));
+        assert_eq!(field(&summary, "sampled_at").as_u64(), Some(1_700_000_040));
+        assert_eq!(field(&summary, "peers").as_u64(), Some(2));
+        Ok(())
+    }
+
+    #[test]
+    fn instance_change_skips_the_pair_without_inflating_totals() -> anyhow::Result<()> {
+        let db = memory_db()?;
+        put_point(&db, NOW - 180, "boot-a", [10, 4, 6, 1])?;
+        put_point(&db, NOW - 120, "boot-a", [40, 15, 25, 3])?;
+        // A restart publishes a new instance whose counters are already larger:
+        // the pair must be dropped instead of producing a 460 announce jump.
+        put_point(&db, NOW - 60, "boot-b", [500, 100, 400, 5])?;
+        put_point(&db, NOW, "boot-b", [560, 120, 440, 7])?;
+        let summary = summary_of(&db, NOW)?;
+        assert_eq!(field(&summary, "announces_24h").as_u64(), Some(90));
+        assert_eq!(field(&summary, "http_announces_24h").as_u64(), Some(31));
+        assert_eq!(field(&summary, "udp_announces_24h").as_u64(), Some(59));
+        assert_eq!(field(&summary, "accepted_ipv6_24h").as_u64(), Some(4));
+        assert_eq!(field(&summary, "covered_seconds_24h").as_u64(), Some(120));
+        Ok(())
+    }
+
+    #[test]
+    fn empty_and_single_point_windows_still_publish_zero_keys() -> anyhow::Result<()> {
+        let db = memory_db()?;
+        let mut keys = serde_json::Map::new();
+        metrics_of(&db, NOW)?.insert_into(&mut keys);
+        for key in [
+            "announces_24h",
+            "http_announces_24h",
+            "udp_announces_24h",
+            "accepted_ipv6_24h",
+            "covered_seconds_24h",
+        ] {
+            assert_eq!(keys.get(key).and_then(|value| value.as_u64()), Some(0));
+        }
+        assert_eq!(
+            keys.get("rate_24h").and_then(|value| value.as_f64()),
+            Some(0.0)
+        );
+        // One point has no neighbour to diff against, but the keys must exist.
+        put_point(&db, NOW - 30, "boot-a", [9, 3, 6, 1])?;
+        let summary = summary_of(&db, NOW)?;
+        assert_eq!(field(&summary, "announces_24h").as_u64(), Some(0));
+        assert_eq!(field(&summary, "covered_seconds_24h").as_u64(), Some(0));
+        assert_eq!(field(&summary, "rate_24h").as_f64(), Some(0.0));
+        assert_eq!(field(&summary, "announces").as_u64(), Some(9));
+        Ok(())
+    }
+
+    #[test]
+    fn gaps_over_five_minutes_add_neither_counters_nor_coverage() -> anyhow::Result<()> {
+        let db = memory_db()?;
+        put_point(&db, NOW - 780, "boot-a", [10, 4, 6, 1])?;
+        put_point(&db, NOW - 720, "boot-a", [30, 10, 20, 2])?;
+        // Exactly 300s is still one usable pair.
+        put_point(&db, NOW - 420, "boot-a", [50, 20, 30, 3])?;
+        // 360s is a gap: that pair contributes nothing at all.
+        put_point(&db, NOW - 60, "boot-a", [90, 40, 50, 6])?;
+        put_point(&db, NOW, "boot-a", [110, 55, 55, 9])?;
+        let summary = summary_of(&db, NOW)?;
+        assert_eq!(field(&summary, "announces_24h").as_u64(), Some(60));
+        assert_eq!(field(&summary, "http_announces_24h").as_u64(), Some(31));
+        assert_eq!(field(&summary, "covered_seconds_24h").as_u64(), Some(420));
+        assert_eq!(field(&summary, "rate_24h").as_f64(), Some(0.1));
+        Ok(())
+    }
+
+    #[test]
+    fn counter_regression_is_skipped_instead_of_wrapping() -> anyhow::Result<()> {
+        let db = memory_db()?;
+        put_point(&db, NOW - 180, "boot-a", [100, 40, 60, 10])?;
+        put_point(&db, NOW - 120, "boot-a", [150, 60, 90, 14])?;
+        // Same instance, counters went backwards: the pair is not a delta.
+        put_point(&db, NOW - 60, "boot-a", [20, 5, 15, 1])?;
+        put_point(&db, NOW, "boot-a", [60, 15, 45, 4])?;
+        let summary = summary_of(&db, NOW)?;
+        assert_eq!(field(&summary, "announces_24h").as_u64(), Some(90));
+        assert_eq!(field(&summary, "covered_seconds_24h").as_u64(), Some(120));
+        Ok(())
+    }
+
+    #[test]
+    fn window_keys_never_expose_unlisted_counters_or_gauges() -> anyhow::Result<()> {
+        let db = memory_db()?;
+        let point = serde_json::json!({
+            "at": NOW - 60,
+            "instance": "boot-a",
+            "gauges": {"peers": 1.0, "secret_gauge": 7.0},
+            "counters": {"accepted_announces": 5, "secret_counter": 9},
+        });
+        db.execute(
+            "INSERT INTO stats_history VALUES(?1,?2,?3)",
+            params![NOW - 60, "boot-a", point.to_string()],
+        )?;
+        let summary = summary_of(&db, NOW)?;
+        assert!(summary.get("secret_counter").is_none());
+        assert!(summary.get("secret_gauge").is_none());
+        assert_eq!(field(&summary, "announces_24h").as_u64(), Some(0));
+        Ok(())
+    }
 }

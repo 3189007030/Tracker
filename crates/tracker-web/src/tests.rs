@@ -856,19 +856,20 @@ async fn legacy_pages_redirect_and_home_has_copyable_endpoints() {
     assert_eq!(headers[header::LOCATION], "/sources?lang=zh");
     let (_, _, home) = get(&router, "/?lang=en").await;
     for url in [
-        "https://announce.augrains.com/announce",
-        "http://announce.augrains.com/announce",
-        "udp://announce.augrains.com:6969/announce",
+        "https://tracker.augrains.com/announce",
+        "http://tracker.augrains.com/announce",
+        "udp://udp.augrains.com:6969/announce",
         "trackers_best.txt",
         "trackers_https.txt",
     ] {
         assert!(home.contains(url));
     }
+    assert!(!home.contains("announce.augrains.com"));
     assert!(home.contains("id=\"native-trackers\""));
-    assert!(home.contains("/assets/style.css?v=1.0.3"));
+    assert!(home.contains("/assets/style.css?v=1.1.0"));
     assert!(home.contains("href=\"https://github.com/3189007030/Tracker\""));
     assert!(home.contains("/assets/tools.js?v=1.0.2"));
-    assert!(home.contains("/assets/charts.js?v=1.0.2"));
+    assert!(home.contains("/assets/charts.js?v=1.1.0"));
     assert!(home.contains("/assets/chart.umd.js?v=4.6.1"));
     assert!(!home.contains("/api/v1/experiments"));
     assert!(!home.contains("href=\"/tools"));

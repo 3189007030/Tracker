@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.1.0 — 24-hour runtime framing, single public hostname and hot-path work
+
+- Publish 24-hour announce totals on the home page instead of the counter that grows with process uptime. `native_summary` now also returns `announces_24h`, `http_announces_24h`, `udp_announces_24h`, `accepted_ipv6_24h`, `covered_seconds_24h` and `rate_24h`, derived from recorded minute samples: adjacent samples are differenced only while the instance identifier matches and the gap stays under 300 seconds, so restarts and collection outages are excluded rather than counted as zero. The since-start figure is retained and demoted to a footnote.
+- Retire `announce.augrains.com` as a public name. The site advertises `https://tracker.augrains.com/announce` (HTTPS), `http://tracker.augrains.com/announce` (HTTP) and `udp://udp.augrains.com:6969/announce`; owned-host and alias configuration collapses to the two published names. UDP carries no hostname, so UDP clients are unaffected. The TLS catch-all now closes unmatched hostnames instead of serving the tracker site on them.
+- Reduce fixed per-packet and per-request cost: hot counters are grouped by writer to stop cache-line sharing between the UDP and HTTP paths, the service-time bucket lookup replaces its linear scan, business-failure replies use static text instead of formatting a `String`, and HTTP announce/scrape replies are written straight into a reused buffer with a byte-for-byte equivalence test against the previous encoder.
+- Rebuild the public site's information hierarchy around the 24-hour window, unify large-number and rate formatting (万/亿 in Chinese, k/M/B in English), make wide tables scroll on narrow screens with sticky headers, and state explicitly when a subscription list is empty because evidence is insufficient.
+
+Historical aggregate failures still cannot be backfilled, and a billion daily requests remains a workload-dependent preparation target rather than a measured capability. Validation and deployment receipts are recorded in [1.1.0 validation](docs/validation-1.1.0.md).
+
 ## 1.0.4 — bounded native hot paths and rejection diagnostics
 
 - Reuse keyed HMAC state and validate one authenticated time slot per UDP connection ID, preserving source binding, wire format and the existing validity window.

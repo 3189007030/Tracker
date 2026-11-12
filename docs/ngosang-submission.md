@@ -17,17 +17,12 @@ Hello, I operate a public BitTorrent tracker and would appreciate your considera
 Preferred addresses, all served by the same tracker and shared swarm registry:
 
 ```text
-udp://announce.augrains.com:6969/announce
-https://announce.augrains.com:443/announce
-http://announce.augrains.com:80/announce
-```
-
-The following older addresses remain compatible aliases for the same service; they are not separate trackers:
-
-```text
 udp://udp.augrains.com:6969/announce
 https://tracker.augrains.com:443/announce
+http://tracker.augrains.com:80/announce
 ```
+
+`announce.augrains.com`, used in earlier drafts of this submission, is retired as of 2026-11-12 and should not be submitted.
 
 Please apply your normal availability, peer-quality and duplicate checks, and select the address or addresses appropriate for your list.
 

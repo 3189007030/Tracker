@@ -6,7 +6,8 @@ mod http;
 mod udp;
 
 pub use http::{
-    encode_http_announce, encode_http_announce_query, encode_http_failure, encode_http_scrape,
+    encode_http_announce, encode_http_announce_into, encode_http_announce_query,
+    encode_http_failure, encode_http_failure_into, encode_http_scrape, encode_http_scrape_into,
     parse_http_announce, parse_http_scrape,
 };
 pub use udp::{

@@ -55,6 +55,79 @@ pub(crate) fn time(value: Option<i64>, lang: Lang) -> String {
         .unwrap_or_else(|| lang.pick("未知", "Unknown").to_owned())
 }
 
+/// Read one numeric field from the published native summary.
+/// Integers and floats are both accepted; negative or non-finite values are ignored.
+fn number(native: Option<&serde_json::Value>, key: &str) -> Option<f64> {
+    native
+        .and_then(|value| value.get(key))
+        .and_then(|value| {
+            value
+                .as_f64()
+                .or_else(|| value.as_u64().map(|n| n as f64))
+                .or_else(|| value.as_i64().map(|n| n as f64))
+        })
+        .filter(|value| value.is_finite() && *value >= 0.0)
+}
+
+/// Shared large-number formatting for the home and listing pages.
+/// Chinese uses 万 / 亿, English uses k / M / B, and small integers stay plain.
+pub(crate) fn compact_number(value: f64, lang: Lang) -> String {
+    if !value.is_finite() {
+        return "—".to_owned();
+    }
+    let sign = if value < 0.0 { "-" } else { "" };
+    let magnitude = value.abs();
+    if magnitude < 10_000.0 {
+        return format!("{sign}{magnitude:.0}");
+    }
+    let tiers: &[(f64, &str)] = match lang {
+        Lang::Zh => &[(1e8, "亿"), (1e4, "万")],
+        Lang::En => &[(1e9, "B"), (1e6, "M"), (1e4, "k")],
+    };
+    let mut index = 0;
+    while index + 1 < tiers.len() && magnitude < tiers[index].0 {
+        index += 1;
+    }
+    let mut scaled = magnitude / tiers[index].0;
+    while index > 0 && scaled >= 999.95 {
+        index -= 1;
+        scaled = magnitude / tiers[index].0;
+    }
+    let gap = match lang {
+        Lang::Zh => " ",
+        Lang::En => "",
+    };
+    format!("{sign}{scaled:.1}{gap}{}", tiers[index].1)
+}
+
+/// A count from the native summary, or an explicit unknown mark.
+fn count_text(value: Option<f64>, lang: Lang) -> String {
+    value
+        .filter(|value| value.is_finite() && *value >= 0.0)
+        .map(|value| compact_number(value, lang))
+        .unwrap_or_else(|| "—".to_owned())
+}
+
+/// Rates always carry a per-second unit; large rates reuse the compact scale.
+fn rate_text(value: Option<f64>, lang: Lang) -> String {
+    match value.filter(|value| value.is_finite() && *value >= 0.0) {
+        Some(value) if value >= 10_000.0 => format!("{}/s", compact_number(value, lang)),
+        Some(value) => format!("{value:.1}/s"),
+        None => "—".to_owned(),
+    }
+}
+
+/// One 24-hour key figure. The value element stays a bare `<strong>` so unknown
+/// values render as an explicit dash instead of a misleading zero.
+fn kpi(label: &str, value: &str, note: &str) -> String {
+    format!(
+        r#"<div class="kpi"><span class="kpi-label">{}</span><strong>{}</strong><small class="kpi-note">{}</small></div>"#,
+        esc(label),
+        esc(value),
+        esc(note)
+    )
+}
+
 pub(crate) fn shell(title: &str, lang: Lang, body: &str) -> String {
     let (nav_home, nav_trackers, nav_sources, nav_declaration) = match lang {
         Lang::Zh => ("首页", "列表", "来源", "声明"),
@@ -70,7 +143,7 @@ pub(crate) fn shell(title: &str, lang: Lang, body: &str) -> String {
     };
     let code = lang.code();
     format!(
-        r#"<!doctype html><html lang="{code}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><title>{title} · Tracker Observatory</title><link rel="icon" type="image/svg+xml" href="/assets/brand.svg?v=1.0.2"><link rel="icon" href="/favicon.ico?v=1.0.2" sizes="any"><link rel="apple-touch-icon" href="/assets/brand.png?v=1.0.2"><link rel="stylesheet" href="/assets/style.css?v=1.0.3"></head><body><header class="masthead"><div class="wrap nav-wrap"><a class="brand" href="/?lang={code}"><img class="brand-icon" src="/assets/brand.svg?v=1.0.2" alt=""><span>Tracker <b>Observatory</b></span></a><nav aria-label="{nav_label}"><a href="/?lang={code}">{nav_home}</a><a href="/trackers?lang={code}">{nav_trackers}</a><a href="/sources?lang={code}">{nav_sources}</a><a href="/declaration?lang={code}">{nav_declaration}</a></nav><div class="nav-actions"><div class="language" aria-label="Language">{language}</div><a class="github-link" href="https://github.com/3189007030/Tracker" rel="noopener noreferrer" aria-label="{github_label}" title="{github_label}"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="currentColor"><path d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.11.79-.25.79-.56v-2.19c-3.21.7-3.89-1.36-3.89-1.36-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.97.11-.75.4-1.26.73-1.55-2.56-.29-5.26-1.28-5.26-5.71 0-1.26.45-2.29 1.18-3.1-.12-.29-.51-1.46.11-3.05 0 0 .97-.31 3.16 1.18a10.98 10.98 0 0 1 5.75 0c2.19-1.49 3.15-1.18 3.15-1.18.63 1.59.24 2.76.12 3.05.74.81 1.18 1.84 1.18 3.1 0 4.44-2.7 5.41-5.28 5.7.42.36.78 1.06.78 2.14v3.22c0 .31.21.68.79.56A11.5 11.5 0 0 0 12 .5Z"/></svg></a></div></div></header><main class="wrap">{body}</main><footer class="wrap footer"><span>Tracker Observatory · {version}</span><span>{footnote}</span></footer><script src="/assets/tools.js?v=1.0.2" defer></script></body></html>"#,
+        r#"<!doctype html><html lang="{code}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><title>{title} · Tracker Observatory</title><link rel="icon" type="image/svg+xml" href="/assets/brand.svg?v=1.0.2"><link rel="icon" href="/favicon.ico?v=1.0.2" sizes="any"><link rel="apple-touch-icon" href="/assets/brand.png?v=1.0.2"><link rel="stylesheet" href="/assets/style.css?v=1.1.0"></head><body><header class="masthead"><div class="wrap nav-wrap"><a class="brand" href="/?lang={code}"><img class="brand-icon" src="/assets/brand.svg?v=1.0.2" alt=""><span>Tracker <b>Observatory</b></span></a><nav aria-label="{nav_label}"><a href="/?lang={code}">{nav_home}</a><a href="/trackers?lang={code}">{nav_trackers}</a><a href="/sources?lang={code}">{nav_sources}</a><a href="/declaration?lang={code}">{nav_declaration}</a></nav><div class="nav-actions"><div class="language" aria-label="Language">{language}</div><a class="github-link" href="https://github.com/3189007030/Tracker" rel="noopener noreferrer" aria-label="{github_label}" title="{github_label}"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="currentColor"><path d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.11.79-.25.79-.56v-2.19c-3.21.7-3.89-1.36-3.89-1.36-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.97.11-.75.4-1.26.73-1.55-2.56-.29-5.26-1.28-5.26-5.71 0-1.26.45-2.29 1.18-3.1-.12-.29-.51-1.46.11-3.05 0 0 .97-.31 3.16 1.18a10.98 10.98 0 0 1 5.75 0c2.19-1.49 3.15-1.18 3.15-1.18.63 1.59.24 2.76.12 3.05.74.81 1.18 1.84 1.18 3.1 0 4.44-2.7 5.41-5.28 5.7.42.36.78 1.06.78 2.14v3.22c0 .31.21.68.79.56A11.5 11.5 0 0 0 12 .5Z"/></svg></a></div></div></header><main class="wrap">{body}</main><footer class="wrap footer"><span>Tracker Observatory · {version}</span><span>{footnote}</span></footer><script src="/assets/tools.js?v=1.0.2" defer></script></body></html>"#,
         title = esc(title),
         version = esc(VERSION),
         nav_label = lang.pick("主导航", "Main navigation"),
@@ -123,7 +196,7 @@ fn copy_feed_link(lang: Lang) -> String {
     )
 }
 
-fn charts(lang: Lang, runtime: &str) -> String {
+fn charts(lang: Lang) -> String {
     let title = lang.pick("统计趋势", "Trends");
     let fields: &[(&str, &str, &str)] = &[
         ("peers", "登记节点", "Registered peers"),
@@ -145,13 +218,18 @@ fn charts(lang: Lang, runtime: &str) -> String {
         panels.push_str(&format!(r#"<article class="panel chart-panel"><h3>{}</h3><div class="canvas-wrap"><canvas data-history-chart="{}" aria-label="{}" role="img"></canvas></div></article>"#, esc(label), esc(key), esc(label)));
     }
     format!(
-        r#"<section class="trends-heading"><div class="trends-title-row"><h2>{}</h2>{runtime}</div><div class="trends-sub-row"><p>{}</p><label>{} <select data-history-window><option value="24h">24h</option><option value="7d">7d</option><option value="30d">30d</option></select></label></div></section><div class="history-grid" data-history-root data-lang="{}">{}</div><p class="footnote" data-history-rate-note></p><p class="footnote">{}</p><script src="/assets/chart.umd.js?v=4.6.1" defer></script><script src="/assets/charts.js?v=1.0.2-ui2" defer></script>"#,
+        r#"<section class="trends-heading"><div class="trends-title-row"><h2>{}</h2><p class="trends-unit">{}</p></div><div class="trends-sub-row"><p>{}</p><label>{} <select data-history-window aria-label="{}"><option value="24h">24h</option><option value="7d">7d</option><option value="30d">30d</option></select></label></div></section><div class="history-grid" data-history-root data-lang="{}">{}</div><p class="footnote" data-history-rate-note></p><p class="footnote">{}</p><script src="/assets/chart.umd.js?v=4.6.1" defer></script><script src="/assets/charts.js?v=1.1.0" defer></script>"#,
         title,
+        lang.pick(
+            "纵轴：节点与蜂群为数量，速率为每秒；横轴为 UTC 时间。",
+            "Y axis: peers and swarms are counts, rates are per second. X axis: UTC time."
+        ),
         lang.pick(
             "按实际采样显示，缺测和重启后的间断不会补零。",
             "Recorded samples only; gaps and process restarts are not filled with zero."
         ),
         lang.pick("时间范围", "Window"),
+        lang.pick("选择统计时间范围", "Select statistics window"),
         lang.code(),
         panels,
         lang.pick(
@@ -161,22 +239,119 @@ fn charts(lang: Lang, runtime: &str) -> String {
     )
 }
 
-pub(crate) fn home(_overview: &Overview, native: Option<&serde_json::Value>, lang: Lang) -> String {
-    let count = |key: &str| {
-        native
-            .and_then(|v| v.get(key))
-            .and_then(serde_json::Value::as_u64)
-            .map(|n| n.to_string())
-            .unwrap_or_else(|| "—".to_owned())
+pub(crate) fn home(overview: &Overview, native: Option<&serde_json::Value>, lang: Lang) -> String {
+    // 24-hour figures are optional: older published samples only carry cumulative counters.
+    let announces_24h = number(native, "announces_24h");
+    let rate_24h = number(native, "rate_24h");
+    let covered_24h = number(native, "covered_seconds_24h");
+    let http_24h = number(native, "http_announces_24h");
+    let udp_24h = number(native, "udp_announces_24h");
+    let ipv6_24h = number(native, "accepted_ipv6_24h");
+    let peers = number(native, "peers");
+    let swarms = number(native, "swarms");
+    let announces_total = number(native, "announces");
+
+    let mut kpis = String::new();
+    match announces_24h {
+        Some(value) => kpis.push_str(&kpi(
+            lang.pick("近 24 小时成功通告", "Announces accepted (24h)"),
+            &compact_number(value, lang),
+            lang.pick("已发布采样", "Published samples"),
+        )),
+        None if announces_total.is_some() => kpis.push_str(&kpi(
+            lang.pick("本次启动后成功通告", "Accepted announces since start"),
+            &count_text(announces_total, lang),
+            lang.pick("累计口径，不是 24 小时", "Cumulative, not a 24-hour figure"),
+        )),
+        None => kpis.push_str(&kpi(
+            lang.pick("近 24 小时成功通告", "Announces accepted (24h)"),
+            "—",
+            lang.pick("暂无已发布采样", "No published sample yet"),
+        )),
+    }
+    if let Some(value) = rate_24h {
+        kpis.push_str(&kpi(
+            lang.pick("近 24 小时均值", "24h average"),
+            &rate_text(Some(value), lang),
+            lang.pick("每秒成功通告", "Accepted announces per second"),
+        ));
+    }
+    kpis.push_str(&kpi(
+        lang.pick("登记节点", "Registered peers"),
+        &count_text(peers, lang),
+        lang.pick("本地内存登记", "Local in-memory registrations"),
+    ));
+    kpis.push_str(&kpi(
+        lang.pick("蜂群", "Swarms"),
+        &count_text(swarms, lang),
+        lang.pick("已登记资源", "Registered resources"),
+    ));
+
+    let mut coverage_note = String::new();
+    if let Some(seconds) = covered_24h.filter(|value| *value < 86_400.0) {
+        let hours = format!("{:.1}", seconds / 3600.0);
+        let zh = format!("采样覆盖 {hours} 小时，非完整 24 小时。");
+        let en = format!("Sampling covers {hours} h, not a full 24 hours.");
+        coverage_note = format!(
+            r#"<p class="kpi-coverage" role="note">{}</p>"#,
+            esc(lang.pick(&zh, &en))
+        );
+    }
+    let mut breakdown = Vec::new();
+    if let Some(value) = http_24h {
+        breakdown.push(format!("HTTP {}", compact_number(value, lang)));
+    }
+    if let Some(value) = udp_24h {
+        breakdown.push(format!("UDP {}", compact_number(value, lang)));
+    }
+    if let Some(value) = ipv6_24h {
+        breakdown.push(format!("IPv6 {}", compact_number(value, lang)));
+    }
+    let breakdown_note = if breakdown.is_empty() {
+        String::new()
+    } else {
+        format!(
+            r#"<p class="kpi-detail"><span>{}</span>{}</p>"#,
+            esc(lang.pick("近 24 小时构成", "24h breakdown")),
+            esc(&breakdown.join(" · "))
+        )
     };
+    let mut total_note = String::new();
+    if announces_24h.is_some() {
+        let total = count_text(announces_total, lang);
+        let zh = format!("累计成功通告 {total}，自本次进程启动，与上方 24 小时口径不混用。");
+        let en = format!(
+            "Cumulative accepted announces {total}, counted since this process started and not mixed with the 24-hour figures above."
+        );
+        total_note = format!(r#"<p class="kpi-total">{}</p>"#, esc(lang.pick(&zh, &en)));
+    } else if native.is_some() {
+        total_note = format!(
+            r#"<p class="kpi-total">{}</p>"#,
+            esc(lang.pick(
+                "24 小时指标将在下一次发布采样后显示，此处只显示累计值。",
+                "24-hour metrics appear after the next published sample; only cumulative values are shown here."
+            ))
+        );
+    }
+    let kpi_strip = format!(
+        r#"<section class="kpi-section" aria-label="{}"><div class="runtime-strip kpi-strip">{kpis}{coverage_note}{breakdown_note}{total_note}</div></section>"#,
+        esc(lang.pick("当前运行统计", "Current runtime statistics"))
+    );
+
     let mut addresses = String::new();
     for (label, url) in [
-        ("HTTPS", "https://announce.augrains.com/announce"),
-        ("HTTP", "http://announce.augrains.com/announce"),
-        ("UDP", "udp://announce.augrains.com:6969/announce"),
+        ("HTTPS", "https://tracker.augrains.com/announce"),
+        ("HTTP", "http://tracker.augrains.com/announce"),
+        ("UDP", "udp://udp.augrains.com:6969/announce"),
     ] {
         addresses.push_str(&copy_url(label, url, lang));
     }
+    let feed_count = |name: &str| match name {
+        "trackers" => Some(overview.standard_count),
+        "trackers_best" => Some(overview.best_count),
+        "trackers_all" => Some(overview.all_count),
+        _ => None,
+    };
     let mut feeds = String::new();
     for name in [
         "trackers",
@@ -187,32 +362,36 @@ pub(crate) fn home(_overview: &Overview, native: Option<&serde_json::Value>, lan
         "trackers_https",
     ] {
         let path = format!("/{name}.txt");
+        let empty_note = match feed_count(name) {
+            Some(0) => format!(
+                r#"<p class="feed-empty">{}</p>"#,
+                esc(lang.pick(
+                    "样本不足，暂不发布。",
+                    "Insufficient evidence; not published yet."
+                ))
+            ),
+            _ => String::new(),
+        };
         feeds.push_str(&format!(
-            r#"<div class="subscription-row"><a href="{}">{}.txt ↗</a>{}</div>"#,
+            r#"<div class="subscription-row"><a href="{}">{}.txt ↗</a>{}{}</div>"#,
             esc(&path),
             esc(name),
             copy_url(
                 lang.pick("订阅地址", "Subscription URL"),
                 &format!("https://tracker.augrains.com{path}"),
                 lang
-            )
+            ),
+            empty_note
         ));
     }
-    let runtime = format!(
-        r#"<div class="runtime-strip" aria-label="{}"><div><span>{}</span><strong>{}</strong></div><div><span>{}</span><strong>{}</strong></div><div><span>{}</span><strong>{}</strong></div><small>{}</small></div>"#,
-        lang.pick("当前运行统计", "Current runtime statistics"),
-        lang.pick("登记节点", "Registered peers"),
-        count("peers"),
-        lang.pick("蜂群", "Swarms"),
-        count("swarms"),
-        lang.pick("本次启动后成功通告", "Accepted announces since start"),
-        count("announces"),
-        lang.pick("按分钟采样", "Sampled each minute")
-    );
-    let body = format!(r#"{}<div class="home-address-grid"><section id="native-trackers" class="panel prose"><h2>{}</h2><p>{}</p><div class="copy-list">{addresses}</div><p>{}</p></section><section class="panel prose"><h2>{}</h2><p>{}</p><div class="subscriptions">{feeds}</div></section></div>"#,
-        charts(lang, &runtime),
+    let trends = charts(lang);
+    let body = format!(r#"{kpi_strip}<div class="home-address-grid"><section id="native-trackers" class="panel prose"><h2>{}</h2><p>{}</p><div class="copy-list">{addresses}</div><p>{}</p></section><section class="panel prose"><h2>{}</h2><p>{}</p><div class="subscriptions">{feeds}</div></section></div>{trends}<p class="footnote">{scope}</p>"#,
         lang.pick("本站 Tracker 地址", "Native tracker addresses"), lang.pick("在 BT 客户端的种子 Tracker 列表中，每行添加一个地址并保存。", "Add each address on a separate line in your torrent's tracker list, then save."), lang.pick("这是 BT 协议入口，浏览器不提供通告参数；UDP 不是网页。", "These are BT protocol endpoints. Browsers do not supply announce parameters; UDP is not a web page."),
-        lang.pick("订阅列表", "Subscriptions"), lang.pick("将订阅地址加入支持自动更新列表的客户端。证据不足时列表可以为空。", "Add a subscription URL to a compatible client. Lists may be empty while evidence accumulates."));
+        lang.pick("订阅列表", "Subscriptions"), lang.pick("将订阅地址加入支持自动更新列表的客户端。证据不足时列表可以为空。", "Add a subscription URL to a compatible client. Lists may be empty while evidence accumulates."),
+        scope = lang.pick(
+            "24 小时指标按已发布采样计算，覆盖不足 24 小时时会在指标旁标注；累计值只反映本次进程启动之后。节点数为本站本地登记，不等于在线可达。",
+            "24-hour metrics use published samples and are flagged beside the metric when coverage is shorter than 24 hours; cumulative values only cover the current process. Peer counts are local registrations here, not proof of reachability."
+        ));
     shell(lang.pick("首页", "Home"), lang, &body)
 }
 
@@ -557,7 +736,7 @@ pub(crate) fn listing(page: &Page, query: &str, protocol: &str, lang: Lang) -> S
         count = lang.pick("端点", "Endpoints"),
         total = page
             .total
-            .map(|v| v.to_string())
+            .map(|value| compact_number(value as f64, lang))
             .unwrap_or_else(|| "—".to_owned()),
         page_label = lang.pick("第", "Page"),
         current = page.page
@@ -830,12 +1009,12 @@ pub(crate) fn detail(
         ),
         stat(
             lang.pick("验证节点", "Verified peers"),
-            &evidence.handshake_nodes_7d.to_string(),
+            &compact_number(evidence.handshake_nodes_7d as f64, lang),
             lang.pick("近 7 天握手", "Handshakes in 7 days"),
         ),
         stat(
             lang.pick("样本资源", "Sample resources"),
-            &evidence.sample_count_7d.to_string(),
+            &compact_number(evidence.sample_count_7d as f64, lang),
             lang.pick("公共样本", "Public samples"),
         ),
         stat(
@@ -939,7 +1118,7 @@ pub(crate) fn detail(
         latency_chart=lang.pick("实测响应延迟 (ms)", "Observed response latency (ms)"),
         time_label=lang.pick("时间 (UTC)", "Time (UTC)"), family_label=lang.pick("地址族", "Family"), stage=lang.pick("阶段", "Stage"), transport=lang.pick("传输", "Transport"), result=lang.pick("观测结果", "Observation result"), reply=lang.pick("有效 Tracker 回复", "Valid tracker reply"), latency=lang.pick("阶段延迟", "Stage latency"), reason=lang.pick("原因", "Reason"),
         single=lang.pick("观测来自单一网络位置；缺测和探针本地故障不等于 Tracker 离线。", "Measurements come from one network; missing data and local probe failures are not tracker downtime."));
-    let scripts = r#"<script src="/assets/chart.umd.js?v=4.6.1" defer></script><script src="/assets/charts.js?v=1.0.2-ui2" defer></script>"#;
+    let scripts = r#"<script src="/assets/chart.umd.js?v=4.6.1" defer></script><script src="/assets/charts.js?v=1.1.0" defer></script>"#;
     shell(
         &endpoint.host,
         lang,

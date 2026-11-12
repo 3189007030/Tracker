@@ -21,6 +21,6 @@ data_dir = "/var/lib/tracker-v1"
 sources_file = "/etc/tracker-v1/sources.toml"
 # Network concurrency is currently bounded by the scheduler, not a config key.
 interval_seconds = 1800
-own_hosts = ["announce.augrains.com", "tracker.augrains.com", "udp.augrains.com"]
+own_hosts = ["tracker.augrains.com", "udp.augrains.com"]
 # These names are explicitly operated by this project and share one engine.
-service_aliases = { "tracker.augrains.com" = "announce.augrains.com", "udp.augrains.com" = "announce.augrains.com" }
+service_aliases = { "udp.augrains.com" = "tracker.augrains.com" }

@@ -94,20 +94,41 @@ pub struct EngineStats {
     pub rejected_busy: u64,
 }
 
+/// One counter per cache line.
+///
+/// Every `Counters` field used to sit in the same two cache lines as unrelated
+/// counters written by other tasks, so each `fetch_add` invalidated the line
+/// under a concurrent writer. `Deref` keeps every existing `counts.field` path
+/// working unchanged (including `&counts.field` arguments to `reserve`), so
+/// only the layout and its padding change: no counter moves between update
+/// sites and no count changes meaning. One line per counter costs 832 bytes
+/// per engine, which is negligible beside the admission budget.
+#[repr(align(64))]
+#[derive(Default)]
+struct CacheLine<T>(T);
+
+impl<T> std::ops::Deref for CacheLine<T> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        &self.0
+    }
+}
+
 #[derive(Default)]
 struct Counters {
-    peers: AtomicUsize,
-    swarms: AtomicUsize,
-    estimated_bytes: AtomicUsize,
-    announces: AtomicU64,
-    scrapes: AtomicU64,
-    expired: AtomicU64,
-    stopped: AtomicU64,
-    rejected_peers: AtomicU64,
-    rejected_swarms: AtomicU64,
-    rejected_memory: AtomicU64,
-    rejected_swarm_peers: AtomicU64,
-    rejected_busy: AtomicU64,
+    peers: CacheLine<AtomicUsize>,
+    swarms: CacheLine<AtomicUsize>,
+    estimated_bytes: CacheLine<AtomicUsize>,
+    announces: CacheLine<AtomicU64>,
+    scrapes: CacheLine<AtomicU64>,
+    expired: CacheLine<AtomicU64>,
+    stopped: CacheLine<AtomicU64>,
+    rejected_peers: CacheLine<AtomicU64>,
+    rejected_swarms: CacheLine<AtomicU64>,
+    rejected_memory: CacheLine<AtomicU64>,
+    rejected_swarm_peers: CacheLine<AtomicU64>,
+    rejected_busy: CacheLine<AtomicU64>,
 }
 
 struct Peer {

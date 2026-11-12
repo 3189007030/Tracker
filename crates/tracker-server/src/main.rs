@@ -13,6 +13,7 @@ use clap::Parser;
 use serde::Deserialize;
 use serde_json::json;
 use std::{
+    borrow::Cow,
     net::{IpAddr, SocketAddr},
     path::PathBuf,
     sync::{
@@ -72,42 +73,76 @@ impl Default for Settings {
     }
 }
 
+// Service timing and protocol counters are grouped by the task that writes
+// them. Adjacent atomics shared a cache line, so the two UDP loops, the HTTP
+// handlers and the maintenance task invalidated each other's line on every
+// update. Each group is cache-line aligned; only names move, not values.
+#[repr(align(64))]
 #[derive(Default)]
-struct Counters {
-    http_announces: AtomicU64,
-    udp_connects: AtomicU64,
-    udp_announces: AtomicU64,
-    scrapes: AtomicU64,
+struct ServiceCounters {
+    micros_sum: AtomicU64,
+    count: AtomicU64,
+    buckets: [AtomicU64; 10], // one entry per BUCKET_US bound
+}
+#[repr(align(64))]
+#[derive(Default)]
+struct AcceptCounters {
     accepted: AtomicU64,
-    accepted_ipv4: AtomicU64,
-    accepted_ipv6: AtomicU64,
-    failures: AtomicU64,
+    ipv4: AtomicU64,
+    ipv6: AtomicU64,
+}
+#[repr(align(64))]
+#[derive(Default)]
+struct FailureCounters {
+    business: AtomicU64,
+    engine: [AtomicU64; 7], // one entry per ENGINE_FAILURE_KEYS reason
     invalid_packets: AtomicU64,
     http_invalid_queries: AtomicU64,
     udp_malformed_packets: AtomicU64,
-    udp_cookie_window_rejections: AtomicU64,
-    udp_cookie_auth_rejections: AtomicU64,
-    engine_failures: [AtomicU64; 7],
+    udp_cookie_window: AtomicU64,
+    udp_cookie_auth: AtomicU64,
+}
+#[repr(align(64))]
+#[derive(Default)]
+struct UdpCounters {
+    connects: AtomicU64,
+    announces: AtomicU64,
+    v4_packets: AtomicU64,
+    v6_packets: AtomicU64,
+    rx_bytes: AtomicU64,
+    tx_bytes: AtomicU64,
+    send_errors: AtomicU64,
+}
+#[repr(align(64))]
+#[derive(Default)]
+struct RequestCounters {
+    http_announces: AtomicU64,
+    scrapes: AtomicU64,
     rate_limited: AtomicU64,
     http_busy: AtomicU64,
-    udp_rx: AtomicU64,
-    udp_v4_packets: AtomicU64,
-    udp_v6_packets: AtomicU64,
-    udp_tx: AtomicU64,
-    udp_send_errors: AtomicU64,
-    service_micros_sum: AtomicU64,
-    service_count: AtomicU64,
-    service_buckets: [AtomicU64; 10],
-    maintenance_count: AtomicU64,
-    maintenance_micros_sum: AtomicU64,
-    maintenance_micros_max: AtomicU64,
+}
+#[repr(align(64))]
+#[derive(Default)]
+struct MaintenanceCounters {
+    count: AtomicU64,
+    micros_sum: AtomicU64,
+    micros_max: AtomicU64,
+}
+#[derive(Default)]
+struct Counters {
+    service: ServiceCounters,
+    accepts: AcceptCounters,
+    failures: FailureCounters,
+    udp: UdpCounters,
+    requests: RequestCounters,
+    maintenance: MaintenanceCounters,
 }
 struct ServiceTimer<'a> {
-    counters: &'a Counters,
+    counters: &'a ServiceCounters,
     started: Instant,
 }
 impl<'a> ServiceTimer<'a> {
-    fn new(counters: &'a Counters) -> Self {
+    fn new(counters: &'a ServiceCounters) -> Self {
         Self {
             counters,
             started: Instant::now(),
@@ -131,6 +166,16 @@ const BUCKET_US: [u64; 10] = [
     100_000,
     u64::MAX,
 ];
+/// Index of the first bucket whose upper bound covers `micros`.
+///
+/// `BUCKET_US` is ascending, so partitioning on `bound < micros` lands on the
+/// same bucket as the linear scan it replaces: the first bound that is not
+/// below the sample. The clamp preserves the old `unwrap_or` tail bucket.
+fn bucket(micros: u64) -> usize {
+    BUCKET_US
+        .partition_point(|bound| *bound < micros)
+        .min(BUCKET_US.len() - 1)
+}
 const ENGINE_FAILURE_KEYS: [&str; 7] = [
     "invalid_address",
     "invalid_port",
@@ -140,31 +185,30 @@ const ENGINE_FAILURE_KEYS: [&str; 7] = [
     "memory_budget",
     "busy",
 ];
+impl ServiceCounters {
+    fn observe(&self, started: Instant) {
+        let micros = started.elapsed().as_micros().min(u64::MAX as u128) as u64;
+        self.micros_sum.fetch_add(micros, Ordering::Relaxed);
+        self.count.fetch_add(1, Ordering::Relaxed);
+        self.buckets[bucket(micros)].fetch_add(1, Ordering::Relaxed);
+    }
+}
 impl Counters {
     fn diagnostics(&self) -> serde_json::Value {
         let get = |v: &AtomicU64| v.load(Ordering::Relaxed);
+        let failures = &self.failures;
         let errors: serde_json::Map<String, serde_json::Value> = ENGINE_FAILURE_KEYS
             .iter()
-            .zip(&self.engine_failures)
+            .zip(&failures.engine)
             .map(|(key, value)| ((*key).to_owned(), json!(get(value))))
             .collect();
         json!({
-            "http_invalid_queries": get(&self.http_invalid_queries),
-            "udp_malformed_packets": get(&self.udp_malformed_packets),
-            "udp_cookie_window_rejections": get(&self.udp_cookie_window_rejections),
-            "udp_cookie_auth_rejections": get(&self.udp_cookie_auth_rejections),
+            "http_invalid_queries": get(&failures.http_invalid_queries),
+            "udp_malformed_packets": get(&failures.udp_malformed_packets),
+            "udp_cookie_window_rejections": get(&failures.udp_cookie_window),
+            "udp_cookie_auth_rejections": get(&failures.udp_cookie_auth),
             "engine_errors": errors,
         })
-    }
-    fn observe(&self, started: Instant) {
-        let micros = started.elapsed().as_micros().min(u64::MAX as u128) as u64;
-        self.service_micros_sum.fetch_add(micros, Ordering::Relaxed);
-        self.service_count.fetch_add(1, Ordering::Relaxed);
-        let index = BUCKET_US
-            .iter()
-            .position(|bound| micros <= *bound)
-            .unwrap_or(9);
-        self.service_buckets[index].fetch_add(1, Ordering::Relaxed);
     }
 }
 
@@ -232,7 +276,10 @@ struct App {
 }
 impl App {
     fn engine_failure(&self, error: &EngineError) {
-        self.counters.failures.fetch_add(1, Ordering::Relaxed);
+        self.counters
+            .failures
+            .business
+            .fetch_add(1, Ordering::Relaxed);
         let index = match error {
             EngineError::InvalidAddress => 0,
             EngineError::InvalidPort => 1,
@@ -242,37 +289,43 @@ impl App {
             EngineError::MemoryBudget => 5,
             EngineError::Busy => 6,
         };
-        self.counters.engine_failures[index].fetch_add(1, Ordering::Relaxed);
+        self.counters.failures.engine[index].fetch_add(1, Ordering::Relaxed);
         self.capacity_refusal(error);
     }
     fn invalid_http_query(&self) {
         self.counters
+            .failures
             .invalid_packets
             .fetch_add(1, Ordering::Relaxed);
         self.counters
+            .failures
             .http_invalid_queries
             .fetch_add(1, Ordering::Relaxed);
     }
     fn rejected_cookie(&self, time: u64, connection_id: u64) {
         self.counters
+            .failures
             .invalid_packets
             .fetch_add(1, Ordering::Relaxed);
         // The public hint only identifies which validation stage rejected it.
         // An old hint does not prove the cookie was ever authentic or issued here.
         let age = ((time / 60) as u16).wrapping_sub((connection_id >> 48) as u16);
         let counter = if age > 2 {
-            &self.counters.udp_cookie_window_rejections
+            &self.counters.failures.udp_cookie_window
         } else {
-            &self.counters.udp_cookie_auth_rejections
+            &self.counters.failures.udp_cookie_auth
         };
         counter.fetch_add(1, Ordering::Relaxed);
     }
     fn accepted_announce(&self, request: &AnnounceRequest) {
-        self.counters.accepted.fetch_add(1, Ordering::Relaxed);
+        self.counters
+            .accepts
+            .accepted
+            .fetch_add(1, Ordering::Relaxed);
         let counter = if request.ip.is_ipv4() {
-            &self.counters.accepted_ipv4
+            &self.counters.accepts.ipv4
         } else {
-            &self.counters.accepted_ipv6
+            &self.counters.accepts.ipv6
         };
         counter.fetch_add(1, Ordering::Relaxed);
     }
@@ -315,8 +368,37 @@ fn no_store(body: Vec<u8>, status: StatusCode) -> Response {
         .body(Body::from(body))
         .unwrap()
 }
+fn failure_with(message: &str, status: StatusCode) -> Response {
+    let mut body = Vec::with_capacity(message.len() + 40);
+    encode_http_failure_into(&mut body, message);
+    no_store(body, status)
+}
 fn failure(message: &str) -> Response {
-    no_store(encode_http_failure(message), StatusCode::OK)
+    failure_with(message, StatusCode::OK)
+}
+/// Static reply text for every engine rejection.
+///
+/// Each string is byte-identical to `EngineError`'s `Display` output, which
+/// `engine_failure_text_is_static_and_matches_display` asserts for every
+/// variant. `None` is unreachable today and exists so that a variant added
+/// later degrades to the formatting path instead of breaking the build.
+fn failure_static(error: &EngineError) -> Option<&'static str> {
+    Some(match error {
+        EngineError::InvalidAddress => "invalid or non-public address",
+        EngineError::InvalidPort => "invalid port",
+        EngineError::PeerCapacity => "peer capacity reached",
+        EngineError::SwarmCapacity => "swarm capacity reached",
+        EngineError::SwarmPeerCapacity => "swarm peer capacity reached",
+        EngineError::MemoryBudget => "memory budget reached",
+        EngineError::Busy => "expiry backlog; please retry",
+    })
+}
+/// Reply text for an engine rejection without allocating on the hot path.
+fn engine_failure_reason(error: &EngineError) -> Cow<'static, str> {
+    match failure_static(error) {
+        Some(reason) => Cow::Borrowed(reason),
+        None => Cow::Owned(error.to_string()),
+    }
 }
 fn source_ip(source: SocketAddr, headers: &HeaderMap) -> IpAddr {
     // The HTTP listener is private; Nginx overwrites X-Real-IP. Arbitrary
@@ -344,11 +426,11 @@ fn source_ip(source: SocketAddr, headers: &HeaderMap) -> IpAddr {
     }
 }
 fn rate_response(app: &App) -> Response {
-    app.counters.rate_limited.fetch_add(1, Ordering::Relaxed);
-    let mut response = no_store(
-        encode_http_failure("request budget exceeded"),
-        StatusCode::TOO_MANY_REQUESTS,
-    );
+    app.counters
+        .requests
+        .rate_limited
+        .fetch_add(1, Ordering::Relaxed);
+    let mut response = failure_with("request budget exceeded", StatusCode::TOO_MANY_REQUESTS);
     response
         .headers_mut()
         .insert(header::RETRY_AFTER, "60".parse().unwrap());
@@ -364,14 +446,17 @@ async fn announce(
     if method == Method::HEAD {
         return no_store(Vec::new(), StatusCode::OK);
     }
-    let _timer = ServiceTimer::new(&app.counters);
-    app.counters.http_announces.fetch_add(1, Ordering::Relaxed);
+    let _timer = ServiceTimer::new(&app.counters.service);
+    app.counters
+        .requests
+        .http_announces
+        .fetch_add(1, Ordering::Relaxed);
     let Ok(_slot) = app.http_slots.clone().try_acquire_owned() else {
-        app.counters.http_busy.fetch_add(1, Ordering::Relaxed);
-        return no_store(
-            encode_http_failure("service busy"),
-            StatusCode::SERVICE_UNAVAILABLE,
-        );
+        app.counters
+            .requests
+            .http_busy
+            .fetch_add(1, Ordering::Relaxed);
+        return failure_with("service busy", StatusCode::SERVICE_UNAVAILABLE);
     };
     let ip = source_ip(source, &headers);
     if !app.limiter.allow(ip) {
@@ -386,11 +471,13 @@ async fn announce(
         Ok(request) => match app.engine.announce(&request, now()) {
             Ok(reply) => {
                 app.accepted_announce(&request);
-                no_store(encode_http_announce(&reply), StatusCode::OK)
+                let mut body = Vec::with_capacity(256);
+                encode_http_announce_into(&mut body, &reply);
+                no_store(body, StatusCode::OK)
             }
             Err(error) => {
                 app.engine_failure(&error);
-                failure(&error.to_string())
+                failure(engine_failure_reason(&error).as_ref())
             }
         },
         Err(_) => {
@@ -409,13 +496,13 @@ async fn scrape(
     if method == Method::HEAD {
         return no_store(Vec::new(), StatusCode::OK);
     }
-    let _timer = ServiceTimer::new(&app.counters);
+    let _timer = ServiceTimer::new(&app.counters.service);
     let Ok(_slot) = app.http_slots.clone().try_acquire_owned() else {
-        app.counters.http_busy.fetch_add(1, Ordering::Relaxed);
-        return no_store(
-            encode_http_failure("service busy"),
-            StatusCode::SERVICE_UNAVAILABLE,
-        );
+        app.counters
+            .requests
+            .http_busy
+            .fetch_add(1, Ordering::Relaxed);
+        return failure_with("service busy", StatusCode::SERVICE_UNAVAILABLE);
     };
     if !app.limiter.allow(source_ip(source, &headers)) {
         return rate_response(&app);
@@ -427,12 +514,19 @@ async fn scrape(
     }
     match parse_http_scrape(raw) {
         Ok(hashes) => {
-            app.counters.scrapes.fetch_add(1, Ordering::Relaxed);
+            app.counters
+                .requests
+                .scrapes
+                .fetch_add(1, Ordering::Relaxed);
             match app.engine.scrape(&hashes, now()) {
-                Ok(entries) => no_store(encode_http_scrape(&entries), StatusCode::OK),
+                Ok(entries) => {
+                    let mut body = Vec::with_capacity(32 + entries.len() * 96);
+                    encode_http_scrape_into(&mut body, &entries);
+                    no_store(body, StatusCode::OK)
+                }
                 Err(error) => {
                     app.engine_failure(&error);
-                    failure(&error.to_string())
+                    failure(engine_failure_reason(&error).as_ref())
                 }
             }
         }
@@ -471,9 +565,47 @@ async fn stats(State(app): State<Arc<App>>) -> Response {
         app.settings.http_concurrency,
         now() < get(&app.pressure_until),
     );
-    json_no_store(
-        json!({"version":tracker_model::VERSION,"instance_id":app.instance_id,"uptime_seconds":app.started.elapsed().as_secs(),"volatile":true,"engine":engine,"rss_bytes":rss_bytes(),"pressure":{"active":reason!="none","reason":reason},"requests":{"http_announces":get(&c.http_announces),"udp_connects":get(&c.udp_connects),"udp_announces":get(&c.udp_announces),"scrapes":get(&c.scrapes),"accepted_announces":get(&c.accepted),"accepted_ipv4":get(&c.accepted_ipv4),"accepted_ipv6":get(&c.accepted_ipv6),"business_failures":get(&c.failures),"invalid_packets":get(&c.invalid_packets),"rate_limited":get(&c.rate_limited),"http_busy":get(&c.http_busy),"udp_send_errors":get(&c.udp_send_errors),"udp_v4_packets":get(&c.udp_v4_packets),"udp_v6_packets":get(&c.udp_v6_packets),"udp_bytes_received":get(&c.udp_rx),"udp_bytes_sent":get(&c.udp_tx)},"diagnostics":c.diagnostics(),"service_time":{"scope":"HTTP announce/scrape and received UDP packets; excludes socket send and transport","count":get(&c.service_count),"sum_micros":get(&c.service_micros_sum),"bucket_upper_micros":BUCKET_US,"bucket_counts":c.service_buckets.iter().map(get).collect::<Vec<_>>()},"maintenance":{"last_at":get(&app.maintenance_at),"count":get(&c.maintenance_count),"sum_micros":get(&c.maintenance_micros_sum),"max_micros":get(&c.maintenance_micros_max)}}),
-    )
+    json_no_store(json!({
+        "version": tracker_model::VERSION,
+        "instance_id": app.instance_id,
+        "uptime_seconds": app.started.elapsed().as_secs(),
+        "volatile": true,
+        "engine": engine,
+        "rss_bytes": rss_bytes(),
+        "pressure": {"active": reason != "none", "reason": reason},
+        "requests": {
+            "http_announces": get(&c.requests.http_announces),
+            "udp_connects": get(&c.udp.connects),
+            "udp_announces": get(&c.udp.announces),
+            "scrapes": get(&c.requests.scrapes),
+            "accepted_announces": get(&c.accepts.accepted),
+            "accepted_ipv4": get(&c.accepts.ipv4),
+            "accepted_ipv6": get(&c.accepts.ipv6),
+            "business_failures": get(&c.failures.business),
+            "invalid_packets": get(&c.failures.invalid_packets),
+            "rate_limited": get(&c.requests.rate_limited),
+            "http_busy": get(&c.requests.http_busy),
+            "udp_send_errors": get(&c.udp.send_errors),
+            "udp_v4_packets": get(&c.udp.v4_packets),
+            "udp_v6_packets": get(&c.udp.v6_packets),
+            "udp_bytes_received": get(&c.udp.rx_bytes),
+            "udp_bytes_sent": get(&c.udp.tx_bytes)
+        },
+        "diagnostics": c.diagnostics(),
+        "service_time": {
+            "scope": "HTTP announce/scrape and received UDP packets; excludes socket send and transport",
+            "count": get(&c.service.count),
+            "sum_micros": get(&c.service.micros_sum),
+            "bucket_upper_micros": BUCKET_US,
+            "bucket_counts": c.service.buckets.iter().map(get).collect::<Vec<_>>()
+        },
+        "maintenance": {
+            "last_at": get(&app.maintenance_at),
+            "count": get(&c.maintenance.count),
+            "sum_micros": get(&c.maintenance.micros_sum),
+            "max_micros": get(&c.maintenance.micros_max)
+        }
+    }))
 }
 async fn health() -> Response {
     json_no_store(json!({"status":"ok","version":tracker_model::VERSION}))
@@ -495,10 +627,10 @@ async fn metrics(State(app): State<Arc<App>>) -> String {
     let mut s = format!(
         "tracker_uptime_seconds {}\ntracker_accepted_announces_total {}\ntracker_business_failures_total {}\ntracker_udp_connects_total {}\ntracker_rate_limited_total {}\n",
         app.started.elapsed().as_secs(),
-        app.counters.accepted.load(Ordering::Relaxed),
-        app.counters.failures.load(Ordering::Relaxed),
-        app.counters.udp_connects.load(Ordering::Relaxed),
-        app.counters.rate_limited.load(Ordering::Relaxed)
+        app.counters.accepts.accepted.load(Ordering::Relaxed),
+        app.counters.failures.business.load(Ordering::Relaxed),
+        app.counters.udp.connects.load(Ordering::Relaxed),
+        app.counters.requests.rate_limited.load(Ordering::Relaxed)
     );
     if let Some(rss) = rss_bytes() {
         s.push_str(&format!("tracker_rss_bytes {rss}\n"));
@@ -513,7 +645,7 @@ async fn metrics(State(app): State<Arc<App>>) -> String {
     }
     for (key, value) in ENGINE_FAILURE_KEYS
         .iter()
-        .zip(&app.counters.engine_failures)
+        .zip(&app.counters.failures.engine)
     {
         s.push_str(&format!(
             "tracker_engine_failures_total{{reason=\"{key}\"}} {}\n",
@@ -554,24 +686,28 @@ async fn udp_loop(socket: UdpSocket, app: Arc<App>) -> Result<()> {
     let mut reply = Vec::with_capacity(1200);
     loop {
         let (length, source) = socket.recv_from(&mut buffer).await?;
-        let timer = ServiceTimer::new(&app.counters);
+        let timer = ServiceTimer::new(&app.counters.service);
         let packets = if source.is_ipv6() {
-            &app.counters.udp_v6_packets
+            &app.counters.udp.v6_packets
         } else {
-            &app.counters.udp_v4_packets
+            &app.counters.udp.v4_packets
         };
         packets.fetch_add(1, Ordering::Relaxed);
         app.counters
-            .udp_rx
+            .udp
+            .rx_bytes
             .fetch_add(length as u64, Ordering::Relaxed);
         if !app.limiter.allow(source.ip()) {
-            app.counters.rate_limited.fetch_add(1, Ordering::Relaxed);
+            app.counters
+                .requests
+                .rate_limited
+                .fetch_add(1, Ordering::Relaxed);
             continue;
         }
         let time = now();
         match parse_udp(&buffer[..length], source) {
             Ok(UdpRequest::Connect { transaction_id }) => {
-                app.counters.udp_connects.fetch_add(1, Ordering::Relaxed);
+                app.counters.udp.connects.fetch_add(1, Ordering::Relaxed);
                 serialize_udp_connect_into(
                     &mut reply,
                     transaction_id,
@@ -587,7 +723,7 @@ async fn udp_loop(socket: UdpSocket, app: Arc<App>) -> Result<()> {
                     app.rejected_cookie(time, connection_id);
                     continue;
                 } else {
-                    app.counters.udp_announces.fetch_add(1, Ordering::Relaxed);
+                    app.counters.udp.announces.fetch_add(1, Ordering::Relaxed);
                     match app.engine.announce(&request, time) {
                         Ok(response) => {
                             app.accepted_announce(&request);
@@ -603,7 +739,7 @@ async fn udp_loop(socket: UdpSocket, app: Arc<App>) -> Result<()> {
                             serialize_udp_error_into(
                                 &mut reply,
                                 transaction_id,
-                                &error.to_string(),
+                                engine_failure_reason(&error).as_ref(),
                             );
                         }
                     }
@@ -618,7 +754,10 @@ async fn udp_loop(socket: UdpSocket, app: Arc<App>) -> Result<()> {
                     app.rejected_cookie(time, connection_id);
                     continue;
                 } else {
-                    app.counters.scrapes.fetch_add(1, Ordering::Relaxed);
+                    app.counters
+                        .requests
+                        .scrapes
+                        .fetch_add(1, Ordering::Relaxed);
                     match app.engine.scrape(&hashes, time) {
                         Ok(entries) => {
                             serialize_udp_scrape_into(&mut reply, transaction_id, &entries)
@@ -628,15 +767,19 @@ async fn udp_loop(socket: UdpSocket, app: Arc<App>) -> Result<()> {
                             serialize_udp_error_into(
                                 &mut reply,
                                 transaction_id,
-                                &error.to_string(),
+                                engine_failure_reason(&error).as_ref(),
                             );
                         }
                     }
                 }
             }
             Err(_) => {
-                app.counters.invalid_packets.fetch_add(1, Ordering::Relaxed);
                 app.counters
+                    .failures
+                    .invalid_packets
+                    .fetch_add(1, Ordering::Relaxed);
+                app.counters
+                    .failures
                     .udp_malformed_packets
                     .fetch_add(1, Ordering::Relaxed);
                 continue;
@@ -647,11 +790,12 @@ async fn udp_loop(socket: UdpSocket, app: Arc<App>) -> Result<()> {
             match socket.send_to(&reply, source).await {
                 Ok(sent) => {
                     app.counters
-                        .udp_tx
+                        .udp
+                        .tx_bytes
                         .fetch_add(sent as u64, Ordering::Relaxed);
                 }
                 Err(_) => {
-                    app.counters.udp_send_errors.fetch_add(1, Ordering::Relaxed);
+                    app.counters.udp.send_errors.fetch_add(1, Ordering::Relaxed);
                 }
             }
         }
@@ -733,13 +877,16 @@ async fn main() -> Result<()> {
                     .maintenance(now(), app.settings.maintenance_budget);
                 let micros = started.elapsed().as_micros().min(u64::MAX as u128) as u64;
                 app.counters
-                    .maintenance_count
+                    .maintenance
+                    .count
                     .fetch_add(1, Ordering::Relaxed);
                 app.counters
-                    .maintenance_micros_sum
+                    .maintenance
+                    .micros_sum
                     .fetch_add(micros, Ordering::Relaxed);
                 app.counters
-                    .maintenance_micros_max
+                    .maintenance
+                    .micros_max
                     .fetch_max(micros, Ordering::Relaxed);
                 app.maintenance_at.store(now(), Ordering::Relaxed);
             }
@@ -859,7 +1006,13 @@ mod tests {
         assert_eq!(d["udp_cookie_auth_rejections"], 1);
         assert_eq!(d["udp_cookie_window_rejections"], 1);
         assert_eq!(d["udp_malformed_packets"], 1);
-        assert_eq!(app.counters.invalid_packets.load(Ordering::Relaxed), 3);
+        assert_eq!(
+            app.counters
+                .failures
+                .invalid_packets
+                .load(Ordering::Relaxed),
+            3
+        );
         let unchanged = app.engine.stats();
         assert_eq!(unchanged.peers, initial.peers);
         assert_eq!(unchanged.announces, initial.announces);
@@ -921,7 +1074,12 @@ mod tests {
             body.windows(b"failure reason".len())
                 .any(|s| s == b"failure reason")
         );
-        assert_eq!(app.counters.failures.load(Ordering::Relaxed), 1);
+        // The reply text is the static mapping, byte for byte.
+        assert!(
+            body.windows(b"invalid or non-public address".len())
+                .any(|s| s == b"invalid or non-public address")
+        );
+        assert_eq!(app.counters.failures.business.load(Ordering::Relaxed), 1);
         assert_eq!(
             app.counters.diagnostics()["engine_errors"]["invalid_address"],
             1
@@ -936,7 +1094,66 @@ mod tests {
         .await;
         assert_eq!(reply.status(), StatusCode::OK);
         assert_eq!(app.counters.diagnostics()["http_invalid_queries"], 1);
-        assert_eq!(app.counters.failures.load(Ordering::Relaxed), 1);
+        assert_eq!(app.counters.failures.business.load(Ordering::Relaxed), 1);
+    }
+    #[test]
+    fn engine_failure_text_is_static_and_matches_display() {
+        let variants = [
+            EngineError::InvalidAddress,
+            EngineError::InvalidPort,
+            EngineError::PeerCapacity,
+            EngineError::SwarmCapacity,
+            EngineError::SwarmPeerCapacity,
+            EngineError::MemoryBudget,
+            EngineError::Busy,
+        ];
+        for error in variants {
+            let reason = engine_failure_reason(&error);
+            let displayed = error.to_string();
+            assert!(matches!(reason, Cow::Borrowed(_)), "{error:?} allocated");
+            assert_eq!(reason.as_ref(), failure_static(&error).unwrap());
+            assert_eq!(reason.as_ref(), displayed.as_str());
+            // Both reply paths stay byte-identical to the old allocation path.
+            assert_eq!(
+                encode_http_failure(reason.as_ref()),
+                encode_http_failure(&displayed)
+            );
+            assert_eq!(
+                encode_udp_error(9, reason.as_ref()),
+                encode_udp_error(9, &displayed)
+            );
+        }
+    }
+    #[test]
+    fn service_time_bucket_matches_the_linear_scan_it_replaced() {
+        // The exact expression used before the lookup became a partition point.
+        let reference = |micros: u64| {
+            BUCKET_US
+                .iter()
+                .position(|bound| micros <= *bound)
+                .unwrap_or(BUCKET_US.len() - 1)
+        };
+        let mut samples = vec![
+            0u64, 1, 99, 100, 101, 499, 500, 501, 999, 1000, 1001, 4999, 5000, 5001, 9999, 10_000,
+            10_001, 20_000, 20_001, 50_000, 50_001, 99_999, 100_000, 100_001,
+        ];
+        samples.extend([u64::MAX - 1, u64::MAX]);
+        for bound in BUCKET_US {
+            if bound != u64::MAX {
+                samples.extend([bound - 1, bound, bound + 1]);
+            }
+        }
+        for micros in samples {
+            assert_eq!(bucket(micros), reference(micros), "micros {micros}");
+        }
+        // Below the first bound, exactly on a bound, and past the last bound.
+        assert_eq!(bucket(0), 0);
+        assert_eq!(bucket(1), 0);
+        assert_eq!(bucket(100), 0);
+        assert_eq!(bucket(101), 1);
+        assert_eq!(bucket(100_000), 8);
+        assert_eq!(bucket(100_001), 9);
+        assert_eq!(bucket(u64::MAX), 9);
     }
     #[test]
     fn resource_pressure_has_explicit_memory_and_concurrency_boundaries() {

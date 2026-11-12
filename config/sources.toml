@@ -8,8 +8,8 @@ tracker_lists = [
   "https://newtrackon.com/api/all",
 ]
 seed_endpoints = [
-  "http://announce.augrains.com/announce",
-  "https://announce.augrains.com/announce",
-  "udp://announce.augrains.com:6969/announce",
+  "http://tracker.augrains.com/announce",
+  "https://tracker.augrains.com/announce",
+  "udp://udp.augrains.com:6969/announce",
 ]
 official_sample_hosts = ["cdimage.debian.org", "releases.ubuntu.com", "torrent.fedoraproject.org", "archlinux.org"]

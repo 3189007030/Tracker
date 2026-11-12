@@ -13,12 +13,13 @@ Public TXT declarations before the requested withdrawal:
 ```text
 tracker.augrains.com   BITTORRENT TCP:443 TCP:80
 udp.augrains.com       BITTORRENT UDP:6969
-announce.augrains.com  BITTORRENT UDP:6969 TCP:443 TCP:80
 ```
+
+`announce.augrains.com` additionally declared `BITTORRENT UDP:6969 TCP:443 TCP:80` until 2026-11-11; it is retired as a public address and is not part of the canonical set.
 
 [BEP 34](https://www.bittorrent.org/beps/bep_0034.html) declares transport and port, not the HTTP/TLS scheme. The NZ [monitor](https://github.com/KolanTheKoala/newtrackon-nz/blob/main/newtrackon/tracker.py) preserves an existing HTTP/HTTPS scheme when it changes TCP ports. A declaration with no supported protocol requests removal and also tells other conforming monitors and clients that the hostname no longer provides a tracker.
 
-At the operator's explicit request, only the website hostname's TXT was changed at 2026-11-11 13:05:05 UTC to `BITTORRENT DENY ALL`, TTL 300. Its A/AAAA records and the canonical announce and legacy UDP hostnames were unchanged. Cloudflare and Google public DNS both returned the withdrawal at 13:09 UTC. NZ still showed its prior HTTP failure at that readback; actual removal awaits its next check. Restore the original website TXT and allow caches to refresh before requesting a new listing. A DNS update alone is not evidence of monitor removal.
+At the operator's explicit request, only the website hostname's TXT was changed at 2026-11-11 13:05:05 UTC to `BITTORRENT DENY ALL`, TTL 300. Its A/AAAA records and the then-canonical announce and legacy UDP hostnames were unchanged. Cloudflare and Google public DNS both returned the withdrawal at 13:09 UTC. NZ still showed its prior HTTP failure at that readback; actual removal awaits its next check. Restore the original website TXT and allow caches to refresh before requesting a new listing. A DNS update alone is not evidence of monitor removal.
 
 NZ [ingestion](https://github.com/KolanTheKoala/newtrackon-nz/blob/main/newtrackon/ingest.py) applies its own UDP > HTTP > HTTPS preference and checks current/recent IP overlap. Resubmitting HTTPS does not reliably correct an existing HTTP record. A new canonical hostname may conflict with the already listed UDP service. Removal and resubmission do not guarantee history restoration or admission.
 
