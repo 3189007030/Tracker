@@ -2,7 +2,7 @@
 
 A Rust BitTorrent tracker and observatory. The native tracker serves HTTP and UDP announces from a shared, sharded in-memory swarm. The separate observatory measures public trackers and publishes a read-only view for the bilingual website.
 
-[简体中文](README.zh-CN.md)
+[ç®€ä½“ä¸­æ–‡](README.zh-CN.md)
 
 The workspace contains `tracker-server`, `observatory`, `tracker-web`, and `tracker-loadgen`, plus shared protocol, state and model libraries. The load generator is an operator tool; the other three are independent services.
 
@@ -33,3 +33,5 @@ Tests use fixtures and loopback mocks and do not require a live tracker or the p
 Configuration examples are in `config/`. For a deployment, copy and adapt the examples, inspect network bindings and source settings, and follow [deployment](docs/deployment.md), [API](docs/api.md) and [release packaging](docs/release-packaging.md). Some example configuration keys and site URLs are currently instance-specific; see the [open-source review](docs/open-source-review.md) before using a different domain. Do not run two observatory writers against the same data directory.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md), [the open-source review](docs/open-source-review.md) and [third-party notices](docs/third-party-notices.txt). Project code is licensed under [MIT](LICENSE); vendored components have their own notices.
+
+Native hot-path changes and measured limits: [1.0.4 validation](docs/validation-1.0.4.md), [reference research](docs/optimization-1.0.4.md), and [daily request/state envelope](docs/billion-request-envelope.md).

@@ -1,6 +1,6 @@
 # 1.0.4 validation
 
-Status: offline correctness and short isolated comparative checks passed. Production promotion is pending; the deployment receipt must be recorded separately.
+Status: offline correctness and short isolated comparative checks passed. Deployed to S1 at 2026-11-12 05:10:12 UTC from code commit `a63434cf1998ef958743773f1a137b61a1fa15cd`; source documentation updates may follow without changing build inputs.
 
 ## Correctness gates
 
@@ -12,7 +12,7 @@ New unit regressions cover independent cookie vectors and full-slot wraparound, 
 
 ## Short comparison on S1
 
-All network benchmarks ran inside a namespace with only loopback. Load generator and test server shared S1's two CPUs with ordinary production; each case started fresh state, used a bounded 128 MiB logical test budget and at most 1,000 configured resources with 32 endpoints each. Actual final states are recorded. Synthetic registrations did not enter the public registry and active public pressure bytes were zero. The full matrix used twelve 10–15 second cases, 152 configured test seconds in total.
+All network benchmarks ran inside a namespace with only loopback. Load generator and test server shared S1's two CPUs with ordinary production; each case started fresh state, used a bounded 128 MiB logical test budget and at most 1,000 configured resources with 32 endpoints each. Actual final states are recorded. Synthetic registrations did not enter the public registry and active public pressure bytes were zero. The full matrix used twelve 10â€“15 second cases, 152 configured test seconds in total.
 
 | Case | Baseline success/s | Candidate success/s | Baseline/candidate success p99 upper ms | Baseline/candidate server CPU cores |
 |---|---:|---:|---:|---:|
@@ -36,3 +36,17 @@ Historical aggregate failures cannot be reconstructed. New fixed counters distin
 The Nginx policy increases bounded connection reuse (75-second client idle timeout, 128 idle native upstream connections per worker, 300-second upstream idle timeout, 10,000-request recycle caps) while keeping stateful responses uncached and origin TLS tickets disabled. No new Cloudflare setting or global latency gain is claimed.
 
 [Research references](optimization-1.0.4.md) and [state/bandwidth arithmetic](billion-request-envelope.md) explain the next limits. No full-scale state, public-path 12,000/s, one-hour or 24-hour run was performed. One billion daily requests remains a workload-dependent goal; the normal 30-minute-refresh state model exceeds current S1 memory.
+
+## Production promotion
+
+The tested native binary SHA-256 is `f317b8012424a5efa7a63ad020ed1b2e3d734d4aae872580c1bb0753252c7ed1`. All 304 candidate source/build files were verified before promotion, and the exact compared binary was installed under `/opt/tracker-v1/releases/1.0.4-a63434cf`. The preceding 1.0.3 release, consistent SQLite backups, private configuration and Nginx rollback configuration were retained; the backup archive checksum was verified off-host. A preflight comparison initially stopped on two extra blank lines in the live Nginx file; inspection confirmed no directive change and the guard was narrowed to ignore blank-only lines before proceeding. No live configuration was changed by the stopped preflight.
+
+All three application services and Nginx were active, readiness returned 1.0.4, and the new public observation snapshot was fresh. Nginx configuration validation and reload passed; origin TLS ticket policy remained off. Post-promotion cgroup OOM and systemd automatic-restart counts were zero.
+
+At 05:13:43 UTC, 211 seconds after startup, the core had accepted 59,081 announces and rebuilt 38,748 peer registrations in 33,161 swarms. A ten-second passive sample accepted about 325 announces/s with host CPU about 5.0%, no capacity/rate/concurrency refusal and no UDP send errors. Fresh-state memory is not comparable to the prior 15-hour registry and is not a memory efficiency result.
+
+New classification at that time reported two engine failures, both `invalid_address`; other engine failure reasons were zero. The aggregate 29,569 invalid inputs comprised 27,904 cookie-authentication rejections, 1,489 cookie-window rejections, 83 malformed UDP packets and 93 invalid HTTP queries. Counts can include reconnect activity after secret rotation at restart; they neither reconstruct the old 4.7-million aggregate nor prove a malicious source. The sampled ten seconds separately recorded 563/73/7/3 of those categories and no new engine error. No raw source addresses, hashes or cookies are logged.
+
+Public website health and direct HTTP/HTTPS health were all HTTP 200 with version 1.0.4 on the second check. The first website health fetch encountered a transport `URLError`, while direct endpoints answered; its cause was not established and the later successful readback is recorded separately. No global latency improvement or public-path throughput result is inferred.
+
+GitHub publication is a separate status; source/runtime archives and local tags must not be described as pushed until verified on the remote.
