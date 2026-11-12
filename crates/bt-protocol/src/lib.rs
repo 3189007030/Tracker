@@ -10,9 +10,11 @@ pub use http::{
     parse_http_announce, parse_http_scrape,
 };
 pub use udp::{
-    decode_udp_announce_response, decode_udp_connect_response, encode_udp_announce,
-    encode_udp_announce_request, encode_udp_connect, encode_udp_connect_request, encode_udp_error,
-    encode_udp_scrape, parse_udp, udp_cookie, validate_udp_cookie,
+    CookieValidator, decode_udp_announce_response, decode_udp_connect_response,
+    encode_udp_announce, encode_udp_announce_request, encode_udp_connect,
+    encode_udp_connect_request, encode_udp_error, encode_udp_scrape, parse_udp,
+    serialize_udp_announce_into, serialize_udp_connect_into, serialize_udp_error_into,
+    serialize_udp_scrape_into, udp_cookie, validate_udp_cookie,
 };
 
 pub type InfoHash = [u8; 20];

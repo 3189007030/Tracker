@@ -1,0 +1,3090 @@
+{
+  "schema": 1,
+  "version": "1.0.4",
+  "baseline_version": "1.0.3",
+  "baseline_commit": "49ba8738cbdb3217c73d9e79ca26f1bb11648c49",
+  "measured_utc": "2026-11-12T04:59:05.425562+00:00",
+  "scope": "short same-S1 loopback, client and server share two CPUs with production; not external or endurance capacity",
+  "namespace_links": [
+    "lo"
+  ],
+  "public_test_bytes": 0,
+  "binary_sha256": {
+    "baseline": "90c9e25aada9a08c8d8223e02be4e0d4feee600ee82658219151ddc7a5577e14",
+    "candidate": "f317b8012424a5efa7a63ad020ed1b2e3d734d4aae872580c1bb0753252c7ed1",
+    "loadgen": "b16f5e33de1e1802a63e689eda48151e965a3f2341026b16ea671246ec8e57e2"
+  },
+  "results": [
+    {
+      "case": "udp_1000",
+      "version": "baseline",
+      "configured_rate": 1000,
+      "configured_seconds": 12,
+      "concurrency": 256,
+      "hashes": 1000,
+      "peers_per_hash": 32,
+      "numwant": 50,
+      "new_connections": false,
+      "elapsed_seconds": 12.056188030168414,
+      "client_exit": 0,
+      "client": {
+        "kind": "final",
+        "protocol": "udp",
+        "operation": "announce",
+        "elapsed_seconds": 12.000059803,
+        "configured_rps": 1000,
+        "attempted": 11999,
+        "completed": 11999,
+        "protocol_success": 11999,
+        "protocol_success_rate": 1.0,
+        "http_announce_attempts": 0,
+        "http_scrape_attempts": 0,
+        "udp_announce_packets_sent": 11999,
+        "udp_scrape_packets_sent": 0,
+        "udp_connect_packets_sent": 256,
+        "udp_connect_responses_ok": 256,
+        "udp_stale_datagrams": 0,
+        "udp_unmatched_limit": 0,
+        "tracker_business_error": 0,
+        "http_error": 0,
+        "timeout": 0,
+        "transport_error": 0,
+        "invalid_protocol_reply": 0,
+        "non_public_peer_responses": 0,
+        "allow_private_test": true,
+        "http_resolve_override": false,
+        "http_statuses": {},
+        "actual_attempted_rps": 999.911683523466,
+        "actual_success_rps": 999.911683523466,
+        "generator_cpu_cores": 0.07213217985660401,
+        "latency_p50_ms_upper_bound": 1,
+        "latency_p95_ms_upper_bound": 1,
+        "latency_p99_ms_upper_bound": 1,
+        "success_latency_p50_ms_upper_bound": 1,
+        "success_latency_p95_ms_upper_bound": 1,
+        "success_latency_p99_ms_upper_bound": 1,
+        "histogram_note": "1 ms buckets; 60000 denotes >= 60 s, not a finite upper bound",
+        "tx_application_bytes": 1179998,
+        "rx_application_bytes": 1359890,
+        "tx_application_mbps": 0.7866614129406269,
+        "rx_application_mbps": 0.9065888152724234,
+        "remaining_application_budget_bytes": 265895568,
+        "accounting_note": "HTTP request target and response body plus UDP payloads only; excludes HTTP headers, TLS, IP/TCP, retransmissions and buffered unread bytes; monitor host NIC separately",
+        "budget_exhausted": false,
+        "possible_generator_or_target_saturation": false
+      },
+      "server_cpu_cores": 0.05225532302777128,
+      "host_cpu_busy_pct": 9.715740347899873,
+      "server_final_rss_bytes": 7352320,
+      "server_final_engine": {
+        "announces": 12013,
+        "estimated_bytes": 6383488,
+        "expired": 0,
+        "peers": 11999,
+        "rejected_busy": 0,
+        "rejected_memory": 0,
+        "rejected_peers": 0,
+        "rejected_swarm_peers": 0,
+        "rejected_swarms": 0,
+        "scrapes": 24,
+        "stopped": 6,
+        "swarms": 375
+      },
+      "request_delta": {
+        "accepted_announces": 11999,
+        "accepted_ipv4": 11999,
+        "accepted_ipv6": 0,
+        "business_failures": 0,
+        "http_announces": 0,
+        "http_busy": 0,
+        "invalid_packets": 0,
+        "rate_limited": 0,
+        "scrapes": 0,
+        "udp_announces": 11999,
+        "udp_bytes_received": 1179998,
+        "udp_bytes_sent": 1359890,
+        "udp_connects": 256,
+        "udp_send_errors": 0,
+        "udp_v4_packets": 12255,
+        "udp_v6_packets": 0
+      },
+      "kernel_udp_delta": {
+        "InDatagrams": 24510,
+        "NoPorts": 0,
+        "InErrors": 0,
+        "OutDatagrams": 24510,
+        "RcvbufErrors": 0,
+        "SndbufErrors": 0,
+        "InCsumErrors": 0,
+        "IgnoredMulti": 0,
+        "MemErrors": 0
+      },
+      "diagnostics": null,
+      "wirecheck": [
+        {
+          "family": "ipv4",
+          "exit_code": 0,
+          "results": [
+            {
+              "stage": "offline_parser",
+              "ok": true
+            },
+            {
+              "stage": "empty_scrape",
+              "ok": true
+            },
+            {
+              "stage": "udp_connect",
+              "ok": true
+            },
+            {
+              "stage": "udp_short_and_forged",
+              "ok": true
+            },
+            {
+              "stage": "udp_scrape_lengths",
+              "ok": true
+            },
+            {
+              "stage": "http_failure_and_lengths",
+              "ok": true
+            },
+            {
+              "stage": "http_scrape_lengths",
+              "ok": true
+            },
+            {
+              "stage": "binary_query_numwant_zero",
+              "ok": true
+            },
+            {
+              "stage": "udp_discovers_http",
+              "ok": true
+            },
+            {
+              "stage": "http_discovers_udp",
+              "ok": true
+            },
+            {
+              "stage": "scrape_no_mutation",
+              "ok": true
+            },
+            {
+              "stage": "stopped_two_to_one",
+              "ok": true
+            },
+            {
+              "stage": "stopped_one_to_zero",
+              "ok": true
+            },
+            {
+              "stage": "unrelated_hash_empty",
+              "ok": true
+            },
+            {
+              "stage": "cleanup",
+              "ok": true
+            },
+            {
+              "stage": "final",
+              "ok": true,
+              "application_bytes": 21032,
+              "elapsed_ms": 946
+            }
+          ]
+        },
+        {
+          "family": "ipv6",
+          "exit_code": 0,
+          "results": [
+            {
+              "stage": "offline_parser",
+              "ok": true
+            },
+            {
+              "stage": "empty_scrape",
+              "ok": true
+            },
+            {
+              "stage": "udp_connect",
+              "ok": true
+            },
+            {
+              "stage": "udp_short_and_forged",
+              "ok": true
+            },
+            {
+              "stage": "udp_scrape_lengths",
+              "ok": true
+            },
+            {
+              "stage": "http_failure_and_lengths",
+              "ok": true
+            },
+            {
+              "stage": "http_scrape_lengths",
+              "ok": true
+            },
+            {
+              "stage": "binary_query_numwant_zero",
+              "ok": true
+            },
+            {
+              "stage": "udp_discovers_http",
+              "ok": true
+            },
+            {
+              "stage": "http_discovers_udp",
+              "ok": true
+            },
+            {
+              "stage": "scrape_no_mutation",
+              "ok": true
+            },
+            {
+              "stage": "stopped_two_to_one",
+              "ok": true
+            },
+            {
+              "stage": "stopped_one_to_zero",
+              "ok": true
+            },
+            {
+              "stage": "unrelated_hash_empty",
+              "ok": true
+            },
+            {
+              "stage": "cleanup",
+              "ok": true
+            },
+            {
+              "stage": "final",
+              "ok": true,
+              "application_bytes": 21068,
+              "elapsed_ms": 944
+            }
+          ]
+        }
+      ],
+      "handler_count_delta": 12255,
+      "handler_mean_us": 13.838514891880864
+    },
+    {
+      "case": "udp_1000",
+      "version": "candidate",
+      "configured_rate": 1000,
+      "configured_seconds": 12,
+      "concurrency": 256,
+      "hashes": 1000,
+      "peers_per_hash": 32,
+      "numwant": 50,
+      "new_connections": false,
+      "elapsed_seconds": 12.062132121995091,
+      "client_exit": 0,
+      "client": {
+        "kind": "final",
+        "protocol": "udp",
+        "operation": "announce",
+        "elapsed_seconds": 12.000040961,
+        "configured_rps": 1000,
+        "attempted": 11999,
+        "completed": 11999,
+        "protocol_success": 11999,
+        "protocol_success_rate": 1.0,
+        "http_announce_attempts": 0,
+        "http_scrape_attempts": 0,
+        "udp_announce_packets_sent": 11999,
+        "udp_scrape_packets_sent": 0,
+        "udp_connect_packets_sent": 256,
+        "udp_connect_responses_ok": 256,
+        "udp_stale_datagrams": 0,
+        "udp_unmatched_limit": 0,
+        "tracker_business_error": 0,
+        "http_error": 0,
+        "timeout": 0,
+        "transport_error": 0,
+        "invalid_protocol_reply": 0,
+        "non_public_peer_responses": 0,
+        "allow_private_test": true,
+        "http_resolve_override": false,
+        "http_statuses": {},
+        "actual_attempted_rps": 999.9132535461018,
+        "actual_success_rps": 999.9132535461018,
+        "generator_cpu_cores": 0.06584267858483688,
+        "latency_p50_ms_upper_bound": 1,
+        "latency_p95_ms_upper_bound": 1,
+        "latency_p99_ms_upper_bound": 1,
+        "success_latency_p50_ms_upper_bound": 1,
+        "success_latency_p95_ms_upper_bound": 1,
+        "success_latency_p99_ms_upper_bound": 1,
+        "histogram_note": "1 ms buckets; 60000 denotes >= 60 s, not a finite upper bound",
+        "tx_application_bytes": 1179998,
+        "rx_application_bytes": 1359890,
+        "tx_application_mbps": 0.7866626481259392,
+        "rx_application_mbps": 0.9065902387631025,
+        "remaining_application_budget_bytes": 265895568,
+        "accounting_note": "HTTP request target and response body plus UDP payloads only; excludes HTTP headers, TLS, IP/TCP, retransmissions and buffered unread bytes; monitor host NIC separately",
+        "budget_exhausted": false,
+        "possible_generator_or_target_saturation": false
+      },
+      "server_cpu_cores": 0.047255327187190624,
+      "host_cpu_busy_pct": 8.798646362098138,
+      "server_final_rss_bytes": 7389184,
+      "server_final_engine": {
+        "announces": 12013,
+        "estimated_bytes": 6383488,
+        "expired": 0,
+        "peers": 11999,
+        "rejected_busy": 0,
+        "rejected_memory": 0,
+        "rejected_peers": 0,
+        "rejected_swarm_peers": 0,
+        "rejected_swarms": 0,
+        "scrapes": 24,
+        "stopped": 6,
+        "swarms": 375
+      },
+      "request_delta": {
+        "accepted_announces": 11999,
+        "accepted_ipv4": 11999,
+        "accepted_ipv6": 0,
+        "business_failures": 0,
+        "http_announces": 0,
+        "http_busy": 0,
+        "invalid_packets": 0,
+        "rate_limited": 0,
+        "scrapes": 0,
+        "udp_announces": 11999,
+        "udp_bytes_received": 1179998,
+        "udp_bytes_sent": 1359890,
+        "udp_connects": 256,
+        "udp_send_errors": 0,
+        "udp_v4_packets": 12255,
+        "udp_v6_packets": 0
+      },
+      "kernel_udp_delta": {
+        "InDatagrams": 24510,
+        "NoPorts": 0,
+        "InErrors": 0,
+        "OutDatagrams": 24510,
+        "RcvbufErrors": 0,
+        "SndbufErrors": 0,
+        "InCsumErrors": 0,
+        "IgnoredMulti": 0,
+        "MemErrors": 0
+      },
+      "diagnostics": {
+        "engine_errors": {
+          "busy": 0,
+          "invalid_address": 0,
+          "invalid_port": 0,
+          "memory_budget": 0,
+          "peer_capacity": 0,
+          "swarm_capacity": 0,
+          "swarm_peer_capacity": 0
+        },
+        "http_invalid_queries": 8,
+        "udp_cookie_auth_rejections": 2,
+        "udp_cookie_window_rejections": 0,
+        "udp_malformed_packets": 10
+      },
+      "wirecheck": [
+        {
+          "family": "ipv4",
+          "exit_code": 0,
+          "results": [
+            {
+              "stage": "offline_parser",
+              "ok": true
+            },
+            {
+              "stage": "empty_scrape",
+              "ok": true
+            },
+            {
+              "stage": "udp_connect",
+              "ok": true
+            },
+            {
+              "stage": "udp_short_and_forged",
+              "ok": true
+            },
+            {
+              "stage": "udp_scrape_lengths",
+              "ok": true
+            },
+            {
+              "stage": "http_failure_and_lengths",
+              "ok": true
+            },
+            {
+              "stage": "http_scrape_lengths",
+              "ok": true
+            },
+            {
+              "stage": "binary_query_numwant_zero",
+              "ok": true
+            },
+            {
+              "stage": "udp_discovers_http",
+              "ok": true
+            },
+            {
+              "stage": "http_discovers_udp",
+              "ok": true
+            },
+            {
+              "stage": "scrape_no_mutation",
+              "ok": true
+            },
+            {
+              "stage": "stopped_two_to_one",
+              "ok": true
+            },
+            {
+              "stage": "stopped_one_to_zero",
+              "ok": true
+            },
+            {
+              "stage": "unrelated_hash_empty",
+              "ok": true
+            },
+            {
+              "stage": "cleanup",
+              "ok": true
+            },
+            {
+              "stage": "final",
+              "ok": true,
+              "application_bytes": 21032,
+              "elapsed_ms": 944
+            }
+          ]
+        },
+        {
+          "family": "ipv6",
+          "exit_code": 0,
+          "results": [
+            {
+              "stage": "offline_parser",
+              "ok": true
+            },
+            {
+              "stage": "empty_scrape",
+              "ok": true
+            },
+            {
+              "stage": "udp_connect",
+              "ok": true
+            },
+            {
+              "stage": "udp_short_and_forged",
+              "ok": true
+            },
+            {
+              "stage": "udp_scrape_lengths",
+              "ok": true
+            },
+            {
+              "stage": "http_failure_and_lengths",
+              "ok": true
+            },
+            {
+              "stage": "http_scrape_lengths",
+              "ok": true
+            },
+            {
+              "stage": "binary_query_numwant_zero",
+              "ok": true
+            },
+            {
+              "stage": "udp_discovers_http",
+              "ok": true
+            },
+            {
+              "stage": "http_discovers_udp",
+              "ok": true
+            },
+            {
+              "stage": "scrape_no_mutation",
+              "ok": true
+            },
+            {
+              "stage": "stopped_two_to_one",
+              "ok": true
+            },
+            {
+              "stage": "stopped_one_to_zero",
+              "ok": true
+            },
+            {
+              "stage": "unrelated_hash_empty",
+              "ok": true
+            },
+            {
+              "stage": "cleanup",
+              "ok": true
+            },
+            {
+              "stage": "final",
+              "ok": true,
+              "application_bytes": 21068,
+              "elapsed_ms": 945
+            }
+          ]
+        }
+      ],
+      "handler_count_delta": 12255,
+      "handler_mean_us": 11.178131374949
+    },
+    {
+      "case": "udp_6000",
+      "version": "candidate",
+      "configured_rate": 6000,
+      "configured_seconds": 12,
+      "concurrency": 256,
+      "hashes": 1000,
+      "peers_per_hash": 32,
+      "numwant": 50,
+      "new_connections": false,
+      "elapsed_seconds": 12.057778583839536,
+      "client_exit": 0,
+      "client": {
+        "kind": "final",
+        "protocol": "udp",
+        "operation": "announce",
+        "elapsed_seconds": 12.001254076,
+        "configured_rps": 6000,
+        "attempted": 71995,
+        "completed": 71995,
+        "protocol_success": 71995,
+        "protocol_success_rate": 1.0,
+        "http_announce_attempts": 0,
+        "http_scrape_attempts": 0,
+        "udp_announce_packets_sent": 71995,
+        "udp_scrape_packets_sent": 0,
+        "udp_connect_packets_sent": 256,
+        "udp_connect_responses_ok": 256,
+        "udp_stale_datagrams": 0,
+        "udp_unmatched_limit": 0,
+        "tracker_business_error": 0,
+        "http_error": 0,
+        "timeout": 0,
+        "transport_error": 0,
+        "invalid_protocol_reply": 0,
+        "non_public_peer_responses": 0,
+        "allow_private_test": true,
+        "http_resolve_override": false,
+        "http_statuses": {},
+        "actual_attempted_rps": 5998.956404395683,
+        "actual_success_rps": 5998.956404395683,
+        "generator_cpu_cores": 0.23904478730577622,
+        "latency_p50_ms_upper_bound": 1,
+        "latency_p95_ms_upper_bound": 1,
+        "latency_p99_ms_upper_bound": 1,
+        "success_latency_p50_ms_upper_bound": 1,
+        "success_latency_p95_ms_upper_bound": 1,
+        "success_latency_p99_ms_upper_bound": 1,
+        "histogram_note": "1 ms buckets; 60000 denotes >= 60 s, not a finite upper bound",
+        "tx_application_bytes": 7059606,
+        "rx_application_bytes": 11859066,
+        "tx_application_mbps": 4.705912202370741,
+        "rx_application_mbps": 7.905217854667807,
+        "remaining_application_budget_bytes": 249516784,
+        "accounting_note": "HTTP request target and response body plus UDP payloads only; excludes HTTP headers, TLS, IP/TCP, retransmissions and buffered unread bytes; monitor host NIC separately",
+        "budget_exhausted": false,
+        "possible_generator_or_target_saturation": false
+      },
+      "server_cpu_cores": 0.15176924897697672,
+      "host_cpu_busy_pct": 22.32758620689655,
+      "server_final_rss_bytes": 13262848,
+      "server_final_engine": {
+        "announces": 71995,
+        "estimated_bytes": 17024000,
+        "expired": 0,
+        "peers": 32000,
+        "rejected_busy": 0,
+        "rejected_memory": 0,
+        "rejected_peers": 0,
+        "rejected_swarm_peers": 0,
+        "rejected_swarms": 0,
+        "scrapes": 0,
+        "stopped": 0,
+        "swarms": 1000
+      },
+      "request_delta": {
+        "accepted_announces": 71995,
+        "accepted_ipv4": 71995,
+        "accepted_ipv6": 0,
+        "business_failures": 0,
+        "http_announces": 0,
+        "http_busy": 0,
+        "invalid_packets": 0,
+        "rate_limited": 0,
+        "scrapes": 0,
+        "udp_announces": 71995,
+        "udp_bytes_received": 7059606,
+        "udp_bytes_sent": 11859066,
+        "udp_connects": 256,
+        "udp_send_errors": 0,
+        "udp_v4_packets": 72251,
+        "udp_v6_packets": 0
+      },
+      "kernel_udp_delta": {
+        "InDatagrams": 144502,
+        "NoPorts": 0,
+        "InErrors": 0,
+        "OutDatagrams": 144502,
+        "RcvbufErrors": 0,
+        "SndbufErrors": 0,
+        "InCsumErrors": 0,
+        "IgnoredMulti": 0,
+        "MemErrors": 0
+      },
+      "diagnostics": {
+        "engine_errors": {
+          "busy": 0,
+          "invalid_address": 0,
+          "invalid_port": 0,
+          "memory_budget": 0,
+          "peer_capacity": 0,
+          "swarm_capacity": 0,
+          "swarm_peer_capacity": 0
+        },
+        "http_invalid_queries": 0,
+        "udp_cookie_auth_rejections": 0,
+        "udp_cookie_window_rejections": 0,
+        "udp_malformed_packets": 0
+      },
+      "wirecheck": [],
+      "handler_count_delta": 72251,
+      "handler_mean_us": 8.369932596088635
+    },
+    {
+      "case": "udp_6000",
+      "version": "baseline",
+      "configured_rate": 6000,
+      "configured_seconds": 12,
+      "concurrency": 256,
+      "hashes": 1000,
+      "peers_per_hash": 32,
+      "numwant": 50,
+      "new_connections": false,
+      "elapsed_seconds": 12.075699293985963,
+      "client_exit": 0,
+      "client": {
+        "kind": "final",
+        "protocol": "udp",
+        "operation": "announce",
+        "elapsed_seconds": 12.001211008,
+        "configured_rps": 6000,
+        "attempted": 71993,
+        "completed": 71993,
+        "protocol_success": 71993,
+        "protocol_success_rate": 1.0,
+        "http_announce_attempts": 0,
+        "http_scrape_attempts": 0,
+        "udp_announce_packets_sent": 71993,
+        "udp_scrape_packets_sent": 0,
+        "udp_connect_packets_sent": 256,
+        "udp_connect_responses_ok": 256,
+        "udp_stale_datagrams": 0,
+        "udp_unmatched_limit": 0,
+        "tracker_business_error": 0,
+        "http_error": 0,
+        "timeout": 0,
+        "transport_error": 0,
+        "invalid_protocol_reply": 0,
+        "non_public_peer_responses": 0,
+        "allow_private_test": true,
+        "http_resolve_override": false,
+        "http_statuses": {},
+        "actual_attempted_rps": 5998.811282628853,
+        "actual_success_rps": 5998.811282628853,
+        "generator_cpu_cores": 0.2239206214446721,
+        "latency_p50_ms_upper_bound": 1,
+        "latency_p95_ms_upper_bound": 1,
+        "latency_p99_ms_upper_bound": 1,
+        "success_latency_p50_ms_upper_bound": 1,
+        "success_latency_p95_ms_upper_bound": 1,
+        "success_latency_p99_ms_upper_bound": 1,
+        "histogram_note": "1 ms buckets; 60000 denotes >= 60 s, not a finite upper bound",
+        "tx_application_bytes": 7059410,
+        "rx_application_bytes": 11858654,
+        "tx_application_mbps": 4.705798436703897,
+        "rx_application_mbps": 7.904971584680932,
+        "remaining_application_budget_bytes": 249517392,
+        "accounting_note": "HTTP request target and response body plus UDP payloads only; excludes HTTP headers, TLS, IP/TCP, retransmissions and buffered unread bytes; monitor host NIC separately",
+        "budget_exhausted": false,
+        "possible_generator_or_target_saturation": false
+      },
+      "server_cpu_cores": 0.14657536237934557,
+      "host_cpu_busy_pct": 26.504065040650406,
+      "server_final_rss_bytes": 13455360,
+      "server_final_engine": {
+        "announces": 71993,
+        "estimated_bytes": 17024000,
+        "expired": 0,
+        "peers": 32000,
+        "rejected_busy": 0,
+        "rejected_memory": 0,
+        "rejected_peers": 0,
+        "rejected_swarm_peers": 0,
+        "rejected_swarms": 0,
+        "scrapes": 0,
+        "stopped": 0,
+        "swarms": 1000
+      },
+      "request_delta": {
+        "accepted_announces": 71993,
+        "accepted_ipv4": 71993,
+        "accepted_ipv6": 0,
+        "business_failures": 0,
+        "http_announces": 0,
+        "http_busy": 0,
+        "invalid_packets": 0,
+        "rate_limited": 0,
+        "scrapes": 0,
+        "udp_announces": 71993,
+        "udp_bytes_received": 7059410,
+        "udp_bytes_sent": 11858654,
+        "udp_connects": 256,
+        "udp_send_errors": 0,
+        "udp_v4_packets": 72249,
+        "udp_v6_packets": 0
+      },
+      "kernel_udp_delta": {
+        "InDatagrams": 144498,
+        "NoPorts": 0,
+        "InErrors": 0,
+        "OutDatagrams": 144498,
+        "RcvbufErrors": 0,
+        "SndbufErrors": 0,
+        "InCsumErrors": 0,
+        "IgnoredMulti": 0,
+        "MemErrors": 0
+      },
+      "diagnostics": null,
+      "wirecheck": [],
+      "handler_count_delta": 72249,
+      "handler_mean_us": 9.032789381167905
+    },
+    {
+      "case": "udp_12000",
+      "version": "baseline",
+      "configured_rate": 12000,
+      "configured_seconds": 15,
+      "concurrency": 256,
+      "hashes": 1000,
+      "peers_per_hash": 32,
+      "numwant": 50,
+      "new_connections": false,
+      "elapsed_seconds": 15.055163076147437,
+      "client_exit": 0,
+      "client": {
+        "kind": "final",
+        "protocol": "udp",
+        "operation": "announce",
+        "elapsed_seconds": 15.001712525,
+        "configured_rps": 12000,
+        "attempted": 179972,
+        "completed": 179972,
+        "protocol_success": 179972,
+        "protocol_success_rate": 1.0,
+        "http_announce_attempts": 0,
+        "http_scrape_attempts": 0,
+        "udp_announce_packets_sent": 179972,
+        "udp_scrape_packets_sent": 0,
+        "udp_connect_packets_sent": 256,
+        "udp_connect_responses_ok": 256,
+        "udp_stale_datagrams": 0,
+        "udp_unmatched_limit": 0,
+        "tracker_business_error": 0,
+        "http_error": 0,
+        "timeout": 0,
+        "transport_error": 0,
+        "invalid_protocol_reply": 0,
+        "non_public_peer_responses": 0,
+        "allow_private_test": true,
+        "http_resolve_override": false,
+        "http_statuses": {},
+        "actual_attempted_rps": 11996.763682818271,
+        "actual_success_rps": 11996.763682818271,
+        "generator_cpu_cores": 0.38952465448607176,
+        "latency_p50_ms_upper_bound": 1,
+        "latency_p95_ms_upper_bound": 2,
+        "latency_p99_ms_upper_bound": 6,
+        "success_latency_p50_ms_upper_bound": 1,
+        "success_latency_p95_ms_upper_bound": 2,
+        "success_latency_p99_ms_upper_bound": 6,
+        "histogram_note": "1 ms buckets; 60000 denotes >= 60 s, not a finite upper bound",
+        "tx_application_bytes": 17641352,
+        "rx_application_bytes": 34102328,
+        "tx_application_mbps": 9.407647011286798,
+        "rx_application_mbps": 18.1858320205346,
+        "remaining_application_budget_bytes": 216691776,
+        "accounting_note": "HTTP request target and response body plus UDP payloads only; excludes HTTP headers, TLS, IP/TCP, retransmissions and buffered unread bytes; monitor host NIC separately",
+        "budget_exhausted": false,
+        "possible_generator_or_target_saturation": false
+      },
+      "server_cpu_cores": 0.27830983821347,
+      "host_cpu_busy_pct": 35.18452167681834,
+      "server_final_rss_bytes": 13385728,
+      "server_final_engine": {
+        "announces": 179972,
+        "estimated_bytes": 17024000,
+        "expired": 0,
+        "peers": 32000,
+        "rejected_busy": 0,
+        "rejected_memory": 0,
+        "rejected_peers": 0,
+        "rejected_swarm_peers": 0,
+        "rejected_swarms": 0,
+        "scrapes": 0,
+        "stopped": 0,
+        "swarms": 1000
+      },
+      "request_delta": {
+        "accepted_announces": 179972,
+        "accepted_ipv4": 179972,
+        "accepted_ipv6": 0,
+        "business_failures": 0,
+        "http_announces": 0,
+        "http_busy": 0,
+        "invalid_packets": 0,
+        "rate_limited": 0,
+        "scrapes": 0,
+        "udp_announces": 179972,
+        "udp_bytes_received": 17641352,
+        "udp_bytes_sent": 34102328,
+        "udp_connects": 256,
+        "udp_send_errors": 0,
+        "udp_v4_packets": 180228,
+        "udp_v6_packets": 0
+      },
+      "kernel_udp_delta": {
+        "InDatagrams": 360456,
+        "NoPorts": 0,
+        "InErrors": 0,
+        "OutDatagrams": 360456,
+        "RcvbufErrors": 0,
+        "SndbufErrors": 0,
+        "InCsumErrors": 0,
+        "IgnoredMulti": 0,
+        "MemErrors": 0
+      },
+      "diagnostics": null,
+      "wirecheck": [],
+      "handler_count_delta": 180228,
+      "handler_mean_us": 8.541208913154449
+    },
+    {
+      "case": "udp_12000",
+      "version": "candidate",
+      "configured_rate": 12000,
+      "configured_seconds": 15,
+      "concurrency": 256,
+      "hashes": 1000,
+      "peers_per_hash": 32,
+      "numwant": 50,
+      "new_connections": false,
+      "elapsed_seconds": 15.058244498446584,
+      "client_exit": 0,
+      "client": {
+        "kind": "final",
+        "protocol": "udp",
+        "operation": "announce",
+        "elapsed_seconds": 15.001617651,
+        "configured_rps": 12000,
+        "attempted": 179985,
+        "completed": 179985,
+        "protocol_success": 179985,
+        "protocol_success_rate": 1.0,
+        "http_announce_attempts": 0,
+        "http_scrape_attempts": 0,
+        "udp_announce_packets_sent": 179985,
+        "udp_scrape_packets_sent": 0,
+        "udp_connect_packets_sent": 256,
+        "udp_connect_responses_ok": 256,
+        "udp_stale_datagrams": 0,
+        "udp_unmatched_limit": 0,
+        "tracker_business_error": 0,
+        "http_error": 0,
+        "timeout": 0,
+        "transport_error": 0,
+        "invalid_protocol_reply": 0,
+        "non_public_peer_responses": 0,
+        "allow_private_test": true,
+        "http_resolve_override": false,
+        "http_statuses": {},
+        "actual_attempted_rps": 11997.706126579109,
+        "actual_success_rps": 11997.706126579109,
+        "generator_cpu_cores": 0.3803071733147187,
+        "latency_p50_ms_upper_bound": 1,
+        "latency_p95_ms_upper_bound": 3,
+        "latency_p99_ms_upper_bound": 7,
+        "success_latency_p50_ms_upper_bound": 1,
+        "success_latency_p95_ms_upper_bound": 3,
+        "success_latency_p99_ms_upper_bound": 7,
+        "histogram_note": "1 ms buckets; 60000 denotes >= 60 s, not a finite upper bound",
+        "tx_application_bytes": 17642626,
+        "rx_application_bytes": 34105006,
+        "tx_application_mbps": 9.408385901009256,
+        "rx_application_mbps": 18.187375144960626,
+        "remaining_application_budget_bytes": 216687824,
+        "accounting_note": "HTTP request target and response body plus UDP payloads only; excludes HTTP headers, TLS, IP/TCP, retransmissions and buffered unread bytes; monitor host NIC separately",
+        "budget_exhausted": false,
+        "possible_generator_or_target_saturation": false
+      },
+      "server_cpu_cores": 0.2716120063279572,
+      "host_cpu_busy_pct": 38.05096418732782,
+      "server_final_rss_bytes": 13209600,
+      "server_final_engine": {
+        "announces": 179985,
+        "estimated_bytes": 17024000,
+        "expired": 0,
+        "peers": 32000,
+        "rejected_busy": 0,
+        "rejected_memory": 0,
+        "rejected_peers": 0,
+        "rejected_swarm_peers": 0,
+        "rejected_swarms": 0,
+        "scrapes": 0,
+        "stopped": 0,
+        "swarms": 1000
+      },
+      "request_delta": {
+        "accepted_announces": 179985,
+        "accepted_ipv4": 179985,
+        "accepted_ipv6": 0,
+        "business_failures": 0,
+        "http_announces": 0,
+        "http_busy": 0,
+        "invalid_packets": 0,
+        "rate_limited": 0,
+        "scrapes": 0,
+        "udp_announces": 179985,
+        "udp_bytes_received": 17642626,
+        "udp_bytes_sent": 34105006,
+        "udp_connects": 256,
+        "udp_send_errors": 0,
+        "udp_v4_packets": 180241,
+        "udp_v6_packets": 0
+      },
+      "kernel_udp_delta": {
+        "InDatagrams": 360482,
+        "NoPorts": 0,
+        "InErrors": 0,
+        "OutDatagrams": 360482,
+        "RcvbufErrors": 0,
+        "SndbufErrors": 0,
+        "InCsumErrors": 0,
+        "IgnoredMulti": 0,
+        "MemErrors": 0
+      },
+      "diagnostics": {
+        "engine_errors": {
+          "busy": 0,
+          "invalid_address": 0,
+          "invalid_port": 0,
+          "memory_budget": 0,
+          "peer_capacity": 0,
+          "swarm_capacity": 0,
+          "swarm_peer_capacity": 0
+        },
+        "http_invalid_queries": 0,
+        "udp_cookie_auth_rejections": 0,
+        "udp_cookie_window_rejections": 0,
+        "udp_malformed_packets": 0
+      },
+      "wirecheck": [],
+      "handler_count_delta": 180241,
+      "handler_mean_us": 7.535743809677044
+    },
+    {
+      "case": "http_keep_6000",
+      "version": "candidate",
+      "configured_rate": 6000,
+      "configured_seconds": 12,
+      "concurrency": 256,
+      "hashes": 1000,
+      "peers_per_hash": 32,
+      "numwant": 50,
+      "new_connections": false,
+      "elapsed_seconds": 12.023466516286135,
+      "client_exit": 0,
+      "client": {
+        "kind": "final",
+        "protocol": "http",
+        "operation": "announce",
+        "elapsed_seconds": 12.001565892,
+        "configured_rps": 6000,
+        "attempted": 71897,
+        "completed": 71897,
+        "protocol_success": 71897,
+        "protocol_success_rate": 1.0,
+        "http_announce_attempts": 71897,
+        "http_scrape_attempts": 0,
+        "udp_announce_packets_sent": 0,
+        "udp_scrape_packets_sent": 0,
+        "udp_connect_packets_sent": 0,
+        "udp_connect_responses_ok": 0,
+        "udp_stale_datagrams": 0,
+        "udp_unmatched_limit": 0,
+        "tracker_business_error": 0,
+        "http_error": 0,
+        "timeout": 0,
+        "transport_error": 0,
+        "invalid_protocol_reply": 0,
+        "non_public_peer_responses": 0,
+        "allow_private_test": true,
+        "http_resolve_override": false,
+        "http_statuses": {
+          "200": 71897
+        },
+        "actual_attempted_rps": 5990.634942722356,
+        "actual_success_rps": 5990.634942722356,
+        "generator_cpu_cores": 0.5161137367190485,
+        "latency_p50_ms_upper_bound": 1,
+        "latency_p95_ms_upper_bound": 2,
+        "latency_p99_ms_upper_bound": 4,
+        "success_latency_p50_ms_upper_bound": 1,
+        "success_latency_p95_ms_upper_bound": 2,
+        "success_latency_p99_ms_upper_bound": 4,
+        "histogram_note": "1 ms buckets; 60000 denotes >= 60 s, not a finite upper bound",
+        "tx_application_bytes": 16170973,
+        "rx_application_bytes": 16048705,
+        "tx_application_mbps": 10.779242072589371,
+        "rx_application_mbps": 10.697740707783968,
+        "remaining_application_budget_bytes": 236215778,
+        "accounting_note": "HTTP request target and response body plus UDP payloads only; excludes HTTP headers, TLS, IP/TCP, retransmissions and buffered unread bytes; monitor host NIC separately",
+        "budget_exhausted": false,
+        "possible_generator_or_target_saturation": false
+      },
+      "server_cpu_cores": 0.36428761988625846,
+      "host_cpu_busy_pct": 47.72049424797614,
+      "server_final_rss_bytes": 17235968,
+      "server_final_engine": {
+        "announces": 71897,
+        "estimated_bytes": 17024000,
+        "expired": 0,
+        "peers": 32000,
+        "rejected_busy": 0,
+        "rejected_memory": 0,
+        "rejected_peers": 0,
+        "rejected_swarm_peers": 0,
+        "rejected_swarms": 0,
+        "scrapes": 0,
+        "stopped": 0,
+        "swarms": 1000
+      },
+      "request_delta": {
+        "accepted_announces": 71897,
+        "accepted_ipv4": 71897,
+        "accepted_ipv6": 0,
+        "business_failures": 0,
+        "http_announces": 71897,
+        "http_busy": 0,
+        "invalid_packets": 0,
+        "rate_limited": 0,
+        "scrapes": 0,
+        "udp_announces": 0,
+        "udp_bytes_received": 0,
+        "udp_bytes_sent": 0,
+        "udp_connects": 0,
+        "udp_send_errors": 0,
+        "udp_v4_packets": 0,
+        "udp_v6_packets": 0
+      },
+      "kernel_udp_delta": {
+        "InDatagrams": 0,
+        "NoPorts": 0,
+        "InErrors": 0,
+        "OutDatagrams": 0,
+        "RcvbufErrors": 0,
+        "SndbufErrors": 0,
+        "InCsumErrors": 0,
+        "IgnoredMulti": 0,
+        "MemErrors": 0
+      },
+      "diagnostics": {
+        "engine_errors": {
+          "busy": 0,
+          "invalid_address": 0,
+          "invalid_port": 0,
+          "memory_budget": 0,
+          "peer_capacity": 0,
+          "swarm_capacity": 0,
+          "swarm_peer_capacity": 0
+        },
+        "http_invalid_queries": 0,
+        "udp_cookie_auth_rejections": 0,
+        "udp_cookie_window_rejections": 0,
+        "udp_malformed_packets": 0
+      },
+      "wirecheck": [],
+      "handler_count_delta": 71897,
+      "handler_mean_us": 24.674297954017554
+    },
+    {
+      "case": "http_keep_6000",
+      "version": "baseline",
+      "configured_rate": 6000,
+      "configured_seconds": 12,
+      "concurrency": 256,
+      "hashes": 1000,
+      "peers_per_hash": 32,
+      "numwant": 50,
+      "new_connections": false,
+      "elapsed_seconds": 12.024016799405217,
+      "client_exit": 0,
+      "client": {
+        "kind": "final",
+        "protocol": "http",
+        "operation": "announce",
+        "elapsed_seconds": 12.001102655,
+        "configured_rps": 6000,
+        "attempted": 71578,
+        "completed": 71578,
+        "protocol_success": 71578,
+        "protocol_success_rate": 1.0,
+        "http_announce_attempts": 71578,
+        "http_scrape_attempts": 0,
+        "udp_announce_packets_sent": 0,
+        "udp_scrape_packets_sent": 0,
+        "udp_connect_packets_sent": 0,
+        "udp_connect_responses_ok": 0,
+        "udp_stale_datagrams": 0,
+        "udp_unmatched_limit": 0,
+        "tracker_business_error": 0,
+        "http_error": 0,
+        "timeout": 0,
+        "transport_error": 0,
+        "invalid_protocol_reply": 0,
+        "non_public_peer_responses": 0,
+        "allow_private_test": true,
+        "http_resolve_override": false,
+        "http_statuses": {
+          "200": 71578
+        },
+        "actual_attempted_rps": 5964.285287583852,
+        "actual_success_rps": 5964.285287583852,
+        "generator_cpu_cores": 0.5394444989021719,
+        "latency_p50_ms_upper_bound": 1,
+        "latency_p95_ms_upper_bound": 3,
+        "latency_p99_ms_upper_bound": 20,
+        "success_latency_p50_ms_upper_bound": 1,
+        "success_latency_p95_ms_upper_bound": 3,
+        "success_latency_p99_ms_upper_bound": 20,
+        "histogram_note": "1 ms buckets; 60000 denotes >= 60 s, not a finite upper bound",
+        "tx_application_bytes": 16101212,
+        "rx_application_bytes": 15964170,
+        "tx_application_mbps": 10.733155086073214,
+        "rx_application_mbps": 10.641802146971136,
+        "remaining_application_budget_bytes": 236370074,
+        "accounting_note": "HTTP request target and response body plus UDP payloads only; excludes HTTP headers, TLS, IP/TCP, retransmissions and buffered unread bytes; monitor host NIC separately",
+        "budget_exhausted": false,
+        "possible_generator_or_target_saturation": false
+      },
+      "server_cpu_cores": 0.37757764944444994,
+      "host_cpu_busy_pct": 50.63559322033898,
+      "server_final_rss_bytes": 18481152,
+      "server_final_engine": {
+        "announces": 71578,
+        "estimated_bytes": 17024000,
+        "expired": 0,
+        "peers": 32000,
+        "rejected_busy": 0,
+        "rejected_memory": 0,
+        "rejected_peers": 0,
+        "rejected_swarm_peers": 0,
+        "rejected_swarms": 0,
+        "scrapes": 0,
+        "stopped": 0,
+        "swarms": 1000
+      },
+      "request_delta": {
+        "accepted_announces": 71578,
+        "accepted_ipv4": 71578,
+        "accepted_ipv6": 0,
+        "business_failures": 0,
+        "http_announces": 71578,
+        "http_busy": 0,
+        "invalid_packets": 0,
+        "rate_limited": 0,
+        "scrapes": 0,
+        "udp_announces": 0,
+        "udp_bytes_received": 0,
+        "udp_bytes_sent": 0,
+        "udp_connects": 0,
+        "udp_send_errors": 0,
+        "udp_v4_packets": 0,
+        "udp_v6_packets": 0
+      },
+      "kernel_udp_delta": {
+        "InDatagrams": 0,
+        "NoPorts": 0,
+        "InErrors": 0,
+        "OutDatagrams": 0,
+        "RcvbufErrors": 0,
+        "SndbufErrors": 0,
+        "InCsumErrors": 0,
+        "IgnoredMulti": 0,
+        "MemErrors": 0
+      },
+      "diagnostics": null,
+      "wirecheck": [],
+      "handler_count_delta": 71578,
+      "handler_mean_us": 27.0550169046355
+    },
+    {
+      "case": "http_new_1000",
+      "version": "baseline",
+      "configured_rate": 1000,
+      "configured_seconds": 10,
+      "concurrency": 256,
+      "hashes": 1000,
+      "peers_per_hash": 32,
+      "numwant": 50,
+      "new_connections": true,
+      "elapsed_seconds": 10.01251677237451,
+      "client_exit": 0,
+      "client": {
+        "kind": "final",
+        "protocol": "http",
+        "operation": "announce",
+        "elapsed_seconds": 10.000501497,
+        "configured_rps": 1000,
+        "attempted": 10000,
+        "completed": 10000,
+        "protocol_success": 10000,
+        "protocol_success_rate": 1.0,
+        "http_announce_attempts": 10000,
+        "http_scrape_attempts": 0,
+        "udp_announce_packets_sent": 0,
+        "udp_scrape_packets_sent": 0,
+        "udp_connect_packets_sent": 0,
+        "udp_connect_responses_ok": 0,
+        "udp_stale_datagrams": 0,
+        "udp_unmatched_limit": 0,
+        "tracker_business_error": 0,
+        "http_error": 0,
+        "timeout": 0,
+        "transport_error": 0,
+        "invalid_protocol_reply": 0,
+        "non_public_peer_responses": 0,
+        "allow_private_test": true,
+        "http_resolve_override": false,
+        "http_statuses": {
+          "200": 10000
+        },
+        "actual_attempted_rps": 999.9498528148663,
+        "actual_success_rps": 999.9498528148663,
+        "generator_cpu_cores": 0.3177468963884702,
+        "latency_p50_ms_upper_bound": 1,
+        "latency_p95_ms_upper_bound": 2,
+        "latency_p99_ms_upper_bound": 2,
+        "success_latency_p50_ms_upper_bound": 1,
+        "success_latency_p95_ms_upper_bound": 2,
+        "success_latency_p99_ms_upper_bound": 2,
+        "histogram_note": "1 ms buckets; 60000 denotes >= 60 s, not a finite upper bound",
+        "tx_application_bytes": 2326870,
+        "rx_application_bytes": 1710469,
+        "tx_application_mbps": 1.8614026512154622,
+        "rx_application_mbps": 1.3683065798355132,
+        "remaining_application_budget_bytes": 264398117,
+        "accounting_note": "HTTP request target and response body plus UDP payloads only; excludes HTTP headers, TLS, IP/TCP, retransmissions and buffered unread bytes; monitor host NIC separately",
+        "budget_exhausted": false,
+        "possible_generator_or_target_saturation": false
+      },
+      "server_cpu_cores": 0.2177274754749803,
+      "host_cpu_busy_pct": 35.81306628516929,
+      "server_final_rss_bytes": 7454720,
+      "server_final_engine": {
+        "announces": 10000,
+        "estimated_bytes": 5320320,
+        "expired": 0,
+        "peers": 10000,
+        "rejected_busy": 0,
+        "rejected_memory": 0,
+        "rejected_peers": 0,
+        "rejected_swarm_peers": 0,
+        "rejected_swarms": 0,
+        "scrapes": 0,
+        "stopped": 0,
+        "swarms": 313
+      },
+      "request_delta": {
+        "accepted_announces": 10000,
+        "accepted_ipv4": 10000,
+        "accepted_ipv6": 0,
+        "business_failures": 0,
+        "http_announces": 10000,
+        "http_busy": 0,
+        "invalid_packets": 0,
+        "rate_limited": 0,
+        "scrapes": 0,
+        "udp_announces": 0,
+        "udp_bytes_received": 0,
+        "udp_bytes_sent": 0,
+        "udp_connects": 0,
+        "udp_send_errors": 0,
+        "udp_v4_packets": 0,
+        "udp_v6_packets": 0
+      },
+      "kernel_udp_delta": {
+        "InDatagrams": 0,
+        "NoPorts": 0,
+        "InErrors": 0,
+        "OutDatagrams": 0,
+        "RcvbufErrors": 0,
+        "SndbufErrors": 0,
+        "InCsumErrors": 0,
+        "IgnoredMulti": 0,
+        "MemErrors": 0
+      },
+      "diagnostics": null,
+      "wirecheck": [],
+      "handler_count_delta": 10000,
+      "handler_mean_us": 24.9252
+    },
+    {
+      "case": "http_new_1000",
+      "version": "candidate",
+      "configured_rate": 1000,
+      "configured_seconds": 10,
+      "concurrency": 256,
+      "hashes": 1000,
+      "peers_per_hash": 32,
+      "numwant": 50,
+      "new_connections": true,
+      "elapsed_seconds": 10.008271217346191,
+      "client_exit": 0,
+      "client": {
+        "kind": "final",
+        "protocol": "http",
+        "operation": "announce",
+        "elapsed_seconds": 10.001041841,
+        "configured_rps": 1000,
+        "attempted": 9999,
+        "completed": 9999,
+        "protocol_success": 9999,
+        "protocol_success_rate": 1.0,
+        "http_announce_attempts": 9999,
+        "http_scrape_attempts": 0,
+        "udp_announce_packets_sent": 0,
+        "udp_scrape_packets_sent": 0,
+        "udp_connect_packets_sent": 0,
+        "udp_connect_responses_ok": 0,
+        "udp_stale_datagrams": 0,
+        "udp_unmatched_limit": 0,
+        "tracker_business_error": 0,
+        "http_error": 0,
+        "timeout": 0,
+        "transport_error": 0,
+        "invalid_protocol_reply": 0,
+        "non_public_peer_responses": 0,
+        "allow_private_test": true,
+        "http_resolve_override": false,
+        "http_statuses": {
+          "200": 9999
+        },
+        "actual_attempted_rps": 999.7958371705207,
+        "actual_success_rps": 999.7958371705207,
+        "generator_cpu_cores": 0.3089469596390623,
+        "latency_p50_ms_upper_bound": 1,
+        "latency_p95_ms_upper_bound": 1,
+        "latency_p99_ms_upper_bound": 2,
+        "success_latency_p50_ms_upper_bound": 1,
+        "success_latency_p95_ms_upper_bound": 1,
+        "success_latency_p99_ms_upper_bound": 2,
+        "histogram_note": "1 ms buckets; 60000 denotes >= 60 s, not a finite upper bound",
+        "tx_application_bytes": 2326637,
+        "rx_application_bytes": 1710301,
+        "tx_application_mbps": 1.8611157013356607,
+        "rx_application_mbps": 1.3680982659134544,
+        "remaining_application_budget_bytes": 264398518,
+        "accounting_note": "HTTP request target and response body plus UDP payloads only; excludes HTTP headers, TLS, IP/TCP, retransmissions and buffered unread bytes; monitor host NIC separately",
+        "budget_exhausted": false,
+        "possible_generator_or_target_saturation": false
+      },
+      "server_cpu_cores": 0.21981818360267774,
+      "host_cpu_busy_pct": 33.11752988047809,
+      "server_final_rss_bytes": 6967296,
+      "server_final_engine": {
+        "announces": 9999,
+        "estimated_bytes": 5319808,
+        "expired": 0,
+        "peers": 9999,
+        "rejected_busy": 0,
+        "rejected_memory": 0,
+        "rejected_peers": 0,
+        "rejected_swarm_peers": 0,
+        "rejected_swarms": 0,
+        "scrapes": 0,
+        "stopped": 0,
+        "swarms": 313
+      },
+      "request_delta": {
+        "accepted_announces": 9999,
+        "accepted_ipv4": 9999,
+        "accepted_ipv6": 0,
+        "business_failures": 0,
+        "http_announces": 9999,
+        "http_busy": 0,
+        "invalid_packets": 0,
+        "rate_limited": 0,
+        "scrapes": 0,
+        "udp_announces": 0,
+        "udp_bytes_received": 0,
+        "udp_bytes_sent": 0,
+        "udp_connects": 0,
+        "udp_send_errors": 0,
+        "udp_v4_packets": 0,
+        "udp_v6_packets": 0
+      },
+      "kernel_udp_delta": {
+        "InDatagrams": 0,
+        "NoPorts": 0,
+        "InErrors": 0,
+        "OutDatagrams": 0,
+        "RcvbufErrors": 0,
+        "SndbufErrors": 0,
+        "InCsumErrors": 0,
+        "IgnoredMulti": 0,
+        "MemErrors": 0
+      },
+      "diagnostics": {
+        "engine_errors": {
+          "busy": 0,
+          "invalid_address": 0,
+          "invalid_port": 0,
+          "memory_budget": 0,
+          "peer_capacity": 0,
+          "swarm_capacity": 0,
+          "swarm_peer_capacity": 0
+        },
+        "http_invalid_queries": 0,
+        "udp_cookie_auth_rejections": 0,
+        "udp_cookie_window_rejections": 0,
+        "udp_malformed_packets": 0
+      },
+      "wirecheck": [],
+      "handler_count_delta": 9999,
+      "handler_mean_us": 23.64086408640864
+    },
+    {
+      "case": "udp_12000_repeat",
+      "version": "candidate",
+      "configured_rate": 12000,
+      "configured_seconds": 15,
+      "concurrency": 256,
+      "hashes": 1000,
+      "peers_per_hash": 32,
+      "numwant": 50,
+      "new_connections": false,
+      "elapsed_seconds": 15.057231595739722,
+      "client_exit": 0,
+      "client": {
+        "kind": "final",
+        "protocol": "udp",
+        "operation": "announce",
+        "elapsed_seconds": 15.000788776,
+        "configured_rps": 12000,
+        "attempted": 179923,
+        "completed": 179923,
+        "protocol_success": 179923,
+        "protocol_success_rate": 1.0,
+        "http_announce_attempts": 0,
+        "http_scrape_attempts": 0,
+        "udp_announce_packets_sent": 179923,
+        "udp_scrape_packets_sent": 0,
+        "udp_connect_packets_sent": 256,
+        "udp_connect_responses_ok": 256,
+        "udp_stale_datagrams": 0,
+        "udp_unmatched_limit": 0,
+        "tracker_business_error": 0,
+        "http_error": 0,
+        "timeout": 0,
+        "transport_error": 0,
+        "invalid_protocol_reply": 0,
+        "non_public_peer_responses": 0,
+        "allow_private_test": true,
+        "http_resolve_override": false,
+        "http_statuses": {},
+        "actual_attempted_rps": 11994.235948969674,
+        "actual_success_rps": 11994.235948969674,
+        "generator_cpu_cores": 0.31476232593543985,
+        "latency_p50_ms_upper_bound": 1,
+        "latency_p95_ms_upper_bound": 1,
+        "latency_p99_ms_upper_bound": 2,
+        "success_latency_p50_ms_upper_bound": 1,
+        "success_latency_p95_ms_upper_bound": 1,
+        "success_latency_p99_ms_upper_bound": 2,
+        "histogram_note": "1 ms buckets; 60000 denotes >= 60 s, not a finite upper bound",
+        "tx_application_bytes": 17636550,
+        "rx_application_bytes": 34092234,
+        "tx_application_mbps": 9.405665402457767,
+        "rx_application_mbps": 18.1815687209967,
+        "remaining_application_budget_bytes": 216706672,
+        "accounting_note": "HTTP request target and response body plus UDP payloads only; excludes HTTP headers, TLS, IP/TCP, retransmissions and buffered unread bytes; monitor host NIC separately",
+        "budget_exhausted": false,
+        "possible_generator_or_target_saturation": false
+      },
+      "server_cpu_cores": 0.22912578438231232,
+      "host_cpu_busy_pct": 36.248785228377066,
+      "server_final_rss_bytes": 13697024,
+      "server_final_engine": {
+        "announces": 179923,
+        "estimated_bytes": 17024000,
+        "expired": 0,
+        "peers": 32000,
+        "rejected_busy": 0,
+        "rejected_memory": 0,
+        "rejected_peers": 0,
+        "rejected_swarm_peers": 0,
+        "rejected_swarms": 0,
+        "scrapes": 0,
+        "stopped": 0,
+        "swarms": 1000
+      },
+      "request_delta": {
+        "accepted_announces": 179923,
+        "accepted_ipv4": 179923,
+        "accepted_ipv6": 0,
+        "business_failures": 0,
+        "http_announces": 0,
+        "http_busy": 0,
+        "invalid_packets": 0,
+        "rate_limited": 0,
+        "scrapes": 0,
+        "udp_announces": 179923,
+        "udp_bytes_received": 17636550,
+        "udp_bytes_sent": 34092234,
+        "udp_connects": 256,
+        "udp_send_errors": 0,
+        "udp_v4_packets": 180179,
+        "udp_v6_packets": 0
+      },
+      "kernel_udp_delta": {
+        "InDatagrams": 360358,
+        "NoPorts": 0,
+        "InErrors": 0,
+        "OutDatagrams": 360358,
+        "RcvbufErrors": 0,
+        "SndbufErrors": 0,
+        "InCsumErrors": 0,
+        "IgnoredMulti": 0,
+        "MemErrors": 0
+      },
+      "diagnostics": {
+        "engine_errors": {
+          "busy": 0,
+          "invalid_address": 0,
+          "invalid_port": 0,
+          "memory_budget": 0,
+          "peer_capacity": 0,
+          "swarm_capacity": 0,
+          "swarm_peer_capacity": 0
+        },
+        "http_invalid_queries": 0,
+        "udp_cookie_auth_rejections": 0,
+        "udp_cookie_window_rejections": 0,
+        "udp_malformed_packets": 0
+      },
+      "wirecheck": [],
+      "handler_count_delta": 180179,
+      "handler_mean_us": 6.539363632831795
+    },
+    {
+      "case": "udp_12000_repeat",
+      "version": "baseline",
+      "configured_rate": 12000,
+      "configured_seconds": 15,
+      "concurrency": 256,
+      "hashes": 1000,
+      "peers_per_hash": 32,
+      "numwant": 50,
+      "new_connections": false,
+      "elapsed_seconds": 15.06193982809782,
+      "client_exit": 0,
+      "client": {
+        "kind": "final",
+        "protocol": "udp",
+        "operation": "announce",
+        "elapsed_seconds": 15.001404675,
+        "configured_rps": 12000,
+        "attempted": 179918,
+        "completed": 179918,
+        "protocol_success": 179918,
+        "protocol_success_rate": 1.0,
+        "http_announce_attempts": 0,
+        "http_scrape_attempts": 0,
+        "udp_announce_packets_sent": 179918,
+        "udp_scrape_packets_sent": 0,
+        "udp_connect_packets_sent": 256,
+        "udp_connect_responses_ok": 256,
+        "udp_stale_datagrams": 0,
+        "udp_unmatched_limit": 0,
+        "tracker_business_error": 0,
+        "http_error": 0,
+        "timeout": 0,
+        "transport_error": 0,
+        "invalid_protocol_reply": 0,
+        "non_public_peer_responses": 0,
+        "allow_private_test": true,
+        "http_resolve_override": false,
+        "http_statuses": {},
+        "actual_attempted_rps": 11993.410210434178,
+        "actual_success_rps": 11993.410210434178,
+        "generator_cpu_cores": 0.33579334129922067,
+        "latency_p50_ms_upper_bound": 1,
+        "latency_p95_ms_upper_bound": 1,
+        "latency_p99_ms_upper_bound": 2,
+        "success_latency_p50_ms_upper_bound": 1,
+        "success_latency_p95_ms_upper_bound": 1,
+        "success_latency_p99_ms_upper_bound": 2,
+        "histogram_note": "1 ms buckets; 60000 denotes >= 60 s, not a finite upper bound",
+        "tx_application_bytes": 17636060,
+        "rx_application_bytes": 34091204,
+        "tx_application_mbps": 9.40501793376226,
+        "rx_application_mbps": 18.180272975003923,
+        "remaining_application_budget_bytes": 216708192,
+        "accounting_note": "HTTP request target and response body plus UDP payloads only; excludes HTTP headers, TLS, IP/TCP, retransmissions and buffered unread bytes; monitor host NIC separately",
+        "budget_exhausted": false,
+        "possible_generator_or_target_saturation": false
+      },
+      "server_cpu_cores": 0.25760294120694327,
+      "host_cpu_busy_pct": 34.00946585530764,
+      "server_final_rss_bytes": 13361152,
+      "server_final_engine": {
+        "announces": 179918,
+        "estimated_bytes": 17024000,
+        "expired": 0,
+        "peers": 32000,
+        "rejected_busy": 0,
+        "rejected_memory": 0,
+        "rejected_peers": 0,
+        "rejected_swarm_peers": 0,
+        "rejected_swarms": 0,
+        "scrapes": 0,
+        "stopped": 0,
+        "swarms": 1000
+      },
+      "request_delta": {
+        "accepted_announces": 179918,
+        "accepted_ipv4": 179918,
+        "accepted_ipv6": 0,
+        "business_failures": 0,
+        "http_announces": 0,
+        "http_busy": 0,
+        "invalid_packets": 0,
+        "rate_limited": 0,
+        "scrapes": 0,
+        "udp_announces": 179918,
+        "udp_bytes_received": 17636060,
+        "udp_bytes_sent": 34091204,
+        "udp_connects": 256,
+        "udp_send_errors": 0,
+        "udp_v4_packets": 180174,
+        "udp_v6_packets": 0
+      },
+      "kernel_udp_delta": {
+        "InDatagrams": 360348,
+        "NoPorts": 0,
+        "InErrors": 0,
+        "OutDatagrams": 360348,
+        "RcvbufErrors": 0,
+        "SndbufErrors": 0,
+        "InCsumErrors": 0,
+        "IgnoredMulti": 0,
+        "MemErrors": 0
+      },
+      "diagnostics": null,
+      "wirecheck": [],
+      "handler_count_delta": 180174,
+      "handler_mean_us": 8.591250679898321
+    }
+  ],
+  "micro": [
+    {
+      "version": "baseline",
+      "round": 0,
+      "rows": [
+        {
+          "peers": 3,
+          "numwant": 0,
+          "fixed_second": true,
+          "operations": 50000,
+          "seconds": 0.041233092,
+          "operations_per_second": 1212618.253,
+          "returned_peers": 0
+        },
+        {
+          "peers": 3,
+          "numwant": 0,
+          "fixed_second": false,
+          "operations": 50000,
+          "seconds": 0.053686831,
+          "operations_per_second": 931327.088,
+          "returned_peers": 0
+        },
+        {
+          "peers": 3,
+          "numwant": 50,
+          "fixed_second": true,
+          "operations": 50000,
+          "seconds": 0.056417647,
+          "operations_per_second": 886247.525,
+          "returned_peers": 100000
+        },
+        {
+          "peers": 3,
+          "numwant": 50,
+          "fixed_second": false,
+          "operations": 50000,
+          "seconds": 0.074913345,
+          "operations_per_second": 667437.824,
+          "returned_peers": 100000
+        },
+        {
+          "peers": 64,
+          "numwant": 0,
+          "fixed_second": true,
+          "operations": 50000,
+          "seconds": 0.043711801,
+          "operations_per_second": 1143855.866,
+          "returned_peers": 0
+        },
+        {
+          "peers": 64,
+          "numwant": 0,
+          "fixed_second": false,
+          "operations": 50000,
+          "seconds": 0.104672197,
+          "operations_per_second": 477681.767,
+          "returned_peers": 0
+        },
+        {
+          "peers": 64,
+          "numwant": 50,
+          "fixed_second": true,
+          "operations": 50000,
+          "seconds": 0.368623626,
+          "operations_per_second": 135639.705,
+          "returned_peers": 2500000
+        },
+        {
+          "peers": 64,
+          "numwant": 50,
+          "fixed_second": false,
+          "operations": 50000,
+          "seconds": 0.387841008,
+          "operations_per_second": 128918.807,
+          "returned_peers": 2500000
+        },
+        {
+          "peers": 512,
+          "numwant": 0,
+          "fixed_second": true,
+          "operations": 50000,
+          "seconds": 0.046541355,
+          "operations_per_second": 1074313.371,
+          "returned_peers": 0
+        },
+        {
+          "peers": 512,
+          "numwant": 0,
+          "fixed_second": false,
+          "operations": 50000,
+          "seconds": 0.056797843,
+          "operations_per_second": 880315.12,
+          "returned_peers": 0
+        },
+        {
+          "peers": 512,
+          "numwant": 50,
+          "fixed_second": true,
+          "operations": 50000,
+          "seconds": 2.007471662,
+          "operations_per_second": 24906.952,
+          "returned_peers": 2500000
+        },
+        {
+          "peers": 512,
+          "numwant": 50,
+          "fixed_second": false,
+          "operations": 50000,
+          "seconds": 1.92252359,
+          "operations_per_second": 26007.483,
+          "returned_peers": 2500000
+        }
+      ]
+    },
+    {
+      "version": "candidate",
+      "round": 0,
+      "rows": [
+        {
+          "peers": 3,
+          "numwant": 0,
+          "fixed_second": true,
+          "operations": 50000,
+          "seconds": 0.034362962,
+          "operations_per_second": 1455055.01,
+          "returned_peers": 0
+        },
+        {
+          "peers": 3,
+          "numwant": 0,
+          "fixed_second": false,
+          "operations": 50000,
+          "seconds": 0.048318456,
+          "operations_per_second": 1034801.278,
+          "returned_peers": 0
+        },
+        {
+          "peers": 3,
+          "numwant": 50,
+          "fixed_second": true,
+          "operations": 50000,
+          "seconds": 0.06015403,
+          "operations_per_second": 831199.506,
+          "returned_peers": 100000
+        },
+        {
+          "peers": 3,
+          "numwant": 50,
+          "fixed_second": false,
+          "operations": 50000,
+          "seconds": 0.064267568,
+          "operations_per_second": 777997.387,
+          "returned_peers": 100000
+        },
+        {
+          "peers": 64,
+          "numwant": 0,
+          "fixed_second": true,
+          "operations": 50000,
+          "seconds": 0.037353739,
+          "operations_per_second": 1338554.087,
+          "returned_peers": 0
+        },
+        {
+          "peers": 64,
+          "numwant": 0,
+          "fixed_second": false,
+          "operations": 50000,
+          "seconds": 0.042387899,
+          "operations_per_second": 1179581.937,
+          "returned_peers": 0
+        },
+        {
+          "peers": 64,
+          "numwant": 50,
+          "fixed_second": true,
+          "operations": 50000,
+          "seconds": 0.289936132,
+          "operations_per_second": 172451.773,
+          "returned_peers": 2500000
+        },
+        {
+          "peers": 64,
+          "numwant": 50,
+          "fixed_second": false,
+          "operations": 50000,
+          "seconds": 0.262755391,
+          "operations_per_second": 190291.053,
+          "returned_peers": 2500000
+        },
+        {
+          "peers": 512,
+          "numwant": 0,
+          "fixed_second": true,
+          "operations": 50000,
+          "seconds": 0.031689208,
+          "operations_per_second": 1577824.223,
+          "returned_peers": 0
+        },
+        {
+          "peers": 512,
+          "numwant": 0,
+          "fixed_second": false,
+          "operations": 50000,
+          "seconds": 0.030365218,
+          "operations_per_second": 1646620.815,
+          "returned_peers": 0
+        },
+        {
+          "peers": 512,
+          "numwant": 50,
+          "fixed_second": true,
+          "operations": 50000,
+          "seconds": 1.994152482,
+          "operations_per_second": 25073.308,
+          "returned_peers": 2500000
+        },
+        {
+          "peers": 512,
+          "numwant": 50,
+          "fixed_second": false,
+          "operations": 50000,
+          "seconds": 1.939773489,
+          "operations_per_second": 25776.205,
+          "returned_peers": 2500000
+        }
+      ]
+    },
+    {
+      "version": "candidate",
+      "round": 1,
+      "rows": [
+        {
+          "peers": 3,
+          "numwant": 0,
+          "fixed_second": true,
+          "operations": 50000,
+          "seconds": 0.032333345,
+          "operations_per_second": 1546391.195,
+          "returned_peers": 0
+        },
+        {
+          "peers": 3,
+          "numwant": 0,
+          "fixed_second": false,
+          "operations": 50000,
+          "seconds": 0.03207465,
+          "operations_per_second": 1558863.464,
+          "returned_peers": 0
+        },
+        {
+          "peers": 3,
+          "numwant": 50,
+          "fixed_second": true,
+          "operations": 50000,
+          "seconds": 0.053017385,
+          "operations_per_second": 943086.876,
+          "returned_peers": 100000
+        },
+        {
+          "peers": 3,
+          "numwant": 50,
+          "fixed_second": false,
+          "operations": 50000,
+          "seconds": 0.056390713,
+          "operations_per_second": 886670.825,
+          "returned_peers": 100000
+        },
+        {
+          "peers": 64,
+          "numwant": 0,
+          "fixed_second": true,
+          "operations": 50000,
+          "seconds": 0.031008724,
+          "operations_per_second": 1612449.451,
+          "returned_peers": 0
+        },
+        {
+          "peers": 64,
+          "numwant": 0,
+          "fixed_second": false,
+          "operations": 50000,
+          "seconds": 0.029881772,
+          "operations_per_second": 1673260.876,
+          "returned_peers": 0
+        },
+        {
+          "peers": 64,
+          "numwant": 50,
+          "fixed_second": true,
+          "operations": 50000,
+          "seconds": 0.23836997,
+          "operations_per_second": 209757.966,
+          "returned_peers": 2500000
+        },
+        {
+          "peers": 64,
+          "numwant": 50,
+          "fixed_second": false,
+          "operations": 50000,
+          "seconds": 0.25021874,
+          "operations_per_second": 199825.161,
+          "returned_peers": 2500000
+        },
+        {
+          "peers": 512,
+          "numwant": 0,
+          "fixed_second": true,
+          "operations": 50000,
+          "seconds": 0.036668303,
+          "operations_per_second": 1363575.511,
+          "returned_peers": 0
+        },
+        {
+          "peers": 512,
+          "numwant": 0,
+          "fixed_second": false,
+          "operations": 50000,
+          "seconds": 0.037272392,
+          "operations_per_second": 1341475.481,
+          "returned_peers": 0
+        },
+        {
+          "peers": 512,
+          "numwant": 50,
+          "fixed_second": true,
+          "operations": 50000,
+          "seconds": 1.780920636,
+          "operations_per_second": 28075.367,
+          "returned_peers": 2500000
+        },
+        {
+          "peers": 512,
+          "numwant": 50,
+          "fixed_second": false,
+          "operations": 50000,
+          "seconds": 1.699051005,
+          "operations_per_second": 29428.192,
+          "returned_peers": 2500000
+        }
+      ]
+    },
+    {
+      "version": "baseline",
+      "round": 1,
+      "rows": [
+        {
+          "peers": 3,
+          "numwant": 0,
+          "fixed_second": true,
+          "operations": 50000,
+          "seconds": 0.030773869,
+          "operations_per_second": 1624755.08,
+          "returned_peers": 0
+        },
+        {
+          "peers": 3,
+          "numwant": 0,
+          "fixed_second": false,
+          "operations": 50000,
+          "seconds": 0.041618495,
+          "operations_per_second": 1201388.95,
+          "returned_peers": 0
+        },
+        {
+          "peers": 3,
+          "numwant": 50,
+          "fixed_second": true,
+          "operations": 50000,
+          "seconds": 0.054972425,
+          "operations_per_second": 909546.923,
+          "returned_peers": 100000
+        },
+        {
+          "peers": 3,
+          "numwant": 50,
+          "fixed_second": false,
+          "operations": 50000,
+          "seconds": 0.064396244,
+          "operations_per_second": 776442.8,
+          "returned_peers": 100000
+        },
+        {
+          "peers": 64,
+          "numwant": 0,
+          "fixed_second": true,
+          "operations": 50000,
+          "seconds": 0.03292925,
+          "operations_per_second": 1518406.887,
+          "returned_peers": 0
+        },
+        {
+          "peers": 64,
+          "numwant": 0,
+          "fixed_second": false,
+          "operations": 50000,
+          "seconds": 0.04309619,
+          "operations_per_second": 1160195.368,
+          "returned_peers": 0
+        },
+        {
+          "peers": 64,
+          "numwant": 50,
+          "fixed_second": true,
+          "operations": 50000,
+          "seconds": 0.250662869,
+          "operations_per_second": 199471.107,
+          "returned_peers": 2500000
+        },
+        {
+          "peers": 64,
+          "numwant": 50,
+          "fixed_second": false,
+          "operations": 50000,
+          "seconds": 0.243845857,
+          "operations_per_second": 205047.568,
+          "returned_peers": 2500000
+        },
+        {
+          "peers": 512,
+          "numwant": 0,
+          "fixed_second": true,
+          "operations": 50000,
+          "seconds": 0.036184475,
+          "operations_per_second": 1381808.082,
+          "returned_peers": 0
+        },
+        {
+          "peers": 512,
+          "numwant": 0,
+          "fixed_second": false,
+          "operations": 50000,
+          "seconds": 0.051406835,
+          "operations_per_second": 972633.308,
+          "returned_peers": 0
+        },
+        {
+          "peers": 512,
+          "numwant": 50,
+          "fixed_second": true,
+          "operations": 50000,
+          "seconds": 1.631671097,
+          "operations_per_second": 30643.431,
+          "returned_peers": 2500000
+        },
+        {
+          "peers": 512,
+          "numwant": 50,
+          "fixed_second": false,
+          "operations": 50000,
+          "seconds": 1.656476456,
+          "operations_per_second": 30184.552,
+          "returned_peers": 2500000
+        }
+      ]
+    },
+    {
+      "version": "baseline",
+      "round": 2,
+      "rows": [
+        {
+          "peers": 3,
+          "numwant": 0,
+          "fixed_second": true,
+          "operations": 50000,
+          "seconds": 0.037656794,
+          "operations_per_second": 1327781.648,
+          "returned_peers": 0
+        },
+        {
+          "peers": 3,
+          "numwant": 0,
+          "fixed_second": false,
+          "operations": 50000,
+          "seconds": 0.045240301,
+          "operations_per_second": 1105209.269,
+          "returned_peers": 0
+        },
+        {
+          "peers": 3,
+          "numwant": 50,
+          "fixed_second": true,
+          "operations": 50000,
+          "seconds": 0.052482947,
+          "operations_per_second": 952690.404,
+          "returned_peers": 100000
+        },
+        {
+          "peers": 3,
+          "numwant": 50,
+          "fixed_second": false,
+          "operations": 50000,
+          "seconds": 0.072892582,
+          "operations_per_second": 685940.855,
+          "returned_peers": 100000
+        },
+        {
+          "peers": 64,
+          "numwant": 0,
+          "fixed_second": true,
+          "operations": 50000,
+          "seconds": 0.038693407,
+          "operations_per_second": 1292209.807,
+          "returned_peers": 0
+        },
+        {
+          "peers": 64,
+          "numwant": 0,
+          "fixed_second": false,
+          "operations": 50000,
+          "seconds": 0.052530643,
+          "operations_per_second": 951825.395,
+          "returned_peers": 0
+        },
+        {
+          "peers": 64,
+          "numwant": 50,
+          "fixed_second": true,
+          "operations": 50000,
+          "seconds": 0.282535352,
+          "operations_per_second": 176969.005,
+          "returned_peers": 2500000
+        },
+        {
+          "peers": 64,
+          "numwant": 50,
+          "fixed_second": false,
+          "operations": 50000,
+          "seconds": 0.258172003,
+          "operations_per_second": 193669.334,
+          "returned_peers": 2500000
+        },
+        {
+          "peers": 512,
+          "numwant": 0,
+          "fixed_second": true,
+          "operations": 50000,
+          "seconds": 0.034114992,
+          "operations_per_second": 1465631.298,
+          "returned_peers": 0
+        },
+        {
+          "peers": 512,
+          "numwant": 0,
+          "fixed_second": false,
+          "operations": 50000,
+          "seconds": 0.047091694,
+          "operations_per_second": 1061758.364,
+          "returned_peers": 0
+        },
+        {
+          "peers": 512,
+          "numwant": 50,
+          "fixed_second": true,
+          "operations": 50000,
+          "seconds": 1.629103169,
+          "operations_per_second": 30691.733,
+          "returned_peers": 2500000
+        },
+        {
+          "peers": 512,
+          "numwant": 50,
+          "fixed_second": false,
+          "operations": 50000,
+          "seconds": 1.727807139,
+          "operations_per_second": 28938.415,
+          "returned_peers": 2500000
+        }
+      ]
+    },
+    {
+      "version": "candidate",
+      "round": 2,
+      "rows": [
+        {
+          "peers": 3,
+          "numwant": 0,
+          "fixed_second": true,
+          "operations": 50000,
+          "seconds": 0.025956906,
+          "operations_per_second": 1926269.641,
+          "returned_peers": 0
+        },
+        {
+          "peers": 3,
+          "numwant": 0,
+          "fixed_second": false,
+          "operations": 50000,
+          "seconds": 0.028275544,
+          "operations_per_second": 1768312.574,
+          "returned_peers": 0
+        },
+        {
+          "peers": 3,
+          "numwant": 50,
+          "fixed_second": true,
+          "operations": 50000,
+          "seconds": 0.046497857,
+          "operations_per_second": 1075318.374,
+          "returned_peers": 100000
+        },
+        {
+          "peers": 3,
+          "numwant": 50,
+          "fixed_second": false,
+          "operations": 50000,
+          "seconds": 0.042379113,
+          "operations_per_second": 1179826.487,
+          "returned_peers": 100000
+        },
+        {
+          "peers": 64,
+          "numwant": 0,
+          "fixed_second": true,
+          "operations": 50000,
+          "seconds": 0.024777966,
+          "operations_per_second": 2017921.891,
+          "returned_peers": 0
+        },
+        {
+          "peers": 64,
+          "numwant": 0,
+          "fixed_second": false,
+          "operations": 50000,
+          "seconds": 0.025373798,
+          "operations_per_second": 1970536.693,
+          "returned_peers": 0
+        },
+        {
+          "peers": 64,
+          "numwant": 50,
+          "fixed_second": true,
+          "operations": 50000,
+          "seconds": 0.227510992,
+          "operations_per_second": 219769.601,
+          "returned_peers": 2500000
+        },
+        {
+          "peers": 64,
+          "numwant": 50,
+          "fixed_second": false,
+          "operations": 50000,
+          "seconds": 0.221543997,
+          "operations_per_second": 225688.805,
+          "returned_peers": 2500000
+        },
+        {
+          "peers": 512,
+          "numwant": 0,
+          "fixed_second": true,
+          "operations": 50000,
+          "seconds": 0.024981668,
+          "operations_per_second": 2001467.636,
+          "returned_peers": 0
+        },
+        {
+          "peers": 512,
+          "numwant": 0,
+          "fixed_second": false,
+          "operations": 50000,
+          "seconds": 0.028678632,
+          "operations_per_second": 1743458.335,
+          "returned_peers": 0
+        },
+        {
+          "peers": 512,
+          "numwant": 50,
+          "fixed_second": true,
+          "operations": 50000,
+          "seconds": 1.708695022,
+          "operations_per_second": 29262.097,
+          "returned_peers": 2500000
+        },
+        {
+          "peers": 512,
+          "numwant": 50,
+          "fixed_second": false,
+          "operations": 50000,
+          "seconds": 1.731076824,
+          "operations_per_second": 28883.756,
+          "returned_peers": 2500000
+        }
+      ]
+    }
+  ],
+  "failed_initial_harness_attempt": {
+    "reason": "IPv6 HTTP check was attempted against an IPv4-only isolated listener; corrected to dual-stack listener and entire comparison rerun",
+    "production_affected": false
+  },
+  "micro_repeat": {
+    "measured_utc": "2026-11-12T05:03:01.954044+00:00",
+    "reason": "initial dense 512-peer/numwant50 microcase varied negatively; repeat before attributing a regression",
+    "micro": [
+      {
+        "version": "candidate",
+        "round": 0,
+        "rows": [
+          {
+            "peers": 3,
+            "numwant": 0,
+            "fixed_second": true,
+            "operations": 50000,
+            "seconds": 0.033759368,
+            "operations_per_second": 1481070.38,
+            "returned_peers": 0
+          },
+          {
+            "peers": 3,
+            "numwant": 0,
+            "fixed_second": false,
+            "operations": 50000,
+            "seconds": 0.031309746,
+            "operations_per_second": 1596946.842,
+            "returned_peers": 0
+          },
+          {
+            "peers": 3,
+            "numwant": 50,
+            "fixed_second": true,
+            "operations": 50000,
+            "seconds": 0.05040509,
+            "operations_per_second": 991963.312,
+            "returned_peers": 100000
+          },
+          {
+            "peers": 3,
+            "numwant": 50,
+            "fixed_second": false,
+            "operations": 50000,
+            "seconds": 0.04886037,
+            "operations_per_second": 1023324.22,
+            "returned_peers": 100000
+          },
+          {
+            "peers": 64,
+            "numwant": 0,
+            "fixed_second": true,
+            "operations": 50000,
+            "seconds": 0.031386846,
+            "operations_per_second": 1593024.033,
+            "returned_peers": 0
+          },
+          {
+            "peers": 64,
+            "numwant": 0,
+            "fixed_second": false,
+            "operations": 50000,
+            "seconds": 0.034682604,
+            "operations_per_second": 1441644.924,
+            "returned_peers": 0
+          },
+          {
+            "peers": 64,
+            "numwant": 50,
+            "fixed_second": true,
+            "operations": 50000,
+            "seconds": 0.268527797,
+            "operations_per_second": 186200.463,
+            "returned_peers": 2500000
+          },
+          {
+            "peers": 64,
+            "numwant": 50,
+            "fixed_second": false,
+            "operations": 50000,
+            "seconds": 0.266073313,
+            "operations_per_second": 187918.132,
+            "returned_peers": 2500000
+          },
+          {
+            "peers": 512,
+            "numwant": 0,
+            "fixed_second": true,
+            "operations": 50000,
+            "seconds": 0.029184383,
+            "operations_per_second": 1713245.06,
+            "returned_peers": 0
+          },
+          {
+            "peers": 512,
+            "numwant": 0,
+            "fixed_second": false,
+            "operations": 50000,
+            "seconds": 0.031749703,
+            "operations_per_second": 1574817.881,
+            "returned_peers": 0
+          },
+          {
+            "peers": 512,
+            "numwant": 50,
+            "fixed_second": true,
+            "operations": 50000,
+            "seconds": 1.755130614,
+            "operations_per_second": 28487.908,
+            "returned_peers": 2500000
+          },
+          {
+            "peers": 512,
+            "numwant": 50,
+            "fixed_second": false,
+            "operations": 50000,
+            "seconds": 1.899397064,
+            "operations_per_second": 26324.143,
+            "returned_peers": 2500000
+          }
+        ]
+      },
+      {
+        "version": "baseline",
+        "round": 0,
+        "rows": [
+          {
+            "peers": 3,
+            "numwant": 0,
+            "fixed_second": true,
+            "operations": 50000,
+            "seconds": 0.040300364,
+            "operations_per_second": 1240683.583,
+            "returned_peers": 0
+          },
+          {
+            "peers": 3,
+            "numwant": 0,
+            "fixed_second": false,
+            "operations": 50000,
+            "seconds": 0.061091202,
+            "operations_per_second": 818448.457,
+            "returned_peers": 0
+          },
+          {
+            "peers": 3,
+            "numwant": 50,
+            "fixed_second": true,
+            "operations": 50000,
+            "seconds": 0.062735126,
+            "operations_per_second": 797001.667,
+            "returned_peers": 100000
+          },
+          {
+            "peers": 3,
+            "numwant": 50,
+            "fixed_second": false,
+            "operations": 50000,
+            "seconds": 0.078986876,
+            "operations_per_second": 633016.553,
+            "returned_peers": 100000
+          },
+          {
+            "peers": 64,
+            "numwant": 0,
+            "fixed_second": true,
+            "operations": 50000,
+            "seconds": 0.043343366,
+            "operations_per_second": 1153579.074,
+            "returned_peers": 0
+          },
+          {
+            "peers": 64,
+            "numwant": 0,
+            "fixed_second": false,
+            "operations": 50000,
+            "seconds": 0.056149061,
+            "operations_per_second": 890486.842,
+            "returned_peers": 0
+          },
+          {
+            "peers": 64,
+            "numwant": 50,
+            "fixed_second": true,
+            "operations": 50000,
+            "seconds": 0.254801992,
+            "operations_per_second": 196230.805,
+            "returned_peers": 2500000
+          },
+          {
+            "peers": 64,
+            "numwant": 50,
+            "fixed_second": false,
+            "operations": 50000,
+            "seconds": 0.212257722,
+            "operations_per_second": 235562.69,
+            "returned_peers": 2500000
+          },
+          {
+            "peers": 512,
+            "numwant": 0,
+            "fixed_second": true,
+            "operations": 50000,
+            "seconds": 0.028727894,
+            "operations_per_second": 1740468.689,
+            "returned_peers": 0
+          },
+          {
+            "peers": 512,
+            "numwant": 0,
+            "fixed_second": false,
+            "operations": 50000,
+            "seconds": 0.038495199,
+            "operations_per_second": 1298863.269,
+            "returned_peers": 0
+          },
+          {
+            "peers": 512,
+            "numwant": 50,
+            "fixed_second": true,
+            "operations": 50000,
+            "seconds": 1.517625313,
+            "operations_per_second": 32946.209,
+            "returned_peers": 2500000
+          },
+          {
+            "peers": 512,
+            "numwant": 50,
+            "fixed_second": false,
+            "operations": 50000,
+            "seconds": 1.605334109,
+            "operations_per_second": 31146.164,
+            "returned_peers": 2500000
+          }
+        ]
+      },
+      {
+        "version": "baseline",
+        "round": 1,
+        "rows": [
+          {
+            "peers": 3,
+            "numwant": 0,
+            "fixed_second": true,
+            "operations": 50000,
+            "seconds": 0.036089139,
+            "operations_per_second": 1385458.378,
+            "returned_peers": 0
+          },
+          {
+            "peers": 3,
+            "numwant": 0,
+            "fixed_second": false,
+            "operations": 50000,
+            "seconds": 0.054684547,
+            "operations_per_second": 914335.086,
+            "returned_peers": 0
+          },
+          {
+            "peers": 3,
+            "numwant": 50,
+            "fixed_second": true,
+            "operations": 50000,
+            "seconds": 0.056063167,
+            "operations_per_second": 891851.151,
+            "returned_peers": 100000
+          },
+          {
+            "peers": 3,
+            "numwant": 50,
+            "fixed_second": false,
+            "operations": 50000,
+            "seconds": 0.070881831,
+            "operations_per_second": 705399.385,
+            "returned_peers": 100000
+          },
+          {
+            "peers": 64,
+            "numwant": 0,
+            "fixed_second": true,
+            "operations": 50000,
+            "seconds": 0.031511318,
+            "operations_per_second": 1586731.472,
+            "returned_peers": 0
+          },
+          {
+            "peers": 64,
+            "numwant": 0,
+            "fixed_second": false,
+            "operations": 50000,
+            "seconds": 0.038725343,
+            "operations_per_second": 1291144.148,
+            "returned_peers": 0
+          },
+          {
+            "peers": 64,
+            "numwant": 50,
+            "fixed_second": true,
+            "operations": 50000,
+            "seconds": 0.200571716,
+            "operations_per_second": 249287.392,
+            "returned_peers": 2500000
+          },
+          {
+            "peers": 64,
+            "numwant": 50,
+            "fixed_second": false,
+            "operations": 50000,
+            "seconds": 0.204050175,
+            "operations_per_second": 245037.771,
+            "returned_peers": 2500000
+          },
+          {
+            "peers": 512,
+            "numwant": 0,
+            "fixed_second": true,
+            "operations": 50000,
+            "seconds": 0.028239429,
+            "operations_per_second": 1770574.044,
+            "returned_peers": 0
+          },
+          {
+            "peers": 512,
+            "numwant": 0,
+            "fixed_second": false,
+            "operations": 50000,
+            "seconds": 0.041178592,
+            "operations_per_second": 1214223.158,
+            "returned_peers": 0
+          },
+          {
+            "peers": 512,
+            "numwant": 50,
+            "fixed_second": true,
+            "operations": 50000,
+            "seconds": 1.601626531,
+            "operations_per_second": 31218.264,
+            "returned_peers": 2500000
+          },
+          {
+            "peers": 512,
+            "numwant": 50,
+            "fixed_second": false,
+            "operations": 50000,
+            "seconds": 1.678236789,
+            "operations_per_second": 29793.174,
+            "returned_peers": 2500000
+          }
+        ]
+      },
+      {
+        "version": "candidate",
+        "round": 1,
+        "rows": [
+          {
+            "peers": 3,
+            "numwant": 0,
+            "fixed_second": true,
+            "operations": 50000,
+            "seconds": 0.034457923,
+            "operations_per_second": 1451045.091,
+            "returned_peers": 0
+          },
+          {
+            "peers": 3,
+            "numwant": 0,
+            "fixed_second": false,
+            "operations": 50000,
+            "seconds": 0.031233651,
+            "operations_per_second": 1600837.507,
+            "returned_peers": 0
+          },
+          {
+            "peers": 3,
+            "numwant": 50,
+            "fixed_second": true,
+            "operations": 50000,
+            "seconds": 0.046646345,
+            "operations_per_second": 1071895.344,
+            "returned_peers": 100000
+          },
+          {
+            "peers": 3,
+            "numwant": 50,
+            "fixed_second": false,
+            "operations": 50000,
+            "seconds": 0.048711796,
+            "operations_per_second": 1026445.422,
+            "returned_peers": 100000
+          },
+          {
+            "peers": 64,
+            "numwant": 0,
+            "fixed_second": true,
+            "operations": 50000,
+            "seconds": 0.030802212,
+            "operations_per_second": 1623260.044,
+            "returned_peers": 0
+          },
+          {
+            "peers": 64,
+            "numwant": 0,
+            "fixed_second": false,
+            "operations": 50000,
+            "seconds": 0.032308177,
+            "operations_per_second": 1547595.83,
+            "returned_peers": 0
+          },
+          {
+            "peers": 64,
+            "numwant": 50,
+            "fixed_second": true,
+            "operations": 50000,
+            "seconds": 0.229594671,
+            "operations_per_second": 217775.089,
+            "returned_peers": 2500000
+          },
+          {
+            "peers": 64,
+            "numwant": 50,
+            "fixed_second": false,
+            "operations": 50000,
+            "seconds": 0.238254751,
+            "operations_per_second": 209859.404,
+            "returned_peers": 2500000
+          },
+          {
+            "peers": 512,
+            "numwant": 0,
+            "fixed_second": true,
+            "operations": 50000,
+            "seconds": 0.029369985,
+            "operations_per_second": 1702418.302,
+            "returned_peers": 0
+          },
+          {
+            "peers": 512,
+            "numwant": 0,
+            "fixed_second": false,
+            "operations": 50000,
+            "seconds": 0.027330577,
+            "operations_per_second": 1829452.777,
+            "returned_peers": 0
+          },
+          {
+            "peers": 512,
+            "numwant": 50,
+            "fixed_second": true,
+            "operations": 50000,
+            "seconds": 1.65143266,
+            "operations_per_second": 30276.742,
+            "returned_peers": 2500000
+          },
+          {
+            "peers": 512,
+            "numwant": 50,
+            "fixed_second": false,
+            "operations": 50000,
+            "seconds": 1.487515099,
+            "operations_per_second": 33613.104,
+            "returned_peers": 2500000
+          }
+        ]
+      },
+      {
+        "version": "candidate",
+        "round": 2,
+        "rows": [
+          {
+            "peers": 3,
+            "numwant": 0,
+            "fixed_second": true,
+            "operations": 50000,
+            "seconds": 0.025425605,
+            "operations_per_second": 1966521.544,
+            "returned_peers": 0
+          },
+          {
+            "peers": 3,
+            "numwant": 0,
+            "fixed_second": false,
+            "operations": 50000,
+            "seconds": 0.027459517,
+            "operations_per_second": 1820862.326,
+            "returned_peers": 0
+          },
+          {
+            "peers": 3,
+            "numwant": 50,
+            "fixed_second": true,
+            "operations": 50000,
+            "seconds": 0.078518217,
+            "operations_per_second": 636794.898,
+            "returned_peers": 100000
+          },
+          {
+            "peers": 3,
+            "numwant": 50,
+            "fixed_second": false,
+            "operations": 50000,
+            "seconds": 0.075930146,
+            "operations_per_second": 658499.985,
+            "returned_peers": 100000
+          },
+          {
+            "peers": 64,
+            "numwant": 0,
+            "fixed_second": true,
+            "operations": 50000,
+            "seconds": 0.026053888,
+            "operations_per_second": 1919099.368,
+            "returned_peers": 0
+          },
+          {
+            "peers": 64,
+            "numwant": 0,
+            "fixed_second": false,
+            "operations": 50000,
+            "seconds": 0.027603279,
+            "operations_per_second": 1811379.003,
+            "returned_peers": 0
+          },
+          {
+            "peers": 64,
+            "numwant": 50,
+            "fixed_second": true,
+            "operations": 50000,
+            "seconds": 0.212134809,
+            "operations_per_second": 235699.177,
+            "returned_peers": 2500000
+          },
+          {
+            "peers": 64,
+            "numwant": 50,
+            "fixed_second": false,
+            "operations": 50000,
+            "seconds": 0.222951386,
+            "operations_per_second": 224264.136,
+            "returned_peers": 2500000
+          },
+          {
+            "peers": 512,
+            "numwant": 0,
+            "fixed_second": true,
+            "operations": 50000,
+            "seconds": 0.030441267,
+            "operations_per_second": 1642507.193,
+            "returned_peers": 0
+          },
+          {
+            "peers": 512,
+            "numwant": 0,
+            "fixed_second": false,
+            "operations": 50000,
+            "seconds": 0.028656744,
+            "operations_per_second": 1744789.987,
+            "returned_peers": 0
+          },
+          {
+            "peers": 512,
+            "numwant": 50,
+            "fixed_second": true,
+            "operations": 50000,
+            "seconds": 1.519257247,
+            "operations_per_second": 32910.819,
+            "returned_peers": 2500000
+          },
+          {
+            "peers": 512,
+            "numwant": 50,
+            "fixed_second": false,
+            "operations": 50000,
+            "seconds": 1.462756352,
+            "operations_per_second": 34182.043,
+            "returned_peers": 2500000
+          }
+        ]
+      },
+      {
+        "version": "baseline",
+        "round": 2,
+        "rows": [
+          {
+            "peers": 3,
+            "numwant": 0,
+            "fixed_second": true,
+            "operations": 50000,
+            "seconds": 0.030260701,
+            "operations_per_second": 1652308.055,
+            "returned_peers": 0
+          },
+          {
+            "peers": 3,
+            "numwant": 0,
+            "fixed_second": false,
+            "operations": 50000,
+            "seconds": 0.038795715,
+            "operations_per_second": 1288802.127,
+            "returned_peers": 0
+          },
+          {
+            "peers": 3,
+            "numwant": 50,
+            "fixed_second": true,
+            "operations": 50000,
+            "seconds": 0.047363389,
+            "operations_per_second": 1055667.701,
+            "returned_peers": 100000
+          },
+          {
+            "peers": 3,
+            "numwant": 50,
+            "fixed_second": false,
+            "operations": 50000,
+            "seconds": 0.059672849,
+            "operations_per_second": 837902.008,
+            "returned_peers": 100000
+          },
+          {
+            "peers": 64,
+            "numwant": 0,
+            "fixed_second": true,
+            "operations": 50000,
+            "seconds": 0.036025229,
+            "operations_per_second": 1387916.229,
+            "returned_peers": 0
+          },
+          {
+            "peers": 64,
+            "numwant": 0,
+            "fixed_second": false,
+            "operations": 50000,
+            "seconds": 0.04378777,
+            "operations_per_second": 1141871.349,
+            "returned_peers": 0
+          },
+          {
+            "peers": 64,
+            "numwant": 50,
+            "fixed_second": true,
+            "operations": 50000,
+            "seconds": 0.267278305,
+            "operations_per_second": 187070.926,
+            "returned_peers": 2500000
+          },
+          {
+            "peers": 64,
+            "numwant": 50,
+            "fixed_second": false,
+            "operations": 50000,
+            "seconds": 0.249757837,
+            "operations_per_second": 200193.918,
+            "returned_peers": 2500000
+          },
+          {
+            "peers": 512,
+            "numwant": 0,
+            "fixed_second": true,
+            "operations": 50000,
+            "seconds": 0.034836829,
+            "operations_per_second": 1435262.664,
+            "returned_peers": 0
+          },
+          {
+            "peers": 512,
+            "numwant": 0,
+            "fixed_second": false,
+            "operations": 50000,
+            "seconds": 0.054683073,
+            "operations_per_second": 914359.732,
+            "returned_peers": 0
+          },
+          {
+            "peers": 512,
+            "numwant": 50,
+            "fixed_second": true,
+            "operations": 50000,
+            "seconds": 1.689807957,
+            "operations_per_second": 29589.161,
+            "returned_peers": 2500000
+          },
+          {
+            "peers": 512,
+            "numwant": 50,
+            "fixed_second": false,
+            "operations": 50000,
+            "seconds": 1.752087379,
+            "operations_per_second": 28537.39,
+            "returned_peers": 2500000
+          }
+        ]
+      }
+    ],
+    "network_used": false
+  }
+}

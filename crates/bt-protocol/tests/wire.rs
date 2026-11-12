@@ -1,10 +1,11 @@
 use bt_protocol::{AnnounceEvent, AnnounceRequest, AnnounceResponse, ScrapeEntry, UdpRequest};
 use bt_protocol::{
-    bencode, decode_udp_announce_response, decode_udp_connect_response, encode_http_announce,
-    encode_http_announce_query, encode_http_failure, encode_http_scrape, encode_udp_announce,
-    encode_udp_announce_request, encode_udp_connect, encode_udp_connect_request, encode_udp_error,
-    encode_udp_scrape, parse_http_announce, parse_http_scrape, parse_udp, udp_cookie,
-    validate_udp_cookie,
+    CookieValidator, bencode, decode_udp_announce_response, decode_udp_connect_response,
+    encode_http_announce, encode_http_announce_query, encode_http_failure, encode_http_scrape,
+    encode_udp_announce, encode_udp_announce_request, encode_udp_connect,
+    encode_udp_connect_request, encode_udp_error, encode_udp_scrape, parse_http_announce,
+    parse_http_scrape, parse_udp, serialize_udp_announce_into, serialize_udp_connect_into,
+    serialize_udp_error_into, serialize_udp_scrape_into, udp_cookie, validate_udp_cookie,
 };
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
@@ -265,6 +266,133 @@ fn cookies_expire_bind_ip_and_never_revive_on_slot_wrap() {
     let v6_id = udp_cookie(secret, v6, 120);
     assert!(validate_udp_cookie(secret, v6, 240, v6_id));
     assert!(!validate_udp_cookie(secret, v6, 300, v6_id));
+}
+
+#[test]
+fn udp_replies_reuse_buffer_and_preserve_wire_limits() {
+    let mut buffer = Vec::with_capacity(1200);
+    let original = buffer.as_ptr();
+    buffer.extend_from_slice(&[0xaa; 1200]);
+
+    serialize_udp_connect_into(&mut buffer, 0x0102_0304, 0x0102_0304_0506_0708);
+    assert_eq!(buffer, [0, 0, 0, 0, 1, 2, 3, 4, 1, 2, 3, 4, 5, 6, 7, 8]);
+    assert_eq!(
+        buffer,
+        encode_udp_connect(0x0102_0304, 0x0102_0304_0506_0708)
+    );
+    assert_eq!(buffer.as_ptr(), original);
+
+    let response = AnnounceResponse {
+        interval: 1800,
+        complete: 1,
+        incomplete: 2,
+        peers: vec![
+            "8.8.8.8:6881".parse().unwrap(),
+            "[2001:4860:4860::8888]:6881".parse().unwrap(),
+        ],
+        ..Default::default()
+    };
+    for is_v6 in [false, true] {
+        serialize_udp_announce_into(&mut buffer, 9, &response, is_v6);
+        assert_eq!(buffer, encode_udp_announce(9, &response, is_v6));
+        let decoded = decode_udp_announce_response(&buffer, 9, is_v6).unwrap();
+        assert_eq!(decoded.interval, 1800);
+        assert_eq!(decoded.complete, 1);
+        assert_eq!(decoded.incomplete, 2);
+        assert_eq!(
+            decoded.peers,
+            vec![response.peers[if is_v6 { 1 } else { 0 }]]
+        );
+        assert_eq!(buffer.len(), if is_v6 { 38 } else { 26 });
+        assert_eq!(buffer.as_ptr(), original);
+    }
+
+    let crowded = AnnounceResponse {
+        peers: vec!["[2001:4860:4860::8888]:6881".parse().unwrap(); 100],
+        ..Default::default()
+    };
+    serialize_udp_announce_into(&mut buffer, 10, &crowded, true);
+    assert_eq!(buffer.len(), 20 + 50 * 18);
+    assert_eq!(
+        decode_udp_announce_response(&buffer, 10, true)
+            .unwrap()
+            .peers
+            .len(),
+        50
+    );
+    assert_eq!(buffer.as_ptr(), original);
+
+    let entries = vec![
+        ScrapeEntry {
+            complete: 1,
+            downloaded: 2,
+            incomplete: 3,
+            ..Default::default()
+        };
+        100
+    ];
+    serialize_udp_scrape_into(&mut buffer, 0x0102_0304, &entries);
+    assert_eq!(buffer, encode_udp_scrape(0x0102_0304, &entries));
+    assert_eq!(buffer.len(), 8 + 64 * 12);
+    assert_eq!(
+        &buffer[..20],
+        &[0, 0, 0, 2, 1, 2, 3, 4, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 3]
+    );
+    assert_eq!(buffer.as_ptr(), original);
+
+    let long_reason = "x".repeat(5000);
+    serialize_udp_error_into(&mut buffer, 9, &long_reason);
+    assert_eq!(buffer, encode_udp_error(9, &long_reason));
+    assert_eq!(buffer.len(), 1200);
+    assert_eq!(&buffer[..8], &[0, 0, 0, 3, 0, 0, 0, 9]);
+    assert!(buffer[8..].iter().all(|b| *b == b'x'));
+    assert_eq!(buffer.as_ptr(), original);
+
+    serialize_udp_error_into(&mut buffer, 0, "");
+    assert_eq!(buffer, [0, 0, 0, 3, 0, 0, 0, 0]);
+    assert_eq!(buffer.as_ptr(), original);
+}
+
+#[test]
+fn reusable_cookie_validator_preserves_wire_format_and_window() {
+    let secret = b"32-byte-test-secret-1234567890123";
+    let validator = CookieValidator::new(secret);
+    let ip: IpAddr = "8.8.8.8".parse().unwrap();
+    let v6: IpAddr = "2001:4860:4860::8888".parse().unwrap();
+    // Independently calculated HMAC-SHA256 vectors for the original format.
+    assert_eq!(validator.cookie(ip, 119), 0x0001_0593_c662_c6b0);
+    assert_eq!(validator.cookie(v6, 120), 0x0002_eb4b_6962_d913);
+    assert_eq!(validator.cookie(ip, 65_536 * 60), 0x0000_ced2_b6e8_c9e9);
+
+    // Every issuance offset around several boundaries, including the 16-bit
+    // wrap. The ID lasts at least 120 seconds but not beyond its third slot.
+    for base in [0, 60, 120, (65_536 - 2) * 60, 65_536 * 60] {
+        for offset in 0..60 {
+            let issued = base + offset;
+            for address in [ip, v6] {
+                let cookie = validator.cookie(address, issued);
+                assert_eq!(cookie, udp_cookie(secret, address, issued));
+                assert!(validator.validate(address, issued, cookie));
+                assert!(validator.validate(address, issued + 120, cookie));
+                assert!(!validator.validate(address, base + 180, cookie));
+                assert_eq!(
+                    validator.validate(address, issued + 120, cookie),
+                    validate_udp_cookie(secret, address, issued + 120, cookie)
+                );
+            }
+        }
+    }
+
+    let id = validator.cookie(ip, 119);
+    assert!(!validator.validate(ip, 59, id)); // future slot
+    assert!(!validator.validate(v6, 119, id));
+    assert!(!CookieValidator::new(b"another secret").validate(ip, 119, id));
+    assert!(!validator.validate(ip, 119 + 65_536 * 60, id));
+    for bit in 0..48 {
+        assert!(!validator.validate(ip, 119, id ^ (1u64 << bit)));
+    }
+    // A hint from before slot zero must not underflow into a candidate.
+    assert!(!validator.validate(ip, 0, 0xffff_0000_0000_0000));
 }
 
 #[test]

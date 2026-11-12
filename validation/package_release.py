@@ -15,14 +15,15 @@ import tarfile
 import tempfile
 import tomllib
 
-VERSION = "1.0.3"
+VERSION = "1.0.4"
 BINARIES = ("tracker-server", "observatory", "tracker-web", "tracker-loadgen")
 MAX_SOURCE_BYTES = 64 * 1024 * 1024
 MAX_BINARY_BYTES = 100 * 1024 * 1024
 ROOT_FILES = {"Cargo.toml", "Cargo.lock", "rust-toolchain.toml", "README.md", "README.zh-CN.md", "LICENSE", "CHANGELOG.md", "SECURITY.md", "CONTRIBUTING.md", ".gitignore", ".gitattributes"}
-DOCS = {"architecture.md", "api.md", "validation.md", "validation-1.0.1.md", "validation-1.0.2.md", "validation-1.0.3.md", "open-source-review.md", "benchmark-method.md", "capacity-report.md", "memory-profile-analysis.md", "listing-status.md", "newtrackon-nz-request.md", "ngosang-submission.md", "deployment.md", "cloudflare-ingress.md", "release-packaging.md", "third-party-notices.txt"}
+DOCS = {"architecture.md", "api.md", "validation.md", "validation-1.0.1.md", "validation-1.0.2.md", "validation-1.0.3.md", "validation-1.0.4.md", "optimization-1.0.4.md", "billion-request-envelope.md", "open-source-review.md", "benchmark-method.md", "capacity-report.md", "memory-profile-analysis.md", "listing-status.md", "newtrackon-nz-request.md", "ngosang-submission.md", "deployment.md", "cloudflare-ingress.md", "release-packaging.md", "third-party-notices.txt"}
 DEPLOY = {"tracker-browser.conf", "ingress.conf", "ingress-bootstrap.conf", "nftables.conf", "nginx.conf", "tracker-locations.inc", "tracker-web.service", "tracker-v1.service", "tracker-observatory.service", "tracker-cloudflare-realip.service", "tracker-cloudflare-realip.timer", "refresh-cloudflare-realip.py"}
 VALIDATION = {"README.md", "wirecheck.rs", "capacity_guard.rs", "capacity-guard.md", "http_connection_probe.rs", "http-connection-probe.md", "package_release.py"}
+BENCHMARKS = {"v1.0.4-offline-gate.json", "v1.0.4-short-comparison.json"}
 
 
 def git(*args, cwd):
@@ -39,7 +40,7 @@ def allowed(name):
         return False
     if name in {"config/config.example.toml", "config/sources.toml"}:
         return True
-    if len(p.parts) == 2 and ((p.parts[0] == "docs" and p.name in DOCS) or (p.parts[0] == "deploy" and p.name in DEPLOY) or (p.parts[0] == "validation" and p.name in VALIDATION)):
+    if len(p.parts) == 2 and ((p.parts[0] == "docs" and p.name in DOCS) or (p.parts[0] == "deploy" and p.name in DEPLOY) or (p.parts[0] == "validation" and p.name in VALIDATION) or (p.parts[0] == "benchmarks" and p.name in BENCHMARKS)):
         return True
     return (len(p.parts) >= 3 and p.parts[0] == "crates" and
             ((len(p.parts) == 3 and p.name == "Cargo.toml") or

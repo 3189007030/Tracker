@@ -1,6 +1,6 @@
 # S1 native deployment
 
-Version 1.0.2 is deployed. The steps below describe the release procedure; final quality gates, deployment receipts and limitations are recorded in [1.0.2 validation](validation-1.0.2.md). Use the matching source, configuration and release-specific receipts before promotion.
+The steps below describe the 1.0.4 release procedure. Consult [1.0.4 validation](validation-1.0.4.md) for the actual gate, short-test and deployment status; a deployment template alone is not proof of promotion. Use matching source, configuration and release-specific receipts before promotion.
 
 This release uses Debian 12, systemd and Nginx. It does not require Docker, Redis or a Python application environment. The production registry is a single process; multiple independent replicas would split discovery state.
 
@@ -51,3 +51,7 @@ Check native `/healthz`, `/readyz` and `/stats.json` through the announce host, 
 Preserve the current and preceding qualified release packages plus their config/checksum manifests. Promote by atomically replacing `current`, then restart only changed services and verify readiness and real protocol behavior. A code rollback uses the preceding immutable directory and its matching config. Native state cannot be rolled back because it is never persisted.
 
 Back up necessary SSH/network/firewall/TLS configuration off-host in a private location before host cleanup. Do not include private keys, API credentials, peer evidence or historical application data in public release archives. Cleanup is restricted to S1's authorized applications; it must not touch S2 or other domains' services.
+
+## Connection reuse policy
+
+The 1.0.4 Nginx template keeps client connections idle for up to 75 seconds and recycles them after at most 10,000 requests. The local native upstream caches up to 128 idle connections per worker with a 300-second idle timeout and a 10,000-request cap. These are connection-reuse limits, not throughput guarantees or caps on all active connections. Retain the existing worker/connection/cgroup bounds and compare memory under real traffic. Origin TLS session tickets remain disabled; stateful replies remain uncached.

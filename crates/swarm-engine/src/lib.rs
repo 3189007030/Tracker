@@ -538,12 +538,27 @@ impl SwarmEngine {
 
         let old = shard.existing_id(&req.info_hash, &endpoint);
         if let Some(id) = old {
-            shard.unschedule(id);
-            let (old_seed, old_id, completed_already) = {
+            let (old_seed, old_id, completed_already, old_deadline) = {
                 let peer = shard.peers[id].as_ref().expect("live peer");
-                (peer.seed, peer.peer_id, peer.completed_reported)
+                (
+                    peer.seed,
+                    peer.peer_id,
+                    peer.completed_reported,
+                    peer.deadline,
+                )
             };
             let seed = req.left == 0;
+            let rare = shard.swarms[&req.info_hash].ids.len() <= 3;
+            let ttl = if seed && rare {
+                self.cfg.cold_seed_ttl_secs
+            } else {
+                self.cfg.normal_ttl_secs
+            };
+            let deadline = now.saturating_add(ttl);
+            let reschedule = deadline != old_deadline;
+            if reschedule {
+                shard.unschedule(id);
+            }
             let completed = completed_already && old_id == req.peer_id;
             {
                 let swarm = shard.swarms.get_mut(&req.info_hash).expect("live swarm");
@@ -558,18 +573,14 @@ impl SwarmEngine {
                     swarm.completed = swarm.completed.saturating_add(1);
                 }
             }
-            let rare = shard.swarms[&req.info_hash].ids.len() <= 3;
             let p = shard.peers[id].as_mut().expect("live peer");
             p.peer_id = req.peer_id;
             p.seed = seed;
             p.updated = now;
             p.completed_reported = completed || req.event == AnnounceEvent::Completed;
-            let ttl = if seed && rare {
-                self.cfg.cold_seed_ttl_secs
-            } else {
-                self.cfg.normal_ttl_secs
-            };
-            shard.schedule(id, now.saturating_add(ttl));
+            if reschedule {
+                shard.schedule(id, deadline);
+            }
         } else {
             let new_swarm = !shard.swarms.contains_key(&req.info_hash);
             if !new_swarm && shard.swarms[&req.info_hash].ids.len() >= self.cfg.max_peers_per_swarm
@@ -953,6 +964,70 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn repeated_same_deadline_keeps_timer_positions_and_role_transitions() {
+        let engine = SwarmEngine::new(EngineConfig {
+            allow_private_ips: true,
+            normal_ttl_secs: 100,
+            cold_seed_ttl_secs: 200,
+            ..EngineConfig::default()
+        });
+        let hash = [27; 20];
+        let mut first = request_for(hash, 10001, false);
+        let second = request_for(hash, 10002, false);
+        let third = request_for(hash, 10003, false);
+        for request in [&first, &second, &third] {
+            engine.announce(request, 10).unwrap();
+        }
+        let shard_id = engine.shard(&hash);
+        let (wheel_before, swarm_before) = {
+            let shard = lock(&engine.shards[shard_id]);
+            (
+                shard.wheel[&110].clone(),
+                shard.swarms[&hash].timers[&110].clone(),
+            )
+        };
+        for _ in 0..100 {
+            engine.announce(&first, 10).unwrap();
+        }
+        {
+            let shard = lock(&engine.shards[shard_id]);
+            assert_eq!(shard.wheel[&110], wheel_before);
+            assert_eq!(shard.swarms[&hash].timers[&110], swarm_before);
+            assert_timer_positions(&shard);
+        }
+        first.left = 0;
+        first.event = AnnounceEvent::Completed;
+        engine.announce(&first, 10).unwrap();
+        engine.announce(&first, 10).unwrap();
+        let scrape = engine.scrape(&[hash], 10).unwrap();
+        assert_eq!(
+            (
+                scrape[0].complete,
+                scrape[0].incomplete,
+                scrape[0].downloaded
+            ),
+            (1, 2, 1)
+        );
+        {
+            let shard = lock(&engine.shards[shard_id]);
+            let peer = shard.peers[shard
+                .existing_id(&hash, &SocketAddr::new(first.ip, first.port))
+                .unwrap()]
+            .as_ref()
+            .unwrap();
+            assert_eq!(peer.deadline, 210);
+            assert_timer_positions(&shard);
+        }
+        engine.announce(&first, 11).unwrap();
+        engine.maintenance(110, 256);
+        assert_eq!(engine.stats().peers, 1);
+        engine.maintenance(210, 256);
+        assert_eq!(engine.stats().peers, 1);
+        engine.maintenance(211, 256);
+        assert_eq!(engine.stats().peers, 0);
     }
 
     #[test]

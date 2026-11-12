@@ -1,6 +1,6 @@
-# Public API — 1.0.2
+# Public API — 1.0.4
 
-The routes describe the 1.0.2 implementation. Final validation and deployment status are recorded in [1.0.2 validation](validation-1.0.2.md).
+The observation routes retain the 1.0.2 contract; 1.0.4 adds native rejection diagnostics. Validation and deployment status are recorded in [1.0.4 validation](validation-1.0.4.md).
 
 The new API does not retain the Python JSON schema or composite score. Unknown is `null`, and a real, published empty dataset is distinct from a missing snapshot.
 
@@ -26,6 +26,10 @@ Public endpoint `first_seen` and `baseline` describe its stable service identity
 HTTP success requires structurally valid tracker fields. `incomplete_protocol` is an unverified reply missing required peer fields, even when HTTP is 200. `peers_unusable` means entries were returned but none can be used by the bounded peer verifier; it is distinct from an empty reply and does not imply an attempted or failed handshake.
 
 Native `/stats.json` exposes a coarse `pressure.active` flag and reason for bounded background cooperation. State admission at 90% of the logical budget, a recent global capacity refusal or near-exhausted HTTP handler slots raises the flag. This is a resource signal, not a quality score or a throughput guarantee.
+
+Since 1.0.4, native `diagnostics` separates `http_invalid_queries`, `udp_malformed_packets`, `udp_cookie_window_rejections` and `udp_cookie_auth_rejections`. A window rejection means the public slot hint is outside the accepted window; it does not prove the ID was authentic or issued by this server. Authentication rejection means the hint selected a current candidate but its MAC/source binding did not validate. Neither count alone proves malicious traffic. Invalid IDs remain silent. Existing `requests.invalid_packets` remains the aggregate; individual atomics are read separately, so totals and categories may briefly differ in a busy snapshot.
+
+`diagnostics.engine_errors` has fixed keys `invalid_address`, `invalid_port`, `peer_capacity`, `swarm_capacity`, `swarm_peer_capacity`, `memory_budget` and `busy`. Their aggregate remains `requests.business_failures`. The new counters start at process launch; old aggregate failures cannot be backfilled. Prometheus exposes the fixed diagnostic counters and `tracker_engine_failures_total{reason="..."}` without peer, resource, URL-query or cookie labels.
 
 The website domain's `/healthz` tests its web process; `/readyz` tests a readable, fresh public snapshot and reports evidence warmup separately. These routes on the direct announce domains test the native process and its listeners/maintenance. Neither liveness nor HTTP 200 alone establishes successful tracker announces.
 

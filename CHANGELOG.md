@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.4 — bounded native hot paths and rejection diagnostics
+
+- Reuse keyed HMAC state and validate one authenticated time slot per UDP connection ID, preserving source binding, wire format and the existing validity window.
+- Reuse per-socket UDP response buffers; keep unauthenticated invalid IDs silent and response sizes bounded.
+- Skip timing-index removal/reinsertion when a peer refresh leaves its deadline unchanged; retain role, expiry and peer-discovery behavior.
+- Expose fixed, privacy-safe counters for HTTP parse failures, UDP malformed packets, cookie validation stages and individual engine refusal reasons. Historical aggregate failures cannot be backfilled.
+- Increase bounded Nginx connection reuse while keeping announce/scrape uncached and origin TLS ticket policy unchanged.
+
+Validation and short comparative measurements are recorded in [1.0.4 validation](docs/validation-1.0.4.md). A billion daily requests remains a workload-dependent preparation target.
+
 ## 1.0.3 â€” open-source preparation
 
 - Remove built-in forum navigation locations; load optional exact HTTPS roots from private source configuration. Unconfigured sources perform no network requests, retain their stable stored identifiers, and report a configuration shortfall.

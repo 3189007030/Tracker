@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "version": "1.0.4",
+  "toolchain": "1.99.1",
+  "gates": [
+    {
+      "checked_utc": "2026-11-12T04:44:13.293336+00:00",
+      "gate": "fmt",
+      "exit_code": 0,
+      "passed_tests": 0,
+      "loopback_only_network_namespace": false
+    },
+    {
+      "checked_utc": "2026-11-12T04:46:00.344777+00:00",
+      "gate": "test",
+      "exit_code": 0,
+      "passed_tests": 124,
+      "loopback_only_network_namespace": true
+    },
+    {
+      "checked_utc": "2026-11-12T04:46:31.619977+00:00",
+      "gate": "clippy",
+      "exit_code": 0,
+      "passed_tests": 0,
+      "loopback_only_network_namespace": false
+    },
+    {
+      "checked_utc": "2026-11-12T04:52:19.906224+00:00",
+      "gate": "build",
+      "exit_code": 0,
+      "passed_tests": 0,
+      "loopback_only_network_namespace": false
+    }
+  ]
+}

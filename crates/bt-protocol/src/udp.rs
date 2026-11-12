@@ -95,14 +95,34 @@ pub fn parse_udp(raw: &[u8], source: SocketAddr) -> Result<UdpRequest> {
 
 pub fn encode_udp_connect(transaction_id: u32, connection_id: u64) -> Vec<u8> {
     let mut out = Vec::with_capacity(16);
+    serialize_udp_connect_into(&mut out, transaction_id, connection_id);
+    out
+}
+
+/// Replace `out` with a connect reply, retaining its allocation for reuse.
+pub fn serialize_udp_connect_into(out: &mut Vec<u8>, transaction_id: u32, connection_id: u64) {
+    out.clear();
+    out.reserve(16);
     out.extend_from_slice(&0u32.to_be_bytes());
     out.extend_from_slice(&transaction_id.to_be_bytes());
     out.extend_from_slice(&connection_id.to_be_bytes());
-    out
 }
 
 pub fn encode_udp_announce(transaction_id: u32, r: &AnnounceResponse, is_v6: bool) -> Vec<u8> {
     let mut out = Vec::with_capacity(20 + MAX_PEERS * if is_v6 { 18 } else { 6 });
+    serialize_udp_announce_into(&mut out, transaction_id, r, is_v6);
+    out
+}
+
+/// Replace `out` with an announce reply, retaining its allocation for reuse.
+pub fn serialize_udp_announce_into(
+    out: &mut Vec<u8>,
+    transaction_id: u32,
+    r: &AnnounceResponse,
+    is_v6: bool,
+) {
+    out.clear();
+    out.reserve(20 + MAX_PEERS * if is_v6 { 18 } else { 6 });
     out.extend_from_slice(&1u32.to_be_bytes());
     out.extend_from_slice(&transaction_id.to_be_bytes());
     out.extend_from_slice(&r.interval.to_be_bytes());
@@ -126,11 +146,18 @@ pub fn encode_udp_announce(transaction_id: u32, r: &AnnounceResponse, is_v6: boo
         }
     }
     debug_assert!(out.len() <= MAX_DATAGRAM);
-    out
 }
 
 pub fn encode_udp_scrape(transaction_id: u32, entries: &[ScrapeEntry]) -> Vec<u8> {
     let mut out = Vec::with_capacity(8 + entries.len().min(MAX_HASHES) * 12);
+    serialize_udp_scrape_into(&mut out, transaction_id, entries);
+    out
+}
+
+/// Replace `out` with a scrape reply, retaining its allocation for reuse.
+pub fn serialize_udp_scrape_into(out: &mut Vec<u8>, transaction_id: u32, entries: &[ScrapeEntry]) {
+    out.clear();
+    out.reserve(8 + entries.len().min(MAX_HASHES) * 12);
     out.extend_from_slice(&2u32.to_be_bytes());
     out.extend_from_slice(&transaction_id.to_be_bytes());
     for e in entries.iter().take(MAX_HASHES) {
@@ -138,54 +165,103 @@ pub fn encode_udp_scrape(transaction_id: u32, entries: &[ScrapeEntry]) -> Vec<u8
         out.extend_from_slice(&e.downloaded.to_be_bytes());
         out.extend_from_slice(&e.incomplete.to_be_bytes());
     }
-    out
+    debug_assert!(out.len() <= MAX_DATAGRAM);
 }
 
 pub fn encode_udp_error(transaction_id: u32, reason: &str) -> Vec<u8> {
-    let reason = reason.as_bytes();
     let mut out = Vec::with_capacity(8 + reason.len().min(MAX_DATAGRAM - 8));
-    out.extend_from_slice(&3u32.to_be_bytes());
-    out.extend_from_slice(&transaction_id.to_be_bytes());
-    out.extend_from_slice(&reason[..reason.len().min(MAX_DATAGRAM - 8)]);
+    serialize_udp_error_into(&mut out, transaction_id, reason);
     out
 }
 
-// HMAC covers the full 64-bit slot, not merely the 16-bit slot hint in the
-// cookie. This prevents a cookie becoming valid again after slot wraparound.
-fn cookie_at_slot(secret: &[u8], ip: IpAddr, slot: u64) -> u64 {
-    let mut mac = Hmac::<Sha256>::new_from_slice(secret).expect("HMAC accepts any key length");
-    mac.update(b"tracker-cookie-v1");
-    match ip {
-        IpAddr::V4(a) => {
-            mac.update(&[4]);
-            mac.update(&a.octets());
-        }
-        IpAddr::V6(a) => {
-            mac.update(&[6]);
-            mac.update(&a.octets());
-        }
+/// Replace `out` with an error reply, retaining its allocation for reuse.
+pub fn serialize_udp_error_into(out: &mut Vec<u8>, transaction_id: u32, reason: &str) {
+    let reason = reason.as_bytes();
+    out.clear();
+    out.reserve(8 + reason.len().min(MAX_DATAGRAM - 8));
+    out.extend_from_slice(&3u32.to_be_bytes());
+    out.extend_from_slice(&transaction_id.to_be_bytes());
+    out.extend_from_slice(&reason[..reason.len().min(MAX_DATAGRAM - 8)]);
+    debug_assert!(out.len() <= MAX_DATAGRAM);
+}
+
+/// Reusable, stateless BEP 15 connection ID generator and verifier.
+///
+/// Construct once with a high-entropy server secret (normally 32 bytes) and
+/// share it between requests. Changing the secret invalidates existing IDs.
+/// The initialized HMAC state is intentionally not exposed or formatted.
+#[derive(Clone)]
+pub struct CookieValidator {
+    prefix: Hmac<Sha256>,
+}
+
+impl CookieValidator {
+    pub fn new(secret: &[u8]) -> Self {
+        let mut prefix =
+            Hmac::<Sha256>::new_from_slice(secret).expect("HMAC accepts any key length");
+        prefix.update(b"tracker-cookie-v1");
+        Self { prefix }
     }
-    mac.update(&slot.to_be_bytes());
-    let tag = mac.finalize().into_bytes();
-    let mut out = [0u8; 8];
-    out[..2].copy_from_slice(&(slot as u16).to_be_bytes());
-    out[2..].copy_from_slice(&tag[..6]);
-    u64::from_be_bytes(out)
+
+    // The complete 64-bit slot remains authenticated, not just the public
+    // 16-bit hint, so an old ID cannot revive when that hint wraps.
+    fn mac_at_slot(&self, ip: IpAddr, slot: u64) -> Hmac<Sha256> {
+        let mut mac = self.prefix.clone();
+        match ip {
+            IpAddr::V4(a) => {
+                mac.update(&[4]);
+                mac.update(&a.octets());
+            }
+            IpAddr::V6(a) => {
+                mac.update(&[6]);
+                mac.update(&a.octets());
+            }
+        }
+        mac.update(&slot.to_be_bytes());
+        mac
+    }
+
+    /// Issue an ID for `ip`, using Unix seconds as `now`.
+    pub fn cookie(&self, ip: IpAddr, now: u64) -> u64 {
+        let slot = now / 60;
+        let tag = self.mac_at_slot(ip, slot).finalize().into_bytes();
+        let mut out = [0u8; 8];
+        out[..2].copy_from_slice(&(slot as u16).to_be_bytes());
+        out[2..].copy_from_slice(&tag[..6]);
+        u64::from_be_bytes(out)
+    }
+
+    /// Accept the current and previous two slots (at least 120 seconds).
+    pub fn validate(&self, ip: IpAddr, now: u64, cookie: u64) -> bool {
+        let bytes = cookie.to_be_bytes();
+        let hint = u16::from_be_bytes([bytes[0], bytes[1]]);
+        let slot = now / 60;
+        // The slot hint is already public in the cookie. It selects at most
+        // one slot in this window, including across the 16-bit wrap.
+        let age = (slot as u16).wrapping_sub(hint);
+        if age > 2 {
+            return false;
+        }
+        let Some(candidate) = slot.checked_sub(u64::from(age)) else {
+            return false;
+        };
+        // Mac's truncated-tag verifier compares the secret tag in constant time.
+        self.mac_at_slot(ip, candidate)
+            .verify_truncated_left(&bytes[2..])
+            .is_ok()
+    }
 }
 
 /// Generate a BEP 15 connection ID. `now` is Unix seconds; `secret` must be
 /// a high-entropy server secret and should be rotated on an operational cycle.
 pub fn udp_cookie(secret: &[u8], ip: IpAddr, now: u64) -> u64 {
-    cookie_at_slot(secret, ip, now / 60)
+    CookieValidator::new(secret).cookie(ip, now)
 }
 
 /// Accept the current and two preceding 60-second slots, so an issued cookie
 /// remains usable for at least 120 seconds, including across slot boundaries.
 pub fn validate_udp_cookie(secret: &[u8], ip: IpAddr, now: u64, cookie: u64) -> bool {
-    let slot = now / 60;
-    (0..=2)
-        .filter_map(|n| slot.checked_sub(n))
-        .any(|candidate| cookie_at_slot(secret, ip, candidate) == cookie)
+    CookieValidator::new(secret).validate(ip, now, cookie)
 }
 
 pub fn encode_udp_connect_request(transaction_id: u32) -> Vec<u8> {

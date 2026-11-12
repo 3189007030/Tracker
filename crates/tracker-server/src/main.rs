@@ -83,6 +83,11 @@ struct Counters {
     accepted_ipv6: AtomicU64,
     failures: AtomicU64,
     invalid_packets: AtomicU64,
+    http_invalid_queries: AtomicU64,
+    udp_malformed_packets: AtomicU64,
+    udp_cookie_window_rejections: AtomicU64,
+    udp_cookie_auth_rejections: AtomicU64,
+    engine_failures: [AtomicU64; 7],
     rate_limited: AtomicU64,
     http_busy: AtomicU64,
     udp_rx: AtomicU64,
@@ -126,7 +131,31 @@ const BUCKET_US: [u64; 10] = [
     100_000,
     u64::MAX,
 ];
+const ENGINE_FAILURE_KEYS: [&str; 7] = [
+    "invalid_address",
+    "invalid_port",
+    "peer_capacity",
+    "swarm_capacity",
+    "swarm_peer_capacity",
+    "memory_budget",
+    "busy",
+];
 impl Counters {
+    fn diagnostics(&self) -> serde_json::Value {
+        let get = |v: &AtomicU64| v.load(Ordering::Relaxed);
+        let errors: serde_json::Map<String, serde_json::Value> = ENGINE_FAILURE_KEYS
+            .iter()
+            .zip(&self.engine_failures)
+            .map(|(key, value)| ((*key).to_owned(), json!(get(value))))
+            .collect();
+        json!({
+            "http_invalid_queries": get(&self.http_invalid_queries),
+            "udp_malformed_packets": get(&self.udp_malformed_packets),
+            "udp_cookie_window_rejections": get(&self.udp_cookie_window_rejections),
+            "udp_cookie_auth_rejections": get(&self.udp_cookie_auth_rejections),
+            "engine_errors": errors,
+        })
+    }
     fn observe(&self, started: Instant) {
         let micros = started.elapsed().as_micros().min(u64::MAX as u128) as u64;
         self.service_micros_sum.fetch_add(micros, Ordering::Relaxed);
@@ -195,13 +224,49 @@ struct App {
     counters: Counters,
     limiter: IpLimiter,
     settings: Settings,
-    secret: [u8; 32],
+    cookies: CookieValidator,
     started: Instant,
     http_slots: Arc<Semaphore>,
     maintenance_at: AtomicU64,
     pressure_until: AtomicU64,
 }
 impl App {
+    fn engine_failure(&self, error: &EngineError) {
+        self.counters.failures.fetch_add(1, Ordering::Relaxed);
+        let index = match error {
+            EngineError::InvalidAddress => 0,
+            EngineError::InvalidPort => 1,
+            EngineError::PeerCapacity => 2,
+            EngineError::SwarmCapacity => 3,
+            EngineError::SwarmPeerCapacity => 4,
+            EngineError::MemoryBudget => 5,
+            EngineError::Busy => 6,
+        };
+        self.counters.engine_failures[index].fetch_add(1, Ordering::Relaxed);
+        self.capacity_refusal(error);
+    }
+    fn invalid_http_query(&self) {
+        self.counters
+            .invalid_packets
+            .fetch_add(1, Ordering::Relaxed);
+        self.counters
+            .http_invalid_queries
+            .fetch_add(1, Ordering::Relaxed);
+    }
+    fn rejected_cookie(&self, time: u64, connection_id: u64) {
+        self.counters
+            .invalid_packets
+            .fetch_add(1, Ordering::Relaxed);
+        // The public hint only identifies which validation stage rejected it.
+        // An old hint does not prove the cookie was ever authentic or issued here.
+        let age = ((time / 60) as u16).wrapping_sub((connection_id >> 48) as u16);
+        let counter = if age > 2 {
+            &self.counters.udp_cookie_window_rejections
+        } else {
+            &self.counters.udp_cookie_auth_rejections
+        };
+        counter.fetch_add(1, Ordering::Relaxed);
+    }
     fn accepted_announce(&self, request: &AnnounceRequest) {
         self.counters.accepted.fetch_add(1, Ordering::Relaxed);
         let counter = if request.ip.is_ipv4() {
@@ -314,7 +379,7 @@ async fn announce(
     }
     let raw = uri.query().unwrap_or("").as_bytes();
     if raw.len() > 8192 {
-        app.counters.invalid_packets.fetch_add(1, Ordering::Relaxed);
+        app.invalid_http_query();
         return failure("query too large");
     }
     match parse_http_announce(raw, ip) {
@@ -324,13 +389,12 @@ async fn announce(
                 no_store(encode_http_announce(&reply), StatusCode::OK)
             }
             Err(error) => {
-                app.counters.failures.fetch_add(1, Ordering::Relaxed);
-                app.capacity_refusal(&error);
+                app.engine_failure(&error);
                 failure(&error.to_string())
             }
         },
         Err(_) => {
-            app.counters.invalid_packets.fetch_add(1, Ordering::Relaxed);
+            app.invalid_http_query();
             failure("invalid announce request")
         }
     }
@@ -358,7 +422,7 @@ async fn scrape(
     }
     let raw = uri.query().unwrap_or("").as_bytes();
     if raw.len() > 8192 {
-        app.counters.invalid_packets.fetch_add(1, Ordering::Relaxed);
+        app.invalid_http_query();
         return failure("query too large");
     }
     match parse_http_scrape(raw) {
@@ -367,14 +431,13 @@ async fn scrape(
             match app.engine.scrape(&hashes, now()) {
                 Ok(entries) => no_store(encode_http_scrape(&entries), StatusCode::OK),
                 Err(error) => {
-                    app.counters.failures.fetch_add(1, Ordering::Relaxed);
-                    app.capacity_refusal(&error);
+                    app.engine_failure(&error);
                     failure(&error.to_string())
                 }
             }
         }
         Err(_) => {
-            app.counters.invalid_packets.fetch_add(1, Ordering::Relaxed);
+            app.invalid_http_query();
             failure("invalid scrape request")
         }
     }
@@ -409,7 +472,7 @@ async fn stats(State(app): State<Arc<App>>) -> Response {
         now() < get(&app.pressure_until),
     );
     json_no_store(
-        json!({"version":tracker_model::VERSION,"instance_id":app.instance_id,"uptime_seconds":app.started.elapsed().as_secs(),"volatile":true,"engine":engine,"rss_bytes":rss_bytes(),"pressure":{"active":reason!="none","reason":reason},"requests":{"http_announces":get(&c.http_announces),"udp_connects":get(&c.udp_connects),"udp_announces":get(&c.udp_announces),"scrapes":get(&c.scrapes),"accepted_announces":get(&c.accepted),"accepted_ipv4":get(&c.accepted_ipv4),"accepted_ipv6":get(&c.accepted_ipv6),"business_failures":get(&c.failures),"invalid_packets":get(&c.invalid_packets),"rate_limited":get(&c.rate_limited),"http_busy":get(&c.http_busy),"udp_send_errors":get(&c.udp_send_errors),"udp_v4_packets":get(&c.udp_v4_packets),"udp_v6_packets":get(&c.udp_v6_packets),"udp_bytes_received":get(&c.udp_rx),"udp_bytes_sent":get(&c.udp_tx)},"service_time":{"scope":"HTTP announce/scrape and received UDP packets; excludes socket send and transport","count":get(&c.service_count),"sum_micros":get(&c.service_micros_sum),"bucket_upper_micros":BUCKET_US,"bucket_counts":c.service_buckets.iter().map(get).collect::<Vec<_>>()},"maintenance":{"last_at":get(&app.maintenance_at),"count":get(&c.maintenance_count),"sum_micros":get(&c.maintenance_micros_sum),"max_micros":get(&c.maintenance_micros_max)}}),
+        json!({"version":tracker_model::VERSION,"instance_id":app.instance_id,"uptime_seconds":app.started.elapsed().as_secs(),"volatile":true,"engine":engine,"rss_bytes":rss_bytes(),"pressure":{"active":reason!="none","reason":reason},"requests":{"http_announces":get(&c.http_announces),"udp_connects":get(&c.udp_connects),"udp_announces":get(&c.udp_announces),"scrapes":get(&c.scrapes),"accepted_announces":get(&c.accepted),"accepted_ipv4":get(&c.accepted_ipv4),"accepted_ipv6":get(&c.accepted_ipv6),"business_failures":get(&c.failures),"invalid_packets":get(&c.invalid_packets),"rate_limited":get(&c.rate_limited),"http_busy":get(&c.http_busy),"udp_send_errors":get(&c.udp_send_errors),"udp_v4_packets":get(&c.udp_v4_packets),"udp_v6_packets":get(&c.udp_v6_packets),"udp_bytes_received":get(&c.udp_rx),"udp_bytes_sent":get(&c.udp_tx)},"diagnostics":c.diagnostics(),"service_time":{"scope":"HTTP announce/scrape and received UDP packets; excludes socket send and transport","count":get(&c.service_count),"sum_micros":get(&c.service_micros_sum),"bucket_upper_micros":BUCKET_US,"bucket_counts":c.service_buckets.iter().map(get).collect::<Vec<_>>()},"maintenance":{"last_at":get(&app.maintenance_at),"count":get(&c.maintenance_count),"sum_micros":get(&c.maintenance_micros_sum),"max_micros":get(&c.maintenance_micros_max)}}),
     )
 }
 async fn health() -> Response {
@@ -439,6 +502,23 @@ async fn metrics(State(app): State<Arc<App>>) -> String {
     );
     if let Some(rss) = rss_bytes() {
         s.push_str(&format!("tracker_rss_bytes {rss}\n"));
+    }
+    let diagnostics = app.counters.diagnostics();
+    if let Some(values) = diagnostics.as_object() {
+        for (key, value) in values {
+            if value.is_u64() {
+                s.push_str(&format!("tracker_{key}_total {value}\n"));
+            }
+        }
+    }
+    for (key, value) in ENGINE_FAILURE_KEYS
+        .iter()
+        .zip(&app.counters.engine_failures)
+    {
+        s.push_str(&format!(
+            "tracker_engine_failures_total{{reason=\"{key}\"}} {}\n",
+            value.load(Ordering::Relaxed)
+        ));
     }
     if let Ok(serde_json::Value::Object(values)) = serde_json::to_value(app.engine.stats()) {
         for (key, value) in values {
@@ -471,6 +551,7 @@ fn bind_udp(addr: SocketAddr) -> Result<UdpSocket> {
 }
 async fn udp_loop(socket: UdpSocket, app: Arc<App>) -> Result<()> {
     let mut buffer = [0u8; 2048];
+    let mut reply = Vec::with_capacity(1200);
     loop {
         let (length, source) = socket.recv_from(&mut buffer).await?;
         let timer = ServiceTimer::new(&app.counters);
@@ -488,30 +569,42 @@ async fn udp_loop(socket: UdpSocket, app: Arc<App>) -> Result<()> {
             continue;
         }
         let time = now();
-        let reply = match parse_udp(&buffer[..length], source) {
+        match parse_udp(&buffer[..length], source) {
             Ok(UdpRequest::Connect { transaction_id }) => {
                 app.counters.udp_connects.fetch_add(1, Ordering::Relaxed);
-                encode_udp_connect(transaction_id, udp_cookie(&app.secret, source.ip(), time))
+                serialize_udp_connect_into(
+                    &mut reply,
+                    transaction_id,
+                    app.cookies.cookie(source.ip(), time),
+                );
             }
             Ok(UdpRequest::Announce {
                 connection_id,
                 transaction_id,
                 request,
             }) => {
-                if !validate_udp_cookie(&app.secret, source.ip(), time, connection_id) {
-                    app.counters.invalid_packets.fetch_add(1, Ordering::Relaxed);
+                if !app.cookies.validate(source.ip(), time, connection_id) {
+                    app.rejected_cookie(time, connection_id);
                     continue;
                 } else {
                     app.counters.udp_announces.fetch_add(1, Ordering::Relaxed);
                     match app.engine.announce(&request, time) {
                         Ok(response) => {
                             app.accepted_announce(&request);
-                            encode_udp_announce(transaction_id, &response, source.is_ipv6())
+                            serialize_udp_announce_into(
+                                &mut reply,
+                                transaction_id,
+                                &response,
+                                source.is_ipv6(),
+                            );
                         }
                         Err(error) => {
-                            app.counters.failures.fetch_add(1, Ordering::Relaxed);
-                            app.capacity_refusal(&error);
-                            encode_udp_error(transaction_id, &error.to_string())
+                            app.engine_failure(&error);
+                            serialize_udp_error_into(
+                                &mut reply,
+                                transaction_id,
+                                &error.to_string(),
+                            );
                         }
                     }
                 }
@@ -521,26 +614,34 @@ async fn udp_loop(socket: UdpSocket, app: Arc<App>) -> Result<()> {
                 transaction_id,
                 hashes,
             }) => {
-                if !validate_udp_cookie(&app.secret, source.ip(), time, connection_id) {
-                    app.counters.invalid_packets.fetch_add(1, Ordering::Relaxed);
+                if !app.cookies.validate(source.ip(), time, connection_id) {
+                    app.rejected_cookie(time, connection_id);
                     continue;
                 } else {
                     app.counters.scrapes.fetch_add(1, Ordering::Relaxed);
                     match app.engine.scrape(&hashes, time) {
-                        Ok(entries) => encode_udp_scrape(transaction_id, &entries),
+                        Ok(entries) => {
+                            serialize_udp_scrape_into(&mut reply, transaction_id, &entries)
+                        }
                         Err(error) => {
-                            app.counters.failures.fetch_add(1, Ordering::Relaxed);
-                            app.capacity_refusal(&error);
-                            encode_udp_error(transaction_id, &error.to_string())
+                            app.engine_failure(&error);
+                            serialize_udp_error_into(
+                                &mut reply,
+                                transaction_id,
+                                &error.to_string(),
+                            );
                         }
                     }
                 }
             }
             Err(_) => {
                 app.counters.invalid_packets.fetch_add(1, Ordering::Relaxed);
+                app.counters
+                    .udp_malformed_packets
+                    .fetch_add(1, Ordering::Relaxed);
                 continue;
             }
-        };
+        }
         drop(timer);
         if reply.len() <= 1200 {
             match socket.send_to(&reply, source).await {
@@ -610,7 +711,7 @@ async fn main() -> Result<()> {
         instance_id: format!("{:016x}", rand::random::<u64>()),
         counters: Counters::default(),
         limiter: IpLimiter::new(settings.per_ip_rate),
-        secret: rand::random(),
+        cookies: CookieValidator::new(&rand::random::<[u8; 32]>()),
         started: Instant::now(),
         http_slots: Arc::new(Semaphore::new(settings.http_concurrency)),
         settings: settings.clone(),
@@ -676,6 +777,167 @@ async fn main() -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn test_app(allow_private_ips: bool) -> Arc<App> {
+        Arc::new(App {
+            engine: SwarmEngine::new(EngineConfig {
+                allow_private_ips,
+                ..EngineConfig::default()
+            }),
+            instance_id: "test".to_owned(),
+            counters: Counters::default(),
+            limiter: IpLimiter::new(1000),
+            settings: Settings::default(),
+            cookies: CookieValidator::new(&[7; 32]),
+            started: Instant::now(),
+            http_slots: Arc::new(Semaphore::new(16)),
+            maintenance_at: AtomicU64::new(now()),
+            pressure_until: AtomicU64::new(0),
+        })
+    }
+    #[tokio::test]
+    async fn invalid_udp_ids_stay_silent_and_have_separate_counters() {
+        let app = test_app(true);
+        let server = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+        let address = server.local_addr().unwrap();
+        let task = tokio::spawn(udp_loop(server, app.clone()));
+        let client = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+        client.connect(address).await.unwrap();
+        let mut response = [0u8; 1200];
+        client.send(&encode_udp_connect_request(123)).await.unwrap();
+        let n = tokio::time::timeout(Duration::from_secs(1), client.recv(&mut response))
+            .await
+            .unwrap()
+            .unwrap();
+        let cookie = decode_udp_connect_response(&response[..n], 123).unwrap();
+        let request = AnnounceRequest {
+            info_hash: [3; 20],
+            peer_id: [5; 20],
+            ip: "127.0.0.1".parse().unwrap(),
+            port: 6881,
+            uploaded: 0,
+            downloaded: 0,
+            left: 1,
+            event: AnnounceEvent::Started,
+            numwant: 0,
+        };
+        client
+            .send(&encode_udp_announce_request(cookie, 127, &request))
+            .await
+            .unwrap();
+        let n = tokio::time::timeout(Duration::from_secs(1), client.recv(&mut response))
+            .await
+            .unwrap()
+            .unwrap();
+        let announced = decode_udp_announce_response(&response[..n], 127, false).unwrap();
+        assert_eq!(announced.incomplete, 1);
+        let mut scrape = Vec::with_capacity(36);
+        scrape.extend_from_slice(&cookie.to_be_bytes());
+        scrape.extend_from_slice(&2u32.to_be_bytes());
+        scrape.extend_from_slice(&128u32.to_be_bytes());
+        scrape.extend_from_slice(&request.info_hash);
+        client.send(&scrape).await.unwrap();
+        let n = tokio::time::timeout(Duration::from_secs(1), client.recv(&mut response))
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(n, 20);
+        assert_eq!(&response[..8], &[0, 0, 0, 2, 0, 0, 0, 128]);
+        assert_eq!(u32::from_be_bytes(response[16..20].try_into().unwrap()), 1);
+        let initial = app.engine.stats();
+        let bad_tag = encode_udp_announce_request(cookie ^ 1, 124, &request);
+        let old = app.cookies.cookie(request.ip, now().saturating_sub(240));
+        let old_hint = encode_udp_announce_request(old, 125, &request);
+        for packet in [bad_tag.as_slice(), old_hint.as_slice(), &[0u8; 7]] {
+            client.send(packet).await.unwrap();
+            assert!(
+                tokio::time::timeout(Duration::from_millis(50), client.recv(&mut response))
+                    .await
+                    .is_err()
+            );
+        }
+        let d = app.counters.diagnostics();
+        assert_eq!(d["udp_cookie_auth_rejections"], 1);
+        assert_eq!(d["udp_cookie_window_rejections"], 1);
+        assert_eq!(d["udp_malformed_packets"], 1);
+        assert_eq!(app.counters.invalid_packets.load(Ordering::Relaxed), 3);
+        let unchanged = app.engine.stats();
+        assert_eq!(unchanged.peers, initial.peers);
+        assert_eq!(unchanged.announces, initial.announces);
+        assert_eq!(unchanged.scrapes, initial.scrapes);
+        client.send(&encode_udp_connect_request(126)).await.unwrap();
+        let n = tokio::time::timeout(Duration::from_secs(1), client.recv(&mut response))
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(decode_udp_connect_response(&response[..n], 126).is_ok());
+        let mut stopped = request.clone();
+        stopped.event = AnnounceEvent::Stopped;
+        client
+            .send(&encode_udp_announce_request(cookie, 129, &stopped))
+            .await
+            .unwrap();
+        let n = tokio::time::timeout(Duration::from_secs(1), client.recv(&mut response))
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            decode_udp_announce_response(&response[..n], 129, false)
+                .unwrap()
+                .incomplete,
+            0
+        );
+        assert_eq!(app.engine.stats().peers, 0);
+        task.abort();
+        let _ = task.await;
+    }
+    #[tokio::test]
+    async fn diagnostics_distinguish_protocol_replies_from_business_failures() {
+        let app = test_app(false);
+        let request = AnnounceRequest {
+            info_hash: [3; 20],
+            peer_id: [5; 20],
+            ip: "127.0.0.1".parse().unwrap(),
+            port: 6881,
+            uploaded: 0,
+            downloaded: 0,
+            left: 1,
+            event: AnnounceEvent::Stopped,
+            numwant: 0,
+        };
+        let uri = format!("/announce?{}", encode_http_announce_query(&request))
+            .parse()
+            .unwrap();
+        let reply = announce(
+            State(app.clone()),
+            ConnectInfo("127.0.0.1:6881".parse().unwrap()),
+            HeaderMap::new(),
+            Method::GET,
+            OriginalUri(uri),
+        )
+        .await;
+        assert_eq!(reply.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(reply.into_body(), 1024).await.unwrap();
+        assert!(
+            body.windows(b"failure reason".len())
+                .any(|s| s == b"failure reason")
+        );
+        assert_eq!(app.counters.failures.load(Ordering::Relaxed), 1);
+        assert_eq!(
+            app.counters.diagnostics()["engine_errors"]["invalid_address"],
+            1
+        );
+        let reply = announce(
+            State(app.clone()),
+            ConnectInfo("127.0.0.1:6881".parse().unwrap()),
+            HeaderMap::new(),
+            Method::GET,
+            OriginalUri("/announce?bad=query".parse().unwrap()),
+        )
+        .await;
+        assert_eq!(reply.status(), StatusCode::OK);
+        assert_eq!(app.counters.diagnostics()["http_invalid_queries"], 1);
+        assert_eq!(app.counters.failures.load(Ordering::Relaxed), 1);
+    }
     #[test]
     fn resource_pressure_has_explicit_memory_and_concurrency_boundaries() {
         assert_eq!(pressure_reason(89, 100, 100, 100, false), "none");
