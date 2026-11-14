@@ -3,6 +3,7 @@
 ## 1.2.1 — stable canonical endpoints
 
 - Keep the canonical URL of a duplicate origin stable between observation cycles. The adapter previously ranked candidates by the single latest announce, so a dual-stack hostname whose newest check was the address family it cannot serve looked unhealthy and the canonical could alternate between the hostname and its literal IP; a hostname is now considered working when any announce in the 24-hour window was accepted, hostnames are preferred over literal addresses as the public URL, and the previous canonical is kept while it remains a healthy candidate. This changes only how aliases are chosen; the published endpoint and observation schemas are unchanged.
+- Never alias the hosts this project operates. A live check after the first cutover showed `udp.augrains.com` being collapsed into the retired `announce.augrains.com` name because both resolve to the same address, which hid the configured public UDP entry point; `refresh_aliases` now receives the configured `own_hosts` and skips them. A regression test covers the retired-name case.
 - No web asset changed, so static asset version strings stay at `?v=1.2.0`.
 - Validation and deployment receipts for this cutover are tracked in [1.2.1 validation](docs/validation-1.2.1.md); the 1.2.0 ledger remains the record of the first promotion.
 
