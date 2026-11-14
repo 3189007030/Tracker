@@ -42,7 +42,7 @@ Server-side, on S1, after the second cutover:
 
 - Both `/readyz` endpoints returned HTTP 200 with `version=1.2.1`; `/healthz` and `/api/v1/overview` also report 1.2.1; all three application units and nginx were active.
 - The private alias table holds five external duplicate pairs and no `augrains.com` host. `/api/v1/trackers?q=augrains` returns six rows including `udp://udp.augrains.com:6969/announce`, where the first cutover returned five without it.
-- `/api/v1/overview` reports 310 endpoints / 287 services / 81 all / 47 standard / 20 best; `trackers.txt` has 47 lines. The endpoint count is 315 minus the five hidden aliases. The earlier 311 was 315 minus four aliases, one of which was the wrongly merged own host.
+- `/api/v1/overview` reports 310 endpoints / 287 services / 81 all / 20 best; `trackers.txt` has 47 lines. Counts drift as new observations arrive; these are the values at verification time. The endpoint count is 315 minus the five hidden aliases. The earlier 311 was 315 minus four aliases, one of which was the wrongly merged own host.
 
 Canonical direction and stability:
 
