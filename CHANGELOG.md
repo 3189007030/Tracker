@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.1 — stable canonical endpoints
+
+- Keep the canonical URL of a duplicate origin stable between observation cycles. The adapter previously ranked candidates by the single latest announce, so a dual-stack hostname whose newest check was the address family it cannot serve looked unhealthy and the canonical could alternate between the hostname and its literal IP; a hostname is now considered working when any announce in the 24-hour window was accepted, hostnames are preferred over literal addresses as the public URL, and the previous canonical is kept while it remains a healthy candidate. This changes only how aliases are chosen; the published endpoint and observation schemas are unchanged.
+- No web asset changed, so static asset version strings stay at `?v=1.2.0`.
+- Validation and deployment receipts for this cutover are tracked in [1.2.1 validation](docs/validation-1.2.1.md); the 1.2.0 ledger remains the record of the first promotion.
+
 ## 1.2.0 — interactive list, canonical endpoints and diagnostic observation detail
 
 - Filter the tracker list while typing. A short debounce fetches a server-rendered results fragment from the same origin and replaces the results region. This is progressive enhancement: the GET form still submits and renders a full page without JavaScript, and the active filter stays in the URL.

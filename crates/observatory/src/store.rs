@@ -477,22 +477,31 @@ impl Store {
             checks: u64,
         }
         let since = now - 86400;
-        // Latest announce verdict per endpoint inside the evidence window.
-        let mut latest = std::collections::HashMap::<String, (String, i64)>::new();
+        // The latest announce verdict per endpoint and address family. Judging
+        // an endpoint by its single newest announce would make a dual-stack
+        // hostname unhealthy whenever that check hit the family with no public
+        // address, and the canonical choice would flip between the hostname
+        // and its literal IP; any family with a fresh accepted announce is
+        // enough, while a family whose latest check failed stays unhealthy.
+        let mut latest = std::collections::HashMap::<String, Vec<(String, i64)>>::new();
         {
             let mut q = self.private.prepare(
-                "SELECT endpoint_id,result,observed_at FROM (SELECT endpoint_id,json_extract(payload,'$.result') AS result,observed_at,ROW_NUMBER() OVER (PARTITION BY endpoint_id ORDER BY observed_at DESC,id DESC) AS rn FROM observations WHERE observed_at>=?1 AND json_extract(payload,'$.stage')='announce') WHERE rn=1",
+                "SELECT endpoint_id,family,result,observed_at FROM (SELECT endpoint_id,family,json_extract(payload,'$.result') AS result,observed_at,ROW_NUMBER() OVER (PARTITION BY endpoint_id,family ORDER BY observed_at DESC,id DESC) AS rn FROM observations WHERE observed_at>=?1 AND json_extract(payload,'$.stage')='announce') WHERE rn=1",
             )?;
             let rows = q.query_map([since], |r| {
                 Ok((
                     r.get::<_, String>(0)?,
-                    r.get::<_, Option<String>>(1)?,
-                    r.get::<_, i64>(2)?,
+                    r.get::<_, String>(1)?,
+                    r.get::<_, Option<String>>(2)?,
+                    r.get::<_, i64>(3)?,
                 ))
             })?;
             for row in rows {
-                let (endpoint, result, observed_at) = row?;
-                latest.insert(endpoint, (result.unwrap_or_default(), observed_at));
+                let (endpoint, _family, result, observed_at) = row?;
+                latest
+                    .entry(endpoint)
+                    .or_default()
+                    .push((result.unwrap_or_default(), observed_at));
             }
         }
         // Most recent announce that recorded the address actually contacted,
@@ -584,10 +593,11 @@ impl Store {
             if targets.is_empty() {
                 continue;
             }
-            let (latest_accepted, latest_at) = latest
-                .get(&endpoint_id)
-                .map(|(result, at)| (result == "accepted", *at))
-                .unwrap_or((false, 0));
+            let latest_accepted = latest.get(&endpoint_id).is_some_and(|families| {
+                families
+                    .iter()
+                    .any(|(result, at)| result == "accepted" && *at >= since)
+            });
             let evidence = old_evidence.remove(&endpoint_id).unwrap_or(OldEvidence {
                 rate: None,
                 successes: 0,
@@ -604,7 +614,7 @@ impl Store {
                     url: url.clone(),
                     literal: literal.is_some(),
                     target_ip,
-                    latest_accepted: latest_accepted && latest_at >= since,
+                    latest_accepted,
                     rate: evidence.rate,
                     successes: evidence.successes,
                     median: evidence.median,
@@ -612,6 +622,8 @@ impl Store {
                 });
             }
         }
+        let previous = self.alias_map()?;
+        let previous_canonicals: std::collections::HashSet<&String> = previous.values().collect();
         let mut mapping = std::collections::HashMap::<String, (String, String)>::new();
         for ((scheme, _, _, _), members) in buckets {
             if members.len() < 2 {
@@ -621,7 +633,7 @@ impl Store {
                 // Distinct hostname vhosts on one address are not duplicates.
                 continue;
             }
-            let mut healthy = members
+            let healthy = members
                 .iter()
                 .filter(|m| {
                     m.latest_accepted && (m.checks == 0 || m.rate.is_some_and(|rate| rate >= 0.8))
@@ -631,7 +643,17 @@ impl Store {
                 // Never hide a working address behind a failing canonical URL.
                 continue;
             }
-            healthy.sort_by(|a, b| {
+            // Prefer a hostname as the canonical public URL; a literal address
+            // is only canonical when no healthy hostname resolves there.
+            let mut candidates = healthy
+                .iter()
+                .copied()
+                .filter(|m| !m.literal)
+                .collect::<Vec<_>>();
+            if candidates.is_empty() {
+                candidates = healthy.clone();
+            }
+            candidates.sort_by(|a, b| {
                 b.rate
                     .unwrap_or(f64::NEG_INFINITY)
                     .total_cmp(&a.rate.unwrap_or(f64::NEG_INFINITY))
@@ -644,7 +666,13 @@ impl Store {
                     .then_with(|| a.literal.cmp(&b.literal))
                     .then_with(|| a.url.cmp(&b.url))
             });
-            let canonical = healthy[0];
+            // Keep the previous canonical while it is still a healthy candidate:
+            // evidence changes must not make the public URL flip on every cycle.
+            let canonical = candidates
+                .iter()
+                .find(|m| previous_canonicals.contains(&m.id))
+                .copied()
+                .unwrap_or(candidates[0]);
             for alias in members
                 .iter()
                 .filter(|m| m.id != canonical.id && (scheme == "udp" || m.literal))
@@ -655,7 +683,6 @@ impl Store {
                 );
             }
         }
-        let previous = self.alias_map()?;
         let changed = previous.len() != mapping.len()
             || mapping
                 .iter()
@@ -1925,6 +1952,86 @@ mod tests {
         assert_eq!(
             (overview.endpoints, overview.services, overview.all_count),
             (1, 1, 1)
+        );
+        drop(store);
+        std::fs::remove_dir_all(dir)?;
+        Ok(())
+    }
+
+    #[test]
+    fn dual_stack_family_failure_keeps_the_hostname_canonical() -> Result<()> {
+        let dir =
+            std::env::temp_dir().join(format!("tracker-alias-dual-{}", rand::random::<u64>()));
+        let mut store = Store::open(&dir)?;
+        let hostname = "https://tracker.example.org:6969/announce";
+        let literal = "https://8.8.8.8:6969/announce";
+        store.ingest(&[hostname.into(), literal.into()], &Default::default())?;
+        let hostname_id = target_id(&store, hostname)?;
+        let literal_id = target_id(&store, literal)?;
+        let now = unix_now();
+        announce(&mut store, &hostname_id, "accepted", now - 20, "8.8.8.8")?;
+        announce(&mut store, &literal_id, "accepted", now - 20, "8.8.8.8")?;
+        // The most recent check of the hostname is the family it cannot serve.
+        // That must not demote the working IPv4 hostname to a literal canonical.
+        store.record(&Observation {
+            observed_at: now - 5,
+            endpoint_id: hostname_id.clone(),
+            family: "ipv6".into(),
+            stage: "announce".into(),
+            result: "unsupported".into(),
+            protocol_reply: false,
+            http_status: None,
+            latency_ms: None,
+            error_category: Some("family_unavailable".into()),
+            target_ip: None,
+        })?;
+        store.publish(1800, &[])?;
+        let aliases = store.alias_map()?;
+        assert_eq!(
+            aliases.get(&literal_id),
+            Some(&hostname_id),
+            "aliases were {aliases:?}"
+        );
+        assert_eq!(published_endpoint(&store, hostname)?.alias_of, None);
+        // Another cycle with unchanged evidence keeps the same direction.
+        store.refresh_aliases(now + 600)?;
+        assert_eq!(store.alias_map()?.get(&literal_id), Some(&hostname_id));
+        drop(store);
+        std::fs::remove_dir_all(dir)?;
+        Ok(())
+    }
+
+    #[test]
+    fn canonical_hostname_choice_is_stable_across_refreshes() -> Result<()> {
+        let dir =
+            std::env::temp_dir().join(format!("tracker-alias-stable-{}", rand::random::<u64>()));
+        let mut store = Store::open(&dir)?;
+        let first = "udp://first.example.org:6969/announce";
+        let second = "udp://second.example.org:6969/announce";
+        store.ingest(&[first.into(), second.into()], &Default::default())?;
+        let first_id = target_id(&store, first)?;
+        let second_id = target_id(&store, second)?;
+        let now = unix_now();
+        announce(&mut store, &first_id, "accepted", now - 40, "8.8.8.8")?;
+        announce(&mut store, &second_id, "accepted", now - 40, "8.8.8.8")?;
+        store.publish(1800, &[])?;
+        let aliases = store.alias_map()?;
+        assert_eq!(
+            aliases.get(&second_id),
+            Some(&first_id),
+            "aliases were {aliases:?}"
+        );
+        // More successful probes for `second` would win a fresh ranking, but
+        // the existing canonical stays while it is still a healthy candidate.
+        announce(&mut store, &second_id, "accepted", now - 20, "8.8.8.8")?;
+        announce(&mut store, &second_id, "accepted", now - 15, "8.8.8.8")?;
+        announce(&mut store, &second_id, "accepted", now - 10, "8.8.8.8")?;
+        store.publish(1800, &[])?;
+        store.refresh_aliases(now + 600)?;
+        assert_eq!(
+            store.alias_map()?.get(&second_id),
+            Some(&first_id),
+            "canonical flipped although it was still healthy"
         );
         drop(store);
         std::fs::remove_dir_all(dir)?;
