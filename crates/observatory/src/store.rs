@@ -458,7 +458,7 @@ impl Store {
     /// hostname vhosts sharing an address stay distinct; UDP has no Host
     /// header, so a shared address is a duplicate. Returns whether the
     /// alias -> canonical mapping changed.
-    pub fn refresh_aliases(&mut self, now: i64) -> Result<bool> {
+    pub fn refresh_aliases(&mut self, now: i64, own_hosts: &[String]) -> Result<bool> {
         struct Member {
             id: String,
             url: String,
@@ -584,6 +584,11 @@ impl Store {
                 continue;
             };
             let host = host.trim_matches(['[', ']']);
+            // Configured public entry points are not duplicate community
+            // trackers, even when a retired name resolves to the same address.
+            if own_hosts.iter().any(|own| own.eq_ignore_ascii_case(host)) {
+                continue;
+            }
             let literal = host.parse::<std::net::IpAddr>().ok();
             let targets: Vec<String> = match literal {
                 // A literal host is its own target even before any observation.
@@ -708,7 +713,7 @@ impl Store {
             .value("alias_checked_at")?
             .is_none_or(|at| now.saturating_sub(at) > 600)
         {
-            self.refresh_aliases(now)?;
+            self.refresh_aliases(now, own_hosts)?;
         }
         let aliases = self.alias_map()?;
         // Summarize the soon-to-expire detail before pruning; rebuild is idempotent.
@@ -1994,7 +1999,7 @@ mod tests {
         );
         assert_eq!(published_endpoint(&store, hostname)?.alias_of, None);
         // Another cycle with unchanged evidence keeps the same direction.
-        store.refresh_aliases(now + 600)?;
+        store.refresh_aliases(now + 600, &[])?;
         assert_eq!(store.alias_map()?.get(&literal_id), Some(&hostname_id));
         drop(store);
         std::fs::remove_dir_all(dir)?;
@@ -2027,11 +2032,36 @@ mod tests {
         announce(&mut store, &second_id, "accepted", now - 15, "8.8.8.8")?;
         announce(&mut store, &second_id, "accepted", now - 10, "8.8.8.8")?;
         store.publish(1800, &[])?;
-        store.refresh_aliases(now + 600)?;
+        store.refresh_aliases(now + 600, &[])?;
         assert_eq!(
             store.alias_map()?.get(&second_id),
             Some(&first_id),
             "canonical flipped although it was still healthy"
+        );
+        drop(store);
+        std::fs::remove_dir_all(dir)?;
+        Ok(())
+    }
+
+    #[test]
+    fn own_service_hosts_are_never_aliased() -> Result<()> {
+        let dir = std::env::temp_dir().join(format!("tracker-alias-own-{}", rand::random::<u64>()));
+        let mut store = Store::open(&dir)?;
+        let official = "udp://udp.augrains.com:6969/announce";
+        let retired = "udp://announce.augrains.com:6969/announce";
+        store.ingest(&[official.into(), retired.into()], &Default::default())?;
+        let official_id = target_id(&store, official)?;
+        let retired_id = target_id(&store, retired)?;
+        let now = unix_now();
+        announce(&mut store, &official_id, "accepted", now - 10, "8.8.8.8")?;
+        announce(&mut store, &retired_id, "accepted", now - 10, "8.8.8.8")?;
+        store.publish(1800, &["udp.augrains.com".to_owned()])?;
+        // The configured public entry point must not disappear behind a
+        // retired name that happens to resolve to the same address.
+        assert!(
+            store.alias_map()?.is_empty(),
+            "own service hosts were aliased: {:?}",
+            store.alias_map()?
         );
         drop(store);
         std::fs::remove_dir_all(dir)?;
