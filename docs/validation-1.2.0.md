@@ -1,0 +1,94 @@
+# 1.2.0 validation
+
+Status: offline correctness gates and a post-deployment verification round passed. One 1.2.0 release was promoted on S1 on 2026-11-14T19:56:54Z — `/opt/tracker-v1/releases/1.2.0-b3acc310`, commit `b3acc31` — replacing `1.1.0-d0c873df`. No rollback was required. This ledger records one promotion. It is not an endurance result, a capacity measurement or evidence of admission to any third-party list.
+
+## Scope
+
+This release responds to nine community reports about the public list and detail pages, and adds the schema support the fixes need:
+
+- `/trackers` filters while typing instead of only after the 筛选 button, and pagination gained numbered pages, previous/next, jump-to-page and a 25/50/100 page-size selector. Page and filter changes fetch a server-rendered `#tracker-results` fragment and update the URL through the History API, so the document is not reloaded; the GET form remains the no-JavaScript fallback.
+- Duplicate origins (a hostname URL and its literal-IP URL on the same scheme, port and announce path) are collapsed into one canonical endpoint. Public endpoint JSON gains optional `alias_of`; aliases keep their detail redirect, are hidden from lists, feeds and overview counts, and are no longer probed.
+- Observations gain optional `target_ip`, the resolved public address the probe actually contacted, so stale DNS or a changed address is distinguishable from a timeout. It is shown in the detail log and returned by the API.
+- Detail failure reasons are localized and include the status that caused them (for example `HTTP 429 · 频率限制`, `HTTP 502 · 网关错误`, `超时（等待响应）`) instead of raw internal category strings. Rows whose result is 未发现地址 render an em dash in the 有效 Tracker 回复 and 原因 columns.
+- The pages now separate freshness from historical success: family pills describe the latest observation, while 24h 成功率 counts completed observations only, with per-family and 合计 successful/completed counts, tooltips and explicit explanatory notes. This resolves the reported "已过期 / 未知 / 未测 but still 100%" contradiction.
+
+Because the public schema gains additive optional fields and list/detail behavior changes, the workspace version was bumped to 1.2.0.
+
+## Correctness gates
+
+The gates ran in `/root/tracker-120-gate/src` on S1, a copy separate from the production directories, using the pinned toolchain (rustc 1.99.1, cargo 1.99.1) and Cargo offline with the committed lockfile.
+
+- `cargo fmt --all -- --check`: exit 0. The 1.2.0 edits were formatted with `cargo fmt --all` in the gate directory and the formatted files were returned to the local checkout, so the local source matches the build source.
+- `cargo test --workspace --locked --offline`: exit 0; 145 tests passed, 0 failed. Unlike the 1.1.0 gate this run was not wrapped in `unshare -n`; all tests use temporary directories and no network service is expected.
+- `cargo clippy --workspace --all-targets --locked --offline -- -D warnings`: exit 0.
+- `cargo build --workspace --release --locked --offline`: exit 0.
+- `cargo fmt --all -- --check` was run again after the last source edits: exit 0.
+
+Release binaries, SHA-256 prefix: `tracker-server` `f7868bbd…`, `observatory` `34c6137e…`, `tracker-web` `dcd10e3f…`, `tracker-loadgen` `d9f43cab…`.
+
+New tests cover, among others: the list page's live-search hooks, accessible numbered pagination and page-size select; localized `HTTP 429` / `HTTP 502` reasons and the em-dash rendering for 未发现地址 rows; the hidden alias, its `302` redirect and the API `alias_of` field; hostname/literal-IP merging, UDP duplicate merging, a failing hostname not absorbing a working literal IP, distinct hostname vhosts on one HTTP address, and target-IP round-tripping through private and public observation payloads.
+
+These are source/runtime checks. They do not establish external capacity, endurance, third-party acceptance or monitor behavior.
+
+## Deployment and rollback material
+
+One promotion, 2026-11-14T19:56:54Z: `/opt/tracker-v1/current` → `/opt/tracker-v1/releases/1.2.0-b3acc310` (commit `b3acc31`), replacing `/opt/tracker-v1/releases/1.1.0-d0c873df`. The release manifest records the source commit and SHA-256 for all four binaries. The previous release directory is retained.
+
+- No configuration change was needed: `config.toml`, `sources.toml`, the Nginx site configuration, systemd units and the ingress rules are unchanged. The cutover only replaced binaries, switched the symlink and restarted `tracker-v1.service`, `tracker-web.service` and `tracker-observatory.service`.
+- Readiness was checked after the restart: `/readyz` on 8080 and 8081 both returned HTTP 200 with `version=1.2.0`; `/healthz` and `/api/v1/overview` also report 1.2.0; all three units were active.
+- Offline rollback backup: `/root/tracker-120-backup-b3acc310/` (directory 0700, `rollback.tar.gz` 0600). It holds two SQLite `backup()` copies with `integrity_check=ok`, the Nginx site configuration, `config.toml` and `sources.toml`.
+- The 1.2.0 database changes are additive: one `endpoint_alias` table and optional JSON fields. Pointing `current` back at `1.1.0-d0c873df` and restarting is therefore compatible with the existing data; there is no historical data rollback.
+- Restarting the native server clears its in-memory registry and the process-lifetime announce counter. That is expected and is not a data regression.
+
+## Post-deployment verification
+
+Server-side, on S1, after the switch:
+
+- `/trackers?lang=zh` returned 200 and contained `data-tracker-filters`, `data-tracker-results`, `assets/list.js?v=1.2.0`, a jump-to-page form, the page-size select and the 24h 成功率 explanation.
+- `/trackers/partial?lang=zh&protocol=udp&page=1` returned 200, contained the results region and no `<html>` element, so it is a fragment rather than a full document.
+- A detail page contained the `目标 IP` column header, and `/api/v1/trackers/{id}/observations` still answered.
+- At the time of the cutover the public database held 315 endpoints / 292 services (1.1.0's last published snapshot); both readiness reports returned 1.2.0.
+
+Live browser verification, headless Chrome 157 over CDP against `https://tracker.augrains.com` (2026-11-14, after the cutover). This is one interactive round; it is not a rendering test matrix:
+
+- Initial `/trackers?lang=zh`: 25 rows, numbered page links to page 2, jump form present, `list.js?v=1.2.0` loaded, list note explaining freshness versus 24h success displayed.
+- Typed `itzmx` into the search box: after the debounce the URL became `?lang=zh&q=itzmx&protocol=&limit=25`, eight rows were shown (`tracker1.itzmx.com` … `tracker4.itzmx.com`), and the document had not been reloaded.
+- Clicked page 2: URL gained `page=2`, 25 rows, current page indicator 2, no reload. Jumped to page 3 through the form: `page=3`, no reload. Selected 50/page: `limit=50`, 50 rows, no reload. Browser back returned to `page=2` with 25 rows, no reload. The page reported zero JavaScript errors during the whole flow.
+- Detail page of a tracker probed after the upgrade (`open.ftorrent.com`): new rows showed the contacted addresses `2605:6dc0:1::1c:4c52` and `149.106.106.25`; rows recorded before the upgrade showed `—`. A timed-out row rendered `超时（等待响应）`, and no raw internal code (`timeout`, `family_unavailable`, `tracker_rejection`, …) appeared in the table.
+- A 未发现地址 row rendered as `2026-11-14 19:50 UTC | IPV6 | 健康通告 | — | 未发现地址 | — | 未知 | — | —`, i.e. the reply and reason columns are explicit dashes and the target IP is a dash because no address was contacted.
+- A tracker whose IPv6 family has no public address showed `IPV6 · 未发现地址`, aggregate 100.0%, and per-family counts `IPV4 42/42 · IPV6 未测 · 合计 42 / 42`, with the hint that 未发现地址 is outside the 24h rate and the detail note that 已过期 describes only the latest observation while the rate is a 24-hour historical statistic.
+
+### Canonical endpoint behavior
+
+Alias detection needs new observations with a recorded target address, which begin only after the 1.2.0 observatory is running; endpoints whose 1.1.0 observations predate `target_ip` cannot be merged yet. The first pair appeared ten minutes after the cutover, during the first post-upgrade probe cycle:
+
+- `udp://[2a04:ac00:1:3dd8::1:2710]:2710/announce` (alias) → `udp://retracker.hotplug.ru:2710/announce` (canonical), target `2a04:ac00:1:3dd8::1:2710`.
+- `/tracker/{alias}?lang=zh` returned `302` with `Location: /tracker/{canonical}?lang=zh`; the canonical page rendered.
+- Searching the public API for the literal address returned 0 list items, and `/api/v1/overview` dropped from 315 to 314 endpoints / 291 services, so the alias is excluded from list totals rather than being counted twice.
+- `GET /api/v1/trackers/{alias}` still resolves the alias by id and returns its payload with `alias_of` set to the canonical id, as documented in [the API reference](api.md).
+
+The 30-minute health interval means the remaining duplicate pairs are detected over the following cycles. This round verified the mechanism, not a final alias count.
+
+## Community report coverage
+
+| Report | Check |
+|---|---|
+| List search should match while typing | Browser: typing `itzmx` filtered to eight rows without submitting or reloading. |
+| Pagination should allow choosing a page and page size | Browser: numbered links, jump form (`page=3`) and 50/page select all worked. |
+| Next page should update only the list | Browser: no reload marker survived every interaction; back/forward restored recorded states. |
+| Detail errors should include a status such as timeout, not English codes | Rendered `超时（等待响应）`; unit tests cover localized `HTTP 429` and `HTTP 502`. |
+| 未发现地址 rows should show `—` in reply and reason | Rendered live row has `—` in both columns; unit test asserts the row. |
+| Duplicate domain/IP trackers should not be probed twice | One live pair collapsed, hidden from the list and API list, redirects to canonical, overview count dropped by one; probes for aliases are excluded by `targets`/`due_targets`/`activity_targets`. |
+| Logs should show the target IP actually contacted | New live rows show the IPv4/IPv6 address; `target_ip` is recorded before I/O so timeouts also keep it. |
+| What does "IPV4 · 已过期" mean, why 100%? | Pills have explanatory tooltips; the detail note and list note state that freshness and the 24h rate are different windows. |
+| Why can an unknown/untested row still show 100%? | Per-family counts (`IPV4 24/24 · IPV6 未测 · 合计 48 / 48`) and the note that untested families are outside the rate. |
+
+## Explicit limits
+
+- One verification round only. No endurance run, no public-path capacity test, and no multi-browser or mobile-device rendering matrix was performed for this release.
+- `target_ip` evidence starts with 1.2.0. Older observations show `—` in the 目标 IP column; that is expected, not a rendering failure.
+- Alias detection is limited to origins whose post-upgrade probes recorded a `target_ip`, and it runs at most every ten minutes. Endpoints not yet re-probed can still appear duplicated until their next observation.
+- HTTP and HTTPS endpoints never merge hostnames, because one address can serve distinct virtual hosts; only UDP origins and literal-IP HTTP(S) URLs are candidates. The canonical endpoint must also be healthy, so a failing hostname cannot absorb a working literal IP.
+- An alias that has been probed may keep its last published evidence until it is re-published as an alias; it is not probed again, by design.
+- GitHub publication status is unverified. The local tag and release directory must not be described as pushed until confirmed on the remote.
+- No global latency improvement, maximum throughput increase, or third-party list admission follows from this deployment.
