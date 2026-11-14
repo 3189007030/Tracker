@@ -34,7 +34,7 @@ One 1.2.1 release, two cutovers. The second is a defect fix, not a second releas
 - Fix: `refresh_aliases` receives the configured `own_hosts` and skips those hosts; a regression test covers the retired-name case.
 - 2026-11-14T20:46:54Z: `/opt/tracker-v1/current` → `releases/1.2.1-4ea93a47` (commit `4ea93a4`). Readiness and version reported 1.2.1 on both ports.
 - No configuration change was needed: `config.toml`, `sources.toml`, the Nginx site configuration and the systemd units are unchanged. The cutover replaced binaries, switched the symlink and restarted `tracker-v1.service`, `tracker-web.service` and `tracker-observatory.service`.
-- Offline rollback backups: `/root/tracker-120-backup-3cf8ea82/` and `/root/tracker-120-backup-4ea93a47/` (directories 0700, `rollback.tar.gz` 0600), each holding two SQLite `backup()` copies with `integrity_check=ok`, the Nginx site configuration, `config.toml` and `sources.toml`. Both the previous 1.2.1 build and `1.2.0-b3acc310` remain available for a code-level rollback; the database changes remain incompatible with nothing older than 1.1.0, and 1.2.1 itself adds no schema.
+- Offline rollback backups: `/root/tracker-120-backup-3cf8ea82/` and `/root/tracker-120-backup-4ea93a47/` (directories 0700, `rollback.tar.gz` 0600), each holding two SQLite `backup()` copies with `integrity_check=ok`, the Nginx site configuration, `config.toml` and `sources.toml`. Both the previous 1.2.1 build and `1.2.0-b3acc310` remain available for a code-level rollback; 1.2.1 adds no schema, and the additive 1.2.0 table and optional JSON fields are ignored by 1.1.0, so older binaries remain compatible with the existing data.
 
 ## Post-deployment verification
 
