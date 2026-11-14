@@ -193,12 +193,12 @@ impl PublicStore {
             format!("{protocol}://%")
         };
         let total: u64 = db.query_row(
-            "SELECT count(*) FROM endpoints WHERE length(CAST(payload AS BLOB))<=65536 AND json_valid(payload) AND lower(url) LIKE ?1 ESCAPE '\\' AND lower(url) LIKE ?2",
+            "SELECT count(*) FROM endpoints WHERE length(CAST(payload AS BLOB))<=65536 AND json_valid(payload) AND json_extract(payload,'$.alias_of') IS NULL AND lower(url) LIKE ?1 ESCAPE '\\' AND lower(url) LIKE ?2",
             params![pattern, protocol_pattern], |r| r.get(0),
         ).map_err(|_| StoreError)?;
         let offset = (page - 1).saturating_mul(limit);
         let mut statement = db.prepare(
-            "SELECT payload FROM endpoints WHERE length(CAST(payload AS BLOB))<=65536 AND json_valid(payload) AND lower(url) LIKE ?1 ESCAPE '\\' AND lower(url) LIKE ?2 ORDER BY COALESCE(CAST(json_extract(payload,'$.evidence.success_rate_24h') AS REAL),-1.0) DESC, COALESCE(CAST(json_extract(payload,'$.evidence.sample_count_7d') AS INTEGER),0) DESC, COALESCE(CAST(json_extract(payload,'$.evidence.median_latency_ms') AS REAL),1.0e99) ASC, url COLLATE NOCASE LIMIT ?3 OFFSET ?4",
+            "SELECT payload FROM endpoints WHERE length(CAST(payload AS BLOB))<=65536 AND json_valid(payload) AND json_extract(payload,'$.alias_of') IS NULL AND lower(url) LIKE ?1 ESCAPE '\\' AND lower(url) LIKE ?2 ORDER BY COALESCE(CAST(json_extract(payload,'$.evidence.success_rate_24h') AS REAL),-1.0) DESC, COALESCE(CAST(json_extract(payload,'$.evidence.sample_count_7d') AS INTEGER),0) DESC, COALESCE(CAST(json_extract(payload,'$.evidence.median_latency_ms') AS REAL),1.0e99) ASC, url COLLATE NOCASE LIMIT ?3 OFFSET ?4",
         ).map_err(|_| StoreError)?;
         let rows = statement
             .query_map(
@@ -571,6 +571,16 @@ fn public_ipv6(ip: Ipv6Addr) -> bool {
         && !(s[0] == 0x2001 && (s[1] == 0x0db8 || s[1] == 0x0002 || (s[1] & 0xfff0) == 0x0010))
 }
 
+/// A resolved tracker address may be published only when it is a public IP.
+/// Canonicalise the text so IPv6 representations stay comparable.
+fn public_ip_text(value: &str) -> Option<String> {
+    use std::net::IpAddr;
+    match value.parse::<IpAddr>().ok()? {
+        IpAddr::V4(ip) => public_ipv4(ip).then(|| IpAddr::V4(ip).to_string()),
+        IpAddr::V6(ip) => public_ipv6(ip).then(|| IpAddr::V6(ip).to_string()),
+    }
+}
+
 fn public_host(value: &Url) -> bool {
     match value.host() {
         Some(url::Host::Ipv4(ip)) => public_ipv4(ip),
@@ -749,6 +759,9 @@ fn sanitize_endpoint(mut endpoint: Endpoint, now: i64) -> Option<Endpoint> {
     let url = public_tracker_url(&endpoint.url)?;
     endpoint.protocol = url.scheme().to_owned();
     endpoint.host = bounded_label(url.host_str()?, 253);
+    endpoint.alias_of = endpoint
+        .alias_of
+        .filter(|id| valid_id(id) && *id != endpoint.id);
     if endpoint
         .service_id
         .bytes()
@@ -805,6 +818,7 @@ fn sanitize_observation(mut observation: Observation, id: &str, now: i64) -> Opt
     {
         return None;
     }
+    observation.target_ip = observation.target_ip.as_deref().and_then(public_ip_text);
     observation.stage = match observation.stage.as_str() {
         "announce" => "announce",
         "sample_announce" => "sample_announce",

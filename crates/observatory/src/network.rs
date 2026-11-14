@@ -634,6 +634,9 @@ async fn probe_http(id: &str, url: &Url, ipv6: bool) -> (Observation, u64, u64, 
         if !policy_allows(host,url.scheme(),port).await? { obs.error_category=Some("operator_denied".into()); return Ok(()); }
         let Some((client,address))=client_for(url,Some(ipv6)).await? else { obs.error_category=Some("family_unavailable".into()); return Ok(()); };
         actual_ip=Some(address.ip());
+        // Keep the address even when the request later times out: diagnostics
+        // must distinguish a stale/changed address from an unreachable one.
+        obs.target_ip=Some(address.ip().to_string());
         let digest=Sha1::digest(url.as_str().as_bytes());
         let hash = digest.iter().map(|b|format!("%{b:02X}")).collect::<String>();
         let peer_id=if ipv6 {"-TO1000-abcdefghijk6"} else {"-TO1000-abcdefghijk4"};
@@ -699,6 +702,9 @@ async fn probe_udp(id: &str, url: &Url, ipv6: bool) -> (Observation, u64, u64, O
             return Ok(());
         };
         actual_ip = Some(address.ip());
+        // Record the selected address before any I/O, so a later timeout still
+        // reports which origin address the probe actually contacted.
+        obs.target_ip = Some(address.ip().to_string());
         let sock = tokio::net::UdpSocket::bind(if ipv6 { "[::]:0" } else { "0.0.0.0:0" }).await?;
         sock.connect(address).await?;
         let mut data = [0u8; 65507];

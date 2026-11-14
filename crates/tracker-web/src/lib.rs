@@ -38,6 +38,7 @@ pub fn app(data_dir: PathBuf) -> Router {
     Router::new()
         .route("/", get(home))
         .route("/trackers", get(trackers_page))
+        .route("/trackers/partial", get(trackers_partial))
         .route("/tracker/{id}", get(tracker_detail))
         .route("/methodology", get(methodology))
         .route("/sources", get(sources))
@@ -48,6 +49,7 @@ pub fn app(data_dir: PathBuf) -> Router {
         .route("/readyz", get(ready))
         .route("/assets/style.css", get(style))
         .route("/assets/tools.js", get(tools_script))
+        .route("/assets/list.js", get(list_script))
         .route("/assets/charts.js", get(charts_script))
         .route("/assets/chart.umd.js", get(chart_library))
         .route("/assets/brand.svg", get(brand_svg))
@@ -178,6 +180,27 @@ async fn trackers_page(State(site): State<Site>, Query(params): Query<Params>) -
     }
 }
 
+/// Server-rendered results region used by the list page's progressive
+/// enhancement. It is the same markup the full page embeds, so a search or
+/// page change never needs a full navigation when JavaScript is available.
+async fn trackers_partial(State(site): State<Site>, Query(params): Query<Params>) -> Response {
+    let lang = language(&params);
+    let filters = match filters(&params) {
+        Ok(value) => value,
+        Err(_) => return (StatusCode::BAD_REQUEST, "invalid filters").into_response(),
+    };
+    let query = filters.query.clone();
+    let protocol = filters.protocol.clone();
+    match read(move || site.store.page(filters, unix_now())).await {
+        Ok(page) => (
+            [(header::CACHE_CONTROL, HeaderValue::from_static("no-store"))],
+            Html(html::listing_results(&page, &query, &protocol, lang)),
+        )
+            .into_response(),
+        Err(_) => unavailable_page(lang),
+    }
+}
+
 async fn tracker_detail(
     State(site): State<Site>,
     Path(id): Path<String>,
@@ -189,21 +212,46 @@ async fn tracker_detail(
     }
     match read(move || {
         let now = unix_now();
-        let endpoint = site.store.endpoint(&id, now)?;
+        let mut endpoint = site.store.endpoint(&id, now)?;
+        // An alias resolves to its canonical endpoint. If the canonical
+        // disappeared between snapshots, keep serving the alias itself.
+        if let Some(canonical_id) = endpoint.as_ref().and_then(|e| e.alias_of.clone())
+            && let Some(canonical) = site.store.endpoint(&canonical_id, now)?
+        {
+            let health =
+                site.store
+                    .observations(&canonical_id, None, Some("announce"), now, 500)?;
+            return Ok((Some(canonical), health, Some(canonical_id), now));
+        }
+        if let Some(current) = endpoint.as_mut() {
+            current.alias_of = None;
+        }
         let health = if endpoint.is_some() {
             site.store
                 .observations(&id, None, Some("announce"), now, 500)?
         } else {
             Vec::new()
         };
-        Ok((endpoint, health, now))
+        Ok((endpoint, health, None, now))
     })
     .await
     {
-        Ok((Some(endpoint), health, now)) => {
-            Html(html::detail(&endpoint, &health, &health, now, lang)).into_response()
+        Ok((Some(_), _health, Some(canonical_id), _)) => (
+            StatusCode::FOUND,
+            [
+                (
+                    header::LOCATION,
+                    format!("/tracker/{canonical_id}?lang={}", lang.code()),
+                ),
+                (header::CACHE_CONTROL, "no-store".to_owned()),
+            ],
+            "",
+        )
+            .into_response(),
+        Ok((Some(endpoint), health, None, now)) => {
+            Html(html::detail(&endpoint, &health, now, lang)).into_response()
         }
-        Ok((None, _, _)) => not_found_page(lang),
+        Ok((None, _, _, _)) => not_found_page(lang),
         Err(_) => unavailable_page(lang),
     }
 }
@@ -614,6 +662,17 @@ async fn tools_script() -> Response {
             (header::CACHE_CONTROL, "public, max-age=3600"),
         ],
         include_str!("../assets/tools.js"),
+    )
+        .into_response()
+}
+
+async fn list_script() -> Response {
+    (
+        [
+            (header::CONTENT_TYPE, "text/javascript; charset=utf-8"),
+            (header::CACHE_CONTROL, "public, max-age=3600"),
+        ],
+        include_str!("../assets/list.js"),
     )
         .into_response()
 }

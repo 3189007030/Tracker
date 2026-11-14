@@ -126,6 +126,7 @@ impl Store {
         private.execute_batch("CREATE INDEX IF NOT EXISTS health_endpoint_time ON observations(endpoint_id,observed_at) WHERE json_extract(payload,'$.stage')='announce';")?;
         private.execute_batch("CREATE TABLE IF NOT EXISTS announce_due(endpoint_id TEXT NOT NULL,family TEXT NOT NULL,resource TEXT NOT NULL,until INTEGER NOT NULL,PRIMARY KEY(endpoint_id,family,resource)); CREATE INDEX IF NOT EXISTS announce_due_expiry ON announce_due(until);")?;
         private.execute_batch("CREATE TABLE IF NOT EXISTS activity_cursor(endpoint_id TEXT PRIMARY KEY,last_attempt INTEGER NOT NULL); CREATE INDEX IF NOT EXISTS activity_cursor_order ON activity_cursor(last_attempt);")?;
+        private.execute_batch("CREATE TABLE IF NOT EXISTS endpoint_alias(alias_id TEXT PRIMARY KEY,canonical_id TEXT NOT NULL,target_ip TEXT NOT NULL,updated_at INTEGER NOT NULL);")?;
         private.execute_batch("CREATE TABLE IF NOT EXISTS infrastructure(host TEXT PRIMARY KEY,payload TEXT NOT NULL,updated_at INTEGER NOT NULL); CREATE INDEX IF NOT EXISTS infrastructure_age ON infrastructure(updated_at);")?;
         private.execute_batch("CREATE TABLE IF NOT EXISTS pool_registry(sample_id TEXT PRIMARY KEY,hash BLOB NOT NULL,pool TEXT NOT NULL,source TEXT NOT NULL,payload TEXT NOT NULL,active INTEGER NOT NULL,updated_at INTEGER NOT NULL); CREATE TABLE IF NOT EXISTS native_history(bucket INTEGER PRIMARY KEY,instance TEXT NOT NULL,payload TEXT NOT NULL); DROP TABLE IF EXISTS probe_traces;")?;
         {
@@ -211,21 +212,21 @@ impl Store {
         Ok(())
     }
     pub fn targets(&self) -> Result<Vec<(String, String, Option<i64>)>> {
-        let mut q = self.private.prepare("SELECT e.id,e.url,MAX(o.observed_at) FROM endpoints e LEFT JOIN observations o ON o.endpoint_id=e.id AND json_extract(o.payload,'$.stage')='announce' GROUP BY e.id ORDER BY MAX(o.observed_at) ASC LIMIT 256")?;
+        let mut q = self.private.prepare("SELECT e.id,e.url,MAX(o.observed_at) FROM endpoints e LEFT JOIN observations o ON o.endpoint_id=e.id AND json_extract(o.payload,'$.stage')='announce' WHERE NOT EXISTS (SELECT 1 FROM endpoint_alias a WHERE a.alias_id=e.id) GROUP BY e.id ORDER BY MAX(o.observed_at) ASC LIMIT 256")?;
         let rows = q
             .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))?
             .collect::<rusqlite::Result<_>>()?;
         Ok(rows)
     }
     pub fn due_targets(&self, now: i64) -> Result<Vec<(String, String, Option<i64>)>> {
-        let mut q=self.private.prepare("SELECT e.id,e.url,MAX(o.observed_at) FROM endpoints e LEFT JOIN observations o ON o.endpoint_id=e.id AND json_extract(o.payload,'$.stage')='announce' WHERE NOT EXISTS (SELECT 1 FROM announce_due d WHERE d.endpoint_id=e.id AND d.family='ipv4' AND d.resource='health' AND d.until>?1) OR NOT EXISTS (SELECT 1 FROM announce_due d WHERE d.endpoint_id=e.id AND d.family='ipv6' AND d.resource='health' AND d.until>?1) GROUP BY e.id ORDER BY MAX(o.observed_at) ASC LIMIT 20000")?;
+        let mut q=self.private.prepare("SELECT e.id,e.url,MAX(o.observed_at) FROM endpoints e LEFT JOIN observations o ON o.endpoint_id=e.id AND json_extract(o.payload,'$.stage')='announce' WHERE (NOT EXISTS (SELECT 1 FROM announce_due d WHERE d.endpoint_id=e.id AND d.family='ipv4' AND d.resource='health' AND d.until>?1) OR NOT EXISTS (SELECT 1 FROM announce_due d WHERE d.endpoint_id=e.id AND d.family='ipv6' AND d.resource='health' AND d.until>?1)) AND NOT EXISTS (SELECT 1 FROM endpoint_alias a WHERE a.alias_id=e.id) GROUP BY e.id ORDER BY MAX(o.observed_at) ASC LIMIT 20000")?;
         let rows = q
             .query_map([now], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))?
             .collect::<rusqlite::Result<_>>()?;
         Ok(rows)
     }
     pub fn activity_targets(&self) -> Result<Vec<(String, String)>> {
-        let mut q=self.private.prepare("SELECT e.id,e.url FROM endpoints e LEFT JOIN activity_cursor c ON c.endpoint_id=e.id ORDER BY COALESCE(c.last_attempt,0)/3600, RANDOM() LIMIT 20000")?;
+        let mut q=self.private.prepare("SELECT e.id,e.url FROM endpoints e LEFT JOIN activity_cursor c ON c.endpoint_id=e.id WHERE NOT EXISTS (SELECT 1 FROM endpoint_alias a WHERE a.alias_id=e.id) ORDER BY COALESCE(c.last_attempt,0)/3600, RANDOM() LIMIT 20000")?;
         let rows = q
             .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))?
             .collect::<rusqlite::Result<_>>()?;
@@ -436,8 +437,253 @@ impl Store {
         )?;
         Ok(())
     }
+    /// Duplicate endpoint -> canonical endpoint mapping maintained by
+    /// [`Store::refresh_aliases`]. Aliases stay published (resolvable by id)
+    /// but are never handed out as probe or activity work.
+    pub fn alias_map(&self) -> Result<std::collections::HashMap<String, String>> {
+        let mut q = self
+            .private
+            .prepare("SELECT alias_id,canonical_id FROM endpoint_alias")?;
+        let rows = q
+            .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))?
+            .collect::<rusqlite::Result<_>>()?;
+        Ok(rows)
+    }
+    /// Recompute the duplicate-origin mapping from recent evidence.
+    ///
+    /// Endpoints are the same origin when the address the probe actually
+    /// contacts and the scheme/port/announce path are identical: a literal-IP
+    /// URL and the hostname resolving to that address would otherwise announce
+    /// twice. For HTTP(S) only literal-IP duplicates are merged, so two
+    /// hostname vhosts sharing an address stay distinct; UDP has no Host
+    /// header, so a shared address is a duplicate. Returns whether the
+    /// alias -> canonical mapping changed.
+    pub fn refresh_aliases(&mut self, now: i64) -> Result<bool> {
+        struct Member {
+            id: String,
+            url: String,
+            literal: bool,
+            target_ip: String,
+            latest_accepted: bool,
+            rate: Option<f64>,
+            successes: u64,
+            median: Option<f64>,
+            checks: u64,
+        }
+        struct OldEvidence {
+            rate: Option<f64>,
+            successes: u64,
+            median: Option<f64>,
+            checks: u64,
+        }
+        let since = now - 86400;
+        // Latest announce verdict per endpoint inside the evidence window.
+        let mut latest = std::collections::HashMap::<String, (String, i64)>::new();
+        {
+            let mut q = self.private.prepare(
+                "SELECT endpoint_id,result,observed_at FROM (SELECT endpoint_id,json_extract(payload,'$.result') AS result,observed_at,ROW_NUMBER() OVER (PARTITION BY endpoint_id ORDER BY observed_at DESC,id DESC) AS rn FROM observations WHERE observed_at>=?1 AND json_extract(payload,'$.stage')='announce') WHERE rn=1",
+            )?;
+            let rows = q.query_map([since], |r| {
+                Ok((
+                    r.get::<_, String>(0)?,
+                    r.get::<_, Option<String>>(1)?,
+                    r.get::<_, i64>(2)?,
+                ))
+            })?;
+            for row in rows {
+                let (endpoint, result, observed_at) = row?;
+                latest.insert(endpoint, (result.unwrap_or_default(), observed_at));
+            }
+        }
+        // Most recent announce that recorded the address actually contacted,
+        // kept separately per family so a dual-stack hostname can match both an
+        // IPv4 and an IPv6 literal endpoint without alternating between them.
+        let mut observed_ip = std::collections::HashMap::<String, Vec<String>>::new();
+        {
+            let mut q = self.private.prepare(
+                "SELECT endpoint_id,family,target_ip FROM (SELECT endpoint_id,family,json_extract(payload,'$.target_ip') AS target_ip,observed_at,ROW_NUMBER() OVER (PARTITION BY endpoint_id,family ORDER BY observed_at DESC,id DESC) AS rn FROM observations WHERE observed_at>=?1 AND json_extract(payload,'$.stage')='announce' AND json_extract(payload,'$.target_ip') IS NOT NULL) WHERE rn=1",
+            )?;
+            let rows = q.query_map([since], |r| {
+                Ok((
+                    r.get::<_, String>(0)?,
+                    r.get::<_, String>(1)?,
+                    r.get::<_, String>(2)?,
+                ))
+            })?;
+            for row in rows {
+                let (endpoint, family, target_ip) = row?;
+                if !matches!(family.as_str(), "ipv4" | "ipv6") {
+                    continue;
+                }
+                // Canonical text form keeps IPv6 representations comparable.
+                if let Ok(ip) = target_ip.parse::<std::net::IpAddr>() {
+                    let list = observed_ip.entry(endpoint).or_default();
+                    let text = ip.to_string();
+                    if !list.contains(&text) {
+                        list.push(text);
+                    }
+                }
+            }
+        }
+        // Health evidence from the previous publication for tie-breaking.
+        let mut old_evidence = std::collections::HashMap::<String, OldEvidence>::new();
+        {
+            let mut q = self.public.prepare(
+                "SELECT id,json_extract(payload,'$.evidence.success_rate_24h'),json_extract(payload,'$.evidence.successes_24h'),json_extract(payload,'$.evidence.median_latency_ms'),json_extract(payload,'$.evidence.checks_24h') FROM endpoints WHERE json_valid(payload)",
+            )?;
+            let rows = q.query_map([], |r| {
+                Ok((
+                    r.get::<_, String>(0)?,
+                    r.get::<_, Option<f64>>(1)?,
+                    r.get::<_, Option<i64>>(2)?,
+                    r.get::<_, Option<f64>>(3)?,
+                    r.get::<_, Option<i64>>(4)?,
+                ))
+            })?;
+            for row in rows {
+                let (endpoint, rate, successes, median, checks) = row?;
+                old_evidence.insert(
+                    endpoint,
+                    OldEvidence {
+                        rate,
+                        successes: successes.unwrap_or(0).max(0) as u64,
+                        median,
+                        checks: checks.unwrap_or(0).max(0) as u64,
+                    },
+                );
+            }
+        }
+        let mut endpoints = Vec::new();
+        {
+            let mut q = self.private.prepare("SELECT id,url FROM endpoints")?;
+            let rows = q.query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))?;
+            for row in rows {
+                endpoints.push(row?);
+            }
+        }
+        let mut buckets =
+            std::collections::BTreeMap::<(String, u16, String, String), Vec<Member>>::new();
+        for (endpoint_id, url) in endpoints {
+            let Ok(parsed) = Url::parse(&url) else {
+                continue;
+            };
+            let scheme = parsed.scheme().to_string();
+            if !matches!(scheme.as_str(), "udp" | "http" | "https") {
+                continue;
+            }
+            let Some(host) = parsed.host_str() else {
+                continue;
+            };
+            let host = host.trim_matches(['[', ']']);
+            let literal = host.parse::<std::net::IpAddr>().ok();
+            let targets: Vec<String> = match literal {
+                // A literal host is its own target even before any observation.
+                Some(ip) => vec![ip.to_string()],
+                None => observed_ip.remove(&endpoint_id).unwrap_or_default(),
+            };
+            if targets.is_empty() {
+                continue;
+            }
+            let (latest_accepted, latest_at) = latest
+                .get(&endpoint_id)
+                .map(|(result, at)| (result == "accepted", *at))
+                .unwrap_or((false, 0));
+            let evidence = old_evidence.remove(&endpoint_id).unwrap_or(OldEvidence {
+                rate: None,
+                successes: 0,
+                median: None,
+                checks: 0,
+            });
+            // Missing UDP ports are probed on 80, mirroring probe_udp.
+            let port = parsed.port_or_known_default().unwrap_or(80);
+            let path = parsed.path().to_string();
+            for target_ip in targets {
+                let key = (scheme.clone(), port, path.clone(), target_ip.clone());
+                buckets.entry(key).or_default().push(Member {
+                    id: endpoint_id.clone(),
+                    url: url.clone(),
+                    literal: literal.is_some(),
+                    target_ip,
+                    latest_accepted: latest_accepted && latest_at >= since,
+                    rate: evidence.rate,
+                    successes: evidence.successes,
+                    median: evidence.median,
+                    checks: evidence.checks,
+                });
+            }
+        }
+        let mut mapping = std::collections::HashMap::<String, (String, String)>::new();
+        for ((scheme, _, _, _), members) in buckets {
+            if members.len() < 2 {
+                continue;
+            }
+            if scheme != "udp" && !members.iter().any(|m| m.literal) {
+                // Distinct hostname vhosts on one address are not duplicates.
+                continue;
+            }
+            let mut healthy = members
+                .iter()
+                .filter(|m| {
+                    m.latest_accepted && (m.checks == 0 || m.rate.is_some_and(|rate| rate >= 0.8))
+                })
+                .collect::<Vec<_>>();
+            if healthy.is_empty() {
+                // Never hide a working address behind a failing canonical URL.
+                continue;
+            }
+            healthy.sort_by(|a, b| {
+                b.rate
+                    .unwrap_or(f64::NEG_INFINITY)
+                    .total_cmp(&a.rate.unwrap_or(f64::NEG_INFINITY))
+                    .then_with(|| b.successes.cmp(&a.successes))
+                    .then_with(|| {
+                        a.median
+                            .unwrap_or(f64::INFINITY)
+                            .total_cmp(&b.median.unwrap_or(f64::INFINITY))
+                    })
+                    .then_with(|| a.literal.cmp(&b.literal))
+                    .then_with(|| a.url.cmp(&b.url))
+            });
+            let canonical = healthy[0];
+            for alias in members
+                .iter()
+                .filter(|m| m.id != canonical.id && (scheme == "udp" || m.literal))
+            {
+                mapping.insert(
+                    alias.id.clone(),
+                    (canonical.id.clone(), alias.target_ip.clone()),
+                );
+            }
+        }
+        let previous = self.alias_map()?;
+        let changed = previous.len() != mapping.len()
+            || mapping
+                .iter()
+                .any(|(alias, (canonical, _))| previous.get(alias) != Some(canonical));
+        if changed {
+            let tx = self.private.transaction()?;
+            tx.execute("DELETE FROM endpoint_alias", [])?;
+            for (alias, (canonical, target_ip)) in &mapping {
+                tx.execute(
+                    "INSERT INTO endpoint_alias VALUES (?1,?2,?3,?4)",
+                    params![alias, canonical, target_ip, now],
+                )?;
+            }
+            tx.commit()?;
+            tracing::info!(aliases = mapping.len(), "endpoint aliases updated");
+        }
+        self.set_value("alias_checked_at", now)?;
+        Ok(changed)
+    }
     pub fn publish(&mut self, interval: u64, own_hosts: &[String]) -> Result<()> {
         let now = unix_now();
+        if self
+            .value("alias_checked_at")?
+            .is_none_or(|at| now.saturating_sub(at) > 600)
+        {
+            self.refresh_aliases(now)?;
+        }
+        let aliases = self.alias_map()?;
         // Summarize the soon-to-expire detail before pruning; rebuild is idempotent.
         {
             let prune = self.private.transaction()?;
@@ -620,6 +866,7 @@ impl Store {
         let mut best_candidates = Vec::new();
         for (endpoint_id, service_id, url, first_seen, _baseline) in &rows {
             let (service_first_seen, service_baseline) = service_discovery[service_id.as_str()];
+            let alias_of = aliases.get(endpoint_id).cloned();
             let parsed = Url::parse(url)?;
             let colocated = own_hosts
                 .iter()
@@ -640,23 +887,29 @@ impl Store {
                 && let Ok(endpoint) = serde_json::from_str::<Endpoint>(&payload)
                 && endpoint.first_seen == service_first_seen
                 && endpoint.baseline == service_baseline
+                && endpoint.alias_of == alias_of
             {
-                let score = endpoint.evidence.success_rate_24h.unwrap_or(0.0);
-                let candidate = (
-                    service_id.clone(),
-                    url.clone(),
-                    score,
-                    endpoint.evidence.sample_count_7d as usize,
-                    endpoint.evidence.median_latency_ms.unwrap_or(f64::INFINITY),
-                );
-                if all_eligible != 0 {
-                    all_candidates.push(candidate.clone());
-                }
-                if endpoint.evidence.standard_eligible {
-                    standard_candidates.push(candidate.clone());
-                }
-                if endpoint.evidence.best_eligible {
-                    best_candidates.push(candidate);
+                // Aliases are published for id lookups but never listed as feed
+                // candidates, and a cached payload whose alias status changed
+                // is rebuilt below instead of reused.
+                if endpoint.alias_of.is_none() {
+                    let score = endpoint.evidence.success_rate_24h.unwrap_or(0.0);
+                    let candidate = (
+                        service_id.clone(),
+                        url.clone(),
+                        score,
+                        endpoint.evidence.sample_count_7d as usize,
+                        endpoint.evidence.median_latency_ms.unwrap_or(f64::INFINITY),
+                    );
+                    if all_eligible != 0 {
+                        all_candidates.push(candidate.clone());
+                    }
+                    if endpoint.evidence.standard_eligible {
+                        standard_candidates.push(candidate.clone());
+                    }
+                    if endpoint.evidence.best_eligible {
+                        best_candidates.push(candidate);
+                    }
                 }
                 continue;
             }
@@ -814,17 +1067,19 @@ impl Store {
                 sample_ids.len(),
                 median,
             );
-            if observations
-                .iter()
-                .any(|o| o.observed_at >= now - 86400 && o.result == "accepted")
-            {
-                all_candidates.push(candidate.clone());
-            }
-            if standard {
-                standard_candidates.push(candidate.clone());
-            }
-            if best {
-                best_candidates.push(candidate);
+            if alias_of.is_none() {
+                if observations
+                    .iter()
+                    .any(|o| o.observed_at >= now - 86400 && o.result == "accepted")
+                {
+                    all_candidates.push(candidate.clone());
+                }
+                if standard {
+                    standard_candidates.push(candidate.clone());
+                }
+                if best {
+                    best_candidates.push(candidate);
+                }
             }
             let updated_at = observations
                 .last()
@@ -875,6 +1130,7 @@ impl Store {
                 infrastructure: infra
                     .and_then(|s| serde_json::from_str(&s).ok())
                     .unwrap_or_default(),
+                alias_of: alias_of.clone(),
             };
             tx.execute("INSERT INTO endpoints VALUES (?1,?2,?3,?4,?5,?6,?7) ON CONFLICT(id) DO UPDATE SET service_id=excluded.service_id,url=excluded.url,first_seen=excluded.first_seen,baseline=excluded.baseline,updated_at=excluded.updated_at,payload=excluded.payload WHERE endpoints.payload!=excluded.payload OR endpoints.service_id!=excluded.service_id", params![endpoint_id, service_id, url, service_first_seen, service_baseline as i64, updated_at, serde_json::to_string(&endpoint)?])?;
             tx.execute(
@@ -951,15 +1207,21 @@ impl Store {
             "INSERT OR REPLACE INTO documents VALUES ('feed:trackers_all.txt',?1,?2)",
             params![serde_json::to_string(&all.join("\n"))?, now],
         )?;
+        // Overview totals describe origins, not duplicate aliases.
+        let mut visible_services = std::collections::HashSet::new();
+        let mut visible_endpoints = 0usize;
+        for (endpoint_id, service_id, ..) in &rows {
+            if aliases.contains_key(endpoint_id) {
+                continue;
+            }
+            visible_endpoints += 1;
+            visible_services.insert(service_id);
+        }
         let overview = Overview {
             version: VERSION.into(),
             generated_at: now,
-            endpoints: rows.len(),
-            services: rows
-                .iter()
-                .map(|r| &r.1)
-                .collect::<std::collections::HashSet<_>>()
-                .len(),
+            endpoints: visible_endpoints,
+            services: visible_services.len(),
             all_count: all.len(),
             standard_count: standard.len(),
             best_count: best.len(),
@@ -1529,6 +1791,249 @@ mod tests {
         let updated: Endpoint = serde_json::from_str(&updated)?;
         assert_eq!(updated.evidence.checks_24h, 2);
         assert_eq!(updated.evidence.replies_24h, 1);
+        drop(store);
+        std::fs::remove_dir_all(dir)?;
+        Ok(())
+    }
+
+    fn target_id(store: &Store, url: &str) -> Result<String> {
+        store
+            .targets()?
+            .into_iter()
+            .find(|(_, candidate, _)| candidate == url)
+            .map(|(id, _, _)| id)
+            .ok_or_else(|| anyhow::anyhow!("missing endpoint {url}"))
+    }
+    fn announce(
+        store: &mut Store,
+        endpoint: &str,
+        result: &str,
+        observed_at: i64,
+        target_ip: &str,
+    ) -> Result<()> {
+        store.record(&Observation {
+            observed_at,
+            endpoint_id: endpoint.to_owned(),
+            family: "ipv4".into(),
+            stage: "announce".into(),
+            result: result.into(),
+            protocol_reply: result == "accepted",
+            latency_ms: (result == "accepted").then_some(10.0),
+            error_category: (result != "accepted").then(|| "timeout".into()),
+            target_ip: Some(target_ip.into()),
+            ..Default::default()
+        })
+    }
+    fn published_endpoint(store: &Store, url: &str) -> Result<Endpoint> {
+        let payload: String =
+            store
+                .public
+                .query_row("SELECT payload FROM endpoints WHERE url=?1", [url], |r| {
+                    r.get(0)
+                })?;
+        Ok(serde_json::from_str(&payload)?)
+    }
+    fn published_feed(store: &Store, name: &str) -> Result<String> {
+        let payload: String = store.public.query_row(
+            "SELECT payload FROM documents WHERE key=?1",
+            [format!("feed:{name}")],
+            |r| r.get(0),
+        )?;
+        Ok(serde_json::from_str(&payload)?)
+    }
+    fn published_overview(store: &Store) -> Result<Overview> {
+        let payload: String = store.public.query_row(
+            "SELECT payload FROM documents WHERE key='overview'",
+            [],
+            |r| r.get(0),
+        )?;
+        Ok(serde_json::from_str(&payload)?)
+    }
+
+    #[test]
+    fn target_ip_roundtrips_private_and_public_observation_payloads() -> Result<()> {
+        let dir = std::env::temp_dir().join(format!("tracker-target-ip-{}", rand::random::<u64>()));
+        let mut store = Store::open(&dir)?;
+        store.ingest(
+            &["https://example.org/announce".into()],
+            &Default::default(),
+        )?;
+        let id = store.targets()?[0].0.clone();
+        let now = unix_now();
+        announce(&mut store, &id, "accepted", now, "8.8.8.8")?;
+        let private: String = store.private.query_row(
+            "SELECT payload FROM observations WHERE endpoint_id=?1",
+            [&id],
+            |r| r.get(0),
+        )?;
+        assert!(private.contains("\"target_ip\":\"8.8.8.8\""));
+        let recorded: Observation = serde_json::from_str(&private)?;
+        assert_eq!(recorded.target_ip.as_deref(), Some("8.8.8.8"));
+        store.publish(1800, &[])?;
+        let public: String = store.public.query_row(
+            "SELECT payload FROM observations WHERE endpoint_id=?1",
+            [&id],
+            |r| r.get(0),
+        )?;
+        let projected: Observation = serde_json::from_str(&public)?;
+        assert_eq!(projected.target_ip.as_deref(), Some("8.8.8.8"));
+        drop(store);
+        std::fs::remove_dir_all(dir)?;
+        Ok(())
+    }
+
+    #[test]
+    fn hostname_and_literal_ip_merge_into_one_probed_origin() -> Result<()> {
+        let dir =
+            std::env::temp_dir().join(format!("tracker-alias-http-{}", rand::random::<u64>()));
+        let mut store = Store::open(&dir)?;
+        let hostname = "https://tracker.example.org:6969/announce";
+        let literal = "https://8.8.8.8:6969/announce";
+        store.ingest(&[hostname.into(), literal.into()], &Default::default())?;
+        assert_eq!(store.targets()?.len(), 2);
+        let hostname_id = target_id(&store, hostname)?;
+        let literal_id = target_id(&store, literal)?;
+        let now = unix_now();
+        announce(&mut store, &hostname_id, "accepted", now - 10, "8.8.8.8")?;
+        announce(&mut store, &literal_id, "accepted", now - 10, "8.8.8.8")?;
+        store.publish(1800, &[])?;
+        let aliases = store.alias_map()?;
+        assert_eq!(aliases.len(), 1);
+        assert_eq!(aliases.get(&literal_id), Some(&hostname_id));
+        // The alias is still published by id, but resolves to the hostname.
+        assert_eq!(published_endpoint(&store, hostname)?.alias_of, None);
+        assert_eq!(
+            published_endpoint(&store, literal)?.alias_of.as_deref(),
+            Some(hostname_id.as_str())
+        );
+        // Only the canonical origin is handed out as probe or activity work.
+        let due = store.due_targets(now)?;
+        assert!(due.iter().any(|(id, _, _)| id == &hostname_id));
+        assert!(!due.iter().any(|(id, _, _)| id == &literal_id));
+        assert!(
+            !store
+                .activity_targets()?
+                .iter()
+                .any(|(id, _)| id == &literal_id)
+        );
+        let targets = store.targets()?;
+        assert_eq!(targets.len(), 1);
+        assert_eq!(targets[0].0, hostname_id);
+        // Feeds and overview describe origins, never aliases.
+        assert_eq!(published_feed(&store, "trackers_all.txt")?, hostname);
+        let overview = published_overview(&store)?;
+        assert_eq!(
+            (overview.endpoints, overview.services, overview.all_count),
+            (1, 1, 1)
+        );
+        drop(store);
+        std::fs::remove_dir_all(dir)?;
+        Ok(())
+    }
+
+    #[test]
+    fn failing_hostname_does_not_absorb_a_working_literal_ip() -> Result<()> {
+        let dir =
+            std::env::temp_dir().join(format!("tracker-alias-health-{}", rand::random::<u64>()));
+        let mut store = Store::open(&dir)?;
+        let hostname = "https://tracker.example.org:6969/announce";
+        let literal = "https://8.8.8.8:6969/announce";
+        store.ingest(&[hostname.into(), literal.into()], &Default::default())?;
+        let hostname_id = target_id(&store, hostname)?;
+        let literal_id = target_id(&store, literal)?;
+        let now = unix_now();
+        // The hostname announces successfully once, then its latest announce
+        // times out; the literal IP keeps working.
+        announce(&mut store, &hostname_id, "accepted", now - 600, "8.8.8.8")?;
+        announce(&mut store, &hostname_id, "failed", now - 10, "8.8.8.8")?;
+        announce(&mut store, &literal_id, "accepted", now - 10, "8.8.8.8")?;
+        store.publish(1800, &[])?;
+        assert!(store.alias_map()?.is_empty());
+        assert_eq!(published_endpoint(&store, hostname)?.alias_of, None);
+        assert_eq!(published_endpoint(&store, literal)?.alias_of, None);
+        assert_eq!(store.due_targets(now)?.len(), 2);
+        drop(store);
+        std::fs::remove_dir_all(dir)?;
+        Ok(())
+    }
+
+    #[test]
+    fn different_hostname_vhosts_on_one_http_address_stay_distinct() -> Result<()> {
+        let dir =
+            std::env::temp_dir().join(format!("tracker-alias-vhost-{}", rand::random::<u64>()));
+        let mut store = Store::open(&dir)?;
+        let alpha = "https://alpha.example.org:6969/announce";
+        let beta = "https://beta.example.org:6969/announce";
+        store.ingest(&[alpha.into(), beta.into()], &Default::default())?;
+        let alpha_id = target_id(&store, alpha)?;
+        let beta_id = target_id(&store, beta)?;
+        let now = unix_now();
+        announce(&mut store, &alpha_id, "accepted", now - 10, "8.8.4.4")?;
+        announce(&mut store, &beta_id, "accepted", now - 10, "8.8.4.4")?;
+        store.publish(1800, &[])?;
+        assert!(store.alias_map()?.is_empty());
+        assert_eq!(store.targets()?.len(), 2);
+        drop(store);
+        std::fs::remove_dir_all(dir)?;
+        Ok(())
+    }
+
+    #[test]
+    fn duplicate_udp_hostnames_merge_into_the_healthy_canonical() -> Result<()> {
+        let dir = std::env::temp_dir().join(format!("tracker-alias-udp-{}", rand::random::<u64>()));
+        let mut store = Store::open(&dir)?;
+        let first = "udp://one-a.example.org:6969/announce";
+        let first_duplicate = "udp://one-b.example.org:6969/announce";
+        let second = "udp://two-a.example.org:6970/announce";
+        let second_duplicate = "udp://two-b.example.org:6970/announce";
+        store.ingest(
+            &[
+                first.into(),
+                first_duplicate.into(),
+                second.into(),
+                second_duplicate.into(),
+            ],
+            &Default::default(),
+        )?;
+        let first_id = target_id(&store, first)?;
+        let first_duplicate_id = target_id(&store, first_duplicate)?;
+        let second_id = target_id(&store, second)?;
+        let second_duplicate_id = target_id(&store, second_duplicate)?;
+        let now = unix_now();
+        // Both members healthy: the first URL wins the canonical tie-break.
+        announce(&mut store, &first_id, "accepted", now - 10, "9.9.9.9")?;
+        announce(
+            &mut store,
+            &first_duplicate_id,
+            "accepted",
+            now - 10,
+            "9.9.9.9",
+        )?;
+        // Only the second member is healthy, so it becomes canonical.
+        announce(&mut store, &second_id, "accepted", now - 600, "8.8.4.4")?;
+        announce(&mut store, &second_id, "failed", now - 10, "8.8.4.4")?;
+        announce(
+            &mut store,
+            &second_duplicate_id,
+            "accepted",
+            now - 10,
+            "8.8.4.4",
+        )?;
+        store.publish(1800, &[])?;
+        let aliases = store.alias_map()?;
+        assert_eq!(aliases.len(), 2);
+        assert_eq!(aliases.get(&first_duplicate_id), Some(&first_id));
+        assert_eq!(aliases.get(&second_id), Some(&second_duplicate_id));
+        let due = store.due_targets(now)?;
+        assert!(due.iter().any(|(id, _, _)| id == &first_id));
+        assert!(due.iter().any(|(id, _, _)| id == &second_duplicate_id));
+        assert!(!due.iter().any(|(id, _, _)| id == &first_duplicate_id));
+        assert!(!due.iter().any(|(id, _, _)| id == &second_id));
+        let all = published_feed(&store, "trackers_all.txt")?;
+        assert!(all.contains(first) && all.contains(second_duplicate));
+        assert!(!all.contains(first_duplicate) && !all.contains(second));
+        let overview = published_overview(&store)?;
+        assert_eq!((overview.endpoints, overview.services), (2, 2));
         drop(store);
         std::fs::remove_dir_all(dir)?;
         Ok(())

@@ -62,6 +62,12 @@ pub struct Endpoint {
     pub families: Vec<FamilyStatus>,
     pub evidence: Evidence,
     pub infrastructure: Infrastructure,
+    /// Canonical endpoint id when this URL is the same origin as another
+    /// published endpoint (for example a literal IP and its hostname).
+    /// Aliases stay resolvable by id but are hidden from lists and feeds and
+    /// are not probed, so a duplicated URL cannot create a second request.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub alias_of: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -76,6 +82,11 @@ pub struct Observation {
     pub http_status: Option<u16>,
     pub latency_ms: Option<f64>,
     pub error_category: Option<String>,
+    /// Resolved public address that the probe actually connected to, when one
+    /// was selected. Recorded for diagnostics (stale DNS or a changed address
+    /// is otherwise indistinguishable from a timeout).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub target_ip: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

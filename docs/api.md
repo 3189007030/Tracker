@@ -1,17 +1,18 @@
-# Public API — 1.0.4
+# Public API — 1.2.0
 
-The observation routes retain the 1.0.2 contract; 1.0.4 adds native rejection diagnostics. Validation and deployment status are recorded in [1.0.4 validation](validation-1.0.4.md).
+The observation routes retain the 1.0.2 contract; 1.0.4 added native rejection diagnostics. 1.2.0 adds the optional endpoint field `alias_of` and observation field `target_ip`, and documents list pagination. Both are additive optional fields, so existing consumers are unaffected and the change is a minor release. `/trackers/partial` is an internal HTML fragment, not a JSON route. The 1.0.4 diagnostics are recorded in [1.0.4 validation](validation-1.0.4.md); this change is tracked in [1.2.0 validation](validation-1.2.0.md).
 
 The new API does not retain the Python JSON schema or composite score. Unknown is `null`, and a real, published empty dataset is distinct from a missing snapshot.
 
 | Route | Behavior |
 | --- | --- |
 | `GET /api/v1/overview` | Published version, generation time, endpoint/service/list counts and warming state. Missing snapshot generation time and counts are null. |
-| `GET /api/v1/trackers` | `q`, `protocol=udp|http|https`, `page>=1`, `limit=1..100`; missing-store total is null. |
-| `GET /api/v1/trackers/{id}` | Public endpoint, independent family status, evidence and optional network registration metadata. |
-| `GET /api/v1/trackers/{id}/observations` | Actual observations; optional `family=ipv4|ipv6`, `stage=announce|sample_announce|handshake|bitmap`, `window=24h`, `limit=1..500`. Returns `{window,items}`. |
+| `GET /api/v1/trackers` | `q`, `protocol=udp|http|https`, 1-based `page` and `limit=1..100` (default 25); aliases are excluded from items and totals; missing-store total is null. |
+| `GET /api/v1/trackers/{id}` | Public endpoint, independent family status, evidence and optional network registration metadata. An alias id still resolves; the detail page redirects to the canonical endpoint. |
+| `GET /api/v1/trackers/{id}/observations` | Actual observations; optional `family=ipv4|ipv6`, `stage=announce|sample_announce|handshake|bitmap`, `window=24h`, `limit=1..500`. Returns `{window,items}`; items may include optional `target_ip`. |
 | `GET /api/v1/stats/history` | Published aggregate history; `window=24h|7d|30d`. |
-| `GET /trackers*.txt` | All, standard, best and protocol feeds. Corresponding `.json` and `.rss` representations use the same entries. |
+| `GET /trackers*.txt` | All, standard, best and protocol feeds. Corresponding `.json` and `.rss` representations use the same entries. Aliased endpoints are excluded. |
+| `GET /trackers/partial` | Server-rendered HTML results fragment for the list page's progressive enhancement; same `q`, `protocol`, `page` and `limit` parameters. Internal, not a JSON API; the no-JavaScript path is the `/trackers` GET form. |
 | `GET /stats.json` | Aggregate native process/state counters, including separate HTTP announces, UDP connects and UDP announces. |
 | `GET /metrics` | Aggregate native Prometheus metrics without per-resource labels. |
 
@@ -19,9 +20,17 @@ The new API does not retain the Python JSON schema or composite score. Unknown i
 
 The public individual-sample and run APIs from 1.0.1 are removed. Observation and aggregate history remain available; private sampling and evidence continue without public sample magnets. Null or missing observations remain unknown.
 
+`/api/v1/trackers` returns one page at a time: `page` is 1-based and `limit` accepts 1 through 100 (default 25), combined with `q` and `protocol`. The HTML list uses the same values and keeps `q`, `protocol`, `page` and `limit` in the URL; it paginates with numbered links and ellipses, previous/next, a jump-to-page field and a 25/50/100 page-size selector. When JavaScript is available, typing in the search field is debounced, the results region is fetched from the same-origin `/trackers/partial` fragment, and only that region is replaced through the History API, so filtering and paging do not reload the page. `/trackers/partial` is an internal HTML fragment for this progressive enhancement, not a JSON API; the plain `/trackers` GET form remains the no-JavaScript path.
+
 Public endpoint `first_seen` and `baseline` describe its stable service identity: the earliest discovery and initial-import flag across explicitly grouped endpoints. Adding a protocol, port or configured host alias does not restart the service NEW window. Private endpoint discovery times remain separate; shared IP addresses never group services.
 
+An endpoint that duplicates another endpoint of the same origin — a hostname URL and its literal-IP URL on the same scheme, port and path — is not published twice. One canonical endpoint is announced to and listed; the duplicate becomes an alias with optional `alias_of` set to the canonical endpoint id. Aliases are excluded from `/api/v1/trackers` items and totals and from the `.txt`, `.json` and `.rss` feeds, and they are not probed again, so the tracker origin does not receive a duplicated announce. An aliased id is still resolvable rather than a 404: the HTML detail redirects to the canonical endpoint. `alias_of` is omitted for canonical and non-aliased endpoints.
+
 `announce` events determine health, family status and subscription eligibility. `sample_announce` records a selected public-sample request and distinguishes a valid empty response from an error. `handshake` records an aggregate attempt outcome without peer addresses. These diagnostic stages do not increase health-success denominators or qualify a tracker by themselves.
+
+Observation query results may include optional `target_ip`: the resolved public address the probe actually contacted, the value the detail observation log shows in its 目标 IP column. It is the tracker's server address, not a peer address, and it is omitted when no address was selected or the address is not public. It separates stale DNS or a changed address from a timeout, which otherwise produce the same failed observation.
+
+`families[].state` describes the latest observation's state and freshness (for example success, stale, unknown/untested or no address). `evidence.success_rate_24h` is historical and counts only completed observations: untested families, local failures and families with no address are not in that denominator. A stale or untested family can therefore show a 100% rate without contradiction; the website states this explicitly, including the successful/completed count behind the rate (for example 12/12).
 
 HTTP success requires structurally valid tracker fields. `incomplete_protocol` is an unverified reply missing required peer fields, even when HTTP is 200. `peers_unusable` means entries were returned but none can be used by the bounded peer verifier; it is distinct from an empty reply and does not imply an attempted or failed handshake.
 

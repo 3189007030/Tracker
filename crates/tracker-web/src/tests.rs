@@ -84,6 +84,7 @@ fn fixture(root: &Path) {
         baseline: false,
         updated_at: now,
         colocated: false,
+        alias_of: None,
         families: vec![
             FamilyStatus {
                 family: "ipv4".into(),
@@ -137,6 +138,7 @@ fn fixture(root: &Path) {
         http_status: Some(200),
         latency_ms: Some(11.0),
         error_category: None,
+        target_ip: Some("93.184.216.34".into()),
     };
     add_observation(&db, &first);
     let timed_out = Observation {
@@ -373,6 +375,7 @@ async fn incomplete_reply_and_unusable_peers_remain_distinct() {
         http_status: Some(200),
         latency_ms: Some(1234.0),
         error_category: Some("incomplete_protocol".into()),
+        target_ip: None,
     };
     add_observation(&db, &incomplete);
     add_observation(
@@ -470,6 +473,7 @@ async fn diagnostic_stages_keep_empty_timeout_and_handshake_distinct() {
         http_status: Some(200),
         latency_ms: Some(23.0),
         error_category: None,
+        target_ip: None,
     };
     add_observation(&db, &base);
     add_observation(
@@ -614,6 +618,7 @@ async fn many_diagnostic_events_do_not_hide_the_health_chart() {
         http_status: Some(200),
         latency_ms: Some(10.0),
         error_category: None,
+        target_ip: None,
     };
     for _ in 0..501 {
         add_observation(&tx, &event);
@@ -693,6 +698,7 @@ async fn udp_never_inherits_http_status_and_expired_family_is_stale() {
     let (_, _, html) = get(&router, "/tracker/example_id").await;
     assert!(!html.contains("HTTP 200"));
     assert!(html.contains("已过期"));
+    assert!(html.contains("24h 成功率是过去 24 小时的历史统计"));
 }
 
 #[tokio::test]
@@ -836,7 +842,6 @@ fn protocol_reply_uses_its_own_denominator() {
     let page = crate::html::detail(
         &endpoint,
         &[],
-        &[],
         tracker_model::unix_now(),
         crate::html::Lang::Zh,
     );
@@ -866,10 +871,10 @@ async fn legacy_pages_redirect_and_home_has_copyable_endpoints() {
     }
     assert!(!home.contains("announce.augrains.com"));
     assert!(home.contains("id=\"native-trackers\""));
-    assert!(home.contains("/assets/style.css?v=1.1.1"));
+    assert!(home.contains("/assets/style.css?v=1.2.0"));
     assert!(home.contains("href=\"https://github.com/3189007030/Tracker\""));
     assert!(home.contains("/assets/tools.js?v=1.0.2"));
-    assert!(home.contains("/assets/charts.js?v=1.1.1"));
+    assert!(home.contains("/assets/charts.js?v=1.2.0"));
     assert!(home.contains("/assets/chart.umd.js?v=4.6.1"));
     assert!(!home.contains("/api/v1/experiments"));
     assert!(!home.contains("href=\"/tools"));
@@ -1028,4 +1033,179 @@ async fn pool_reasons_and_staleness_are_shown_independently() {
     let (_, _, listing) = get(&router, "/trackers").await;
     assert!(listing.contains("href=\"/trackers.txt\""));
     assert!(listing.contains("复制标准订阅地址"));
+}
+
+#[tokio::test]
+async fn list_page_uses_live_search_and_accessible_pagination() {
+    let dir = TempDir::new().unwrap();
+    fixture(dir.path());
+    let db = Connection::open(dir.path().join("public.sqlite3")).unwrap();
+    let now = tracker_model::unix_now();
+    for index in 0..30 {
+        let host = format!("extra{index}.example.org");
+        let endpoint = Endpoint {
+            id: format!("extra_{index}"),
+            service_id: host.clone(),
+            url: format!("https://{host}/announce"),
+            protocol: "https".into(),
+            host,
+            first_seen: now - 120,
+            baseline: false,
+            updated_at: now,
+            colocated: false,
+            families: Vec::new(),
+            evidence: Evidence {
+                checks_24h: 1,
+                successes_24h: 1,
+                success_rate_24h: Some(1.0),
+                ..Default::default()
+            },
+            infrastructure: Infrastructure::default(),
+            alias_of: None,
+        };
+        add_endpoint(&db, &endpoint);
+    }
+    drop(db);
+    let router = app(dir.path().to_path_buf());
+    let (status, _, page) = get(&router, "/trackers?lang=zh").await;
+    assert_eq!(status, StatusCode::OK);
+    for needle in [
+        "data-tracker-filters",
+        "data-tracker-results",
+        "/assets/list.js?v=1.2.0",
+        "data-page-jump",
+        "name=\"limit\"",
+        "第 1 / 2",
+        "data-page=\"2\"",
+        "aria-live=\"polite\"",
+    ] {
+        assert!(page.contains(needle), "list page is missing {needle}");
+    }
+    let (status, headers, fragment) = get(&router, "/trackers/partial?lang=zh&page=1").await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(headers[header::CACHE_CONTROL], "no-store");
+    assert!(!fragment.contains("<html"));
+    assert!(fragment.contains("第 1 / 2"));
+    let (_, _, second) = get(&router, "/trackers/partial?lang=zh&page=2").await;
+    assert!(second.contains("第 2 / 2"));
+    let (status, _, _) = get(&router, "/trackers/partial?lang=zh&page=0").await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn detail_shows_target_ip_localized_reasons_and_dashes_for_no_address() {
+    let dir = TempDir::new().unwrap();
+    fixture(dir.path());
+    let db = Connection::open(dir.path().join("public.sqlite3")).unwrap();
+    let now = tracker_model::unix_now();
+    add_observation(
+        &db,
+        &Observation {
+            observed_at: now - 2,
+            endpoint_id: "example_id".into(),
+            family: "ipv6".into(),
+            stage: "announce".into(),
+            result: "unknown".into(),
+            protocol_reply: false,
+            http_status: None,
+            latency_ms: None,
+            error_category: Some("family_unavailable".into()),
+            target_ip: None,
+        },
+    );
+    add_observation(
+        &db,
+        &Observation {
+            observed_at: now - 3,
+            endpoint_id: "example_id".into(),
+            family: "ipv4".into(),
+            stage: "announce".into(),
+            result: "failed".into(),
+            protocol_reply: false,
+            http_status: Some(502),
+            latency_ms: None,
+            error_category: Some("http_error".into()),
+            target_ip: Some("93.184.216.34".into()),
+        },
+    );
+    add_observation(
+        &db,
+        &Observation {
+            observed_at: now - 1,
+            endpoint_id: "example_id".into(),
+            family: "ipv4".into(),
+            stage: "announce".into(),
+            result: "failed".into(),
+            protocol_reply: false,
+            http_status: Some(429),
+            latency_ms: None,
+            error_category: Some("rate_limited".into()),
+            target_ip: Some("93.184.216.34".into()),
+        },
+    );
+    drop(db);
+    let router = app(dir.path().to_path_buf());
+    let (status, _, body) = get(&router, "/tracker/example_id?lang=zh").await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(body.contains("<th>\u{76ee}\u{6807} IP</th>"));
+    assert!(body.contains("93.184.216.34"));
+    assert!(body.contains("HTTP 429 \u{b7} \u{9891}\u{7387}\u{9650}\u{5236}"));
+    assert!(body.contains("HTTP 502 \u{b7} \u{7f51}\u{5173}\u{9519}\u{8bef}"));
+    assert!(!body.contains("rate_limited"));
+    assert!(!body.contains("family_unavailable"));
+    let row = body.split("<td>IPV6</td>").nth(1).unwrap_or("");
+    assert!(body.contains("<td>IPV6</td><td>\u{5065}\u{5eb7}\u{901a}\u{544a}</td><td>\u{2014}</td><td>\u{672a}\u{53d1}\u{73b0}\u{5730}\u{5740}</td><td>\u{2014}</td><td>\u{672a}\u{77e5}</td><td>\u{2014}</td><td>\u{2014}</td>"), "row was {}", &row[..row.len().min(200)]);
+    assert!(body.contains("\u{4e0d}\u{8ba1}\u{5165} 24h \u{6210}\u{529f}\u{7387}"));
+    assert!(body.contains("\u{5408}\u{8ba1}"));
+}
+
+#[tokio::test]
+async fn aliased_endpoint_is_hidden_from_the_list_and_redirects_to_canonical() {
+    let dir = TempDir::new().unwrap();
+    fixture(dir.path());
+    let db = Connection::open(dir.path().join("public.sqlite3")).unwrap();
+    let now = tracker_model::unix_now();
+    db.execute("DELETE FROM endpoints WHERE id='private_id'", [])
+        .unwrap();
+    let alias = Endpoint {
+        id: "alias_id".into(),
+        service_id: "alias.example.net".into(),
+        url: "http://93.184.216.34:6969/announce".into(),
+        protocol: "http".into(),
+        host: "93.184.216.34".into(),
+        first_seen: now - 60,
+        baseline: false,
+        updated_at: now,
+        colocated: false,
+        families: Vec::new(),
+        evidence: Evidence {
+            checks_24h: 1,
+            successes_24h: 1,
+            success_rate_24h: Some(1.0),
+            ..Default::default()
+        },
+        infrastructure: Infrastructure::default(),
+        alias_of: Some("example_id".into()),
+    };
+    add_endpoint(&db, &alias);
+    drop(db);
+    let router = app(dir.path().to_path_buf());
+    let (_, _, list) = get(&router, "/trackers?lang=zh").await;
+    assert!(!list.contains("93.184.216.34"));
+    assert!(list.contains("tracker.example.org"));
+    let meta = list
+        .find("list-meta")
+        .map(|i| &list[i..(i + 260).min(list.len())])
+        .unwrap_or("");
+    assert!(list.contains("\u{7aef}\u{70b9}: 1"), "list-meta was {meta}");
+    let (status, headers, _) = get(&router, "/tracker/alias_id?lang=zh").await;
+    assert_eq!(status, StatusCode::FOUND);
+    assert_eq!(headers[header::LOCATION], "/tracker/example_id?lang=zh");
+    let (_, _, api) = get(&router, "/api/v1/trackers?lang=zh").await;
+    let page: serde_json::Value = serde_json::from_str(&api).unwrap();
+    assert_eq!(page["total"], 1);
+    assert_eq!(page["items"].as_array().unwrap().len(), 1);
+    let (_, _, detail) = get(&router, "/api/v1/trackers/alias_id").await;
+    let alias_json: serde_json::Value = serde_json::from_str(&detail).unwrap();
+    assert_eq!(alias_json["alias_of"], "example_id");
 }

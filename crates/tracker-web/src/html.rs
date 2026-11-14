@@ -143,7 +143,7 @@ pub(crate) fn shell(title: &str, lang: Lang, body: &str) -> String {
     };
     let code = lang.code();
     format!(
-        r#"<!doctype html><html lang="{code}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><title>{title} · Tracker Observatory</title><link rel="icon" type="image/svg+xml" href="/assets/brand.svg?v=1.0.2"><link rel="icon" href="/favicon.ico?v=1.0.2" sizes="any"><link rel="apple-touch-icon" href="/assets/brand.png?v=1.0.2"><link rel="stylesheet" href="/assets/style.css?v=1.1.1"></head><body><header class="masthead"><div class="wrap nav-wrap"><a class="brand" href="/?lang={code}"><img class="brand-icon" src="/assets/brand.svg?v=1.0.2" alt=""><span>Tracker <b>Observatory</b></span></a><nav aria-label="{nav_label}"><a href="/?lang={code}">{nav_home}</a><a href="/trackers?lang={code}">{nav_trackers}</a><a href="/sources?lang={code}">{nav_sources}</a><a href="/declaration?lang={code}">{nav_declaration}</a></nav><div class="nav-actions"><div class="language" aria-label="Language">{language}</div><a class="github-link" href="https://github.com/3189007030/Tracker" rel="noopener noreferrer" aria-label="{github_label}" title="{github_label}"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="currentColor"><path d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.11.79-.25.79-.56v-2.19c-3.21.7-3.89-1.36-3.89-1.36-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.97.11-.75.4-1.26.73-1.55-2.56-.29-5.26-1.28-5.26-5.71 0-1.26.45-2.29 1.18-3.1-.12-.29-.51-1.46.11-3.05 0 0 .97-.31 3.16 1.18a10.98 10.98 0 0 1 5.75 0c2.19-1.49 3.15-1.18 3.15-1.18.63 1.59.24 2.76.12 3.05.74.81 1.18 1.84 1.18 3.1 0 4.44-2.7 5.41-5.28 5.7.42.36.78 1.06.78 2.14v3.22c0 .31.21.68.79.56A11.5 11.5 0 0 0 12 .5Z"/></svg></a></div></div></header><main class="wrap">{body}</main><footer class="wrap footer"><span>Tracker Observatory · {version}</span><span>{footnote}</span></footer><script src="/assets/tools.js?v=1.0.2" defer></script></body></html>"#,
+        r#"<!doctype html><html lang="{code}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><title>{title} · Tracker Observatory</title><link rel="icon" type="image/svg+xml" href="/assets/brand.svg?v=1.0.2"><link rel="icon" href="/favicon.ico?v=1.0.2" sizes="any"><link rel="apple-touch-icon" href="/assets/brand.png?v=1.0.2"><link rel="stylesheet" href="/assets/style.css?v=1.2.0"></head><body><header class="masthead"><div class="wrap nav-wrap"><a class="brand" href="/?lang={code}"><img class="brand-icon" src="/assets/brand.svg?v=1.0.2" alt=""><span>Tracker <b>Observatory</b></span></a><nav aria-label="{nav_label}"><a href="/?lang={code}">{nav_home}</a><a href="/trackers?lang={code}">{nav_trackers}</a><a href="/sources?lang={code}">{nav_sources}</a><a href="/declaration?lang={code}">{nav_declaration}</a></nav><div class="nav-actions"><div class="language" aria-label="Language">{language}</div><a class="github-link" href="https://github.com/3189007030/Tracker" rel="noopener noreferrer" aria-label="{github_label}" title="{github_label}"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="currentColor"><path d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.11.79-.25.79-.56v-2.19c-3.21.7-3.89-1.36-3.89-1.36-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.97.11-.75.4-1.26.73-1.55-2.56-.29-5.26-1.28-5.26-5.71 0-1.26.45-2.29 1.18-3.1-.12-.29-.51-1.46.11-3.05 0 0 .97-.31 3.16 1.18a10.98 10.98 0 0 1 5.75 0c2.19-1.49 3.15-1.18 3.15-1.18.63 1.59.24 2.76.12 3.05.74.81 1.18 1.84 1.18 3.1 0 4.44-2.7 5.41-5.28 5.7.42.36.78 1.06.78 2.14v3.22c0 .31.21.68.79.56A11.5 11.5 0 0 0 12 .5Z"/></svg></a></div></div></header><main class="wrap">{body}</main><footer class="wrap footer"><span>Tracker Observatory · {version}</span><span>{footnote}</span></footer><script src="/assets/tools.js?v=1.0.2" defer></script></body></html>"#,
         title = esc(title),
         version = esc(VERSION),
         nav_label = lang.pick("主导航", "Main navigation"),
@@ -218,7 +218,7 @@ fn charts(lang: Lang) -> String {
         panels.push_str(&format!(r#"<article class="panel chart-panel"><h3>{}</h3><div class="canvas-wrap"><canvas data-history-chart="{}" aria-label="{}" role="img"></canvas></div></article>"#, esc(label), esc(key), esc(label)));
     }
     format!(
-        r#"<section class="trends-heading"><div class="trends-title-row"><h2>{}</h2><p class="trends-unit">{}</p></div><div class="trends-sub-row"><p>{}</p><label>{} <select data-history-window aria-label="{}"><option value="24h">24h</option><option value="7d">7d</option><option value="30d">30d</option></select></label></div></section><div class="history-grid" data-history-root data-lang="{}">{}</div><p class="footnote" data-history-rate-note></p><p class="footnote">{}</p><script src="/assets/chart.umd.js?v=4.6.1" defer></script><script src="/assets/charts.js?v=1.1.1" defer></script>"#,
+        r#"<section class="trends-heading"><div class="trends-title-row"><h2>{}</h2><p class="trends-unit">{}</p></div><div class="trends-sub-row"><p>{}</p><label>{} <select data-history-window aria-label="{}"><option value="24h">24h</option><option value="7d">7d</option><option value="30d">30d</option></select></label></div></section><div class="history-grid" data-history-root data-lang="{}">{}</div><p class="footnote" data-history-rate-note></p><p class="footnote">{}</p><script src="/assets/chart.umd.js?v=4.6.1" defer></script><script src="/assets/charts.js?v=1.2.0" defer></script>"#,
         title,
         lang.pick(
             "纵轴：节点与蜂群为数量，速率为每秒；横轴为 UTC 时间。",
@@ -522,6 +522,110 @@ fn stage_text(stage: &str, lang: Lang) -> &'static str {
     }
 }
 
+/// A localized, human-readable failure reason. `None`/empty means there is
+/// nothing more specific to say than the observation result itself.
+/// HTTP status codes are kept where they are the actual diagnostic.
+fn reason_for(category: Option<&str>, http_status: Option<u16>, lang: Lang) -> Option<String> {
+    let category = category?;
+    let http = |fallback_zh: &str, fallback_en: &str| match http_status {
+        Some(code) => {
+            let label = match code {
+                429 => lang.pick("频率限制", "rate limited"),
+                502 => lang.pick("网关错误", "bad gateway"),
+                503 => lang.pick("服务暂不可用", "temporarily unavailable"),
+                504 => lang.pick("网关超时", "gateway timeout"),
+                403 => lang.pick("拒绝访问", "access denied"),
+                _ => lang.pick("状态异常", "status error"),
+            };
+            format!("HTTP {code} · {label}")
+        }
+        None => lang.pick(fallback_zh, fallback_en).to_owned(),
+    };
+    Some(match category {
+        "timeout" => lang
+            .pick("超时（等待响应）", "Timed out waiting for a response")
+            .to_owned(),
+        "connect_timeout" => lang.pick("连接超时", "Connection timed out").to_owned(),
+        "response_timeout" => lang.pick("响应超时", "Response timed out").to_owned(),
+        "dns_timeout" => lang.pick("DNS 解析超时", "DNS lookup timed out").to_owned(),
+        "dns_error" => lang.pick("DNS 解析失败", "DNS lookup failed").to_owned(),
+        "transport" => lang
+            .pick(
+                "连接失败（传输错误）",
+                "Connection failed (transport error)",
+            )
+            .to_owned(),
+        "http_error" => http("HTTP 错误", "HTTP error"),
+        "http_status" => http("HTTP 状态异常", "Unexpected HTTP status"),
+        "rate_limited" => match http_status {
+            Some(429) => format!("HTTP 429 · {}", lang.pick("频率限制", "rate limited")),
+            _ => lang.pick("频率限制", "Rate limited").to_owned(),
+        },
+        "invalid_protocol" | "invalid_response" => lang
+            .pick("Tracker 回复格式无效", "Invalid tracker protocol reply")
+            .to_owned(),
+        "protocol_error" => lang
+            .pick("Tracker 协议错误", "Tracker protocol error")
+            .to_owned(),
+        "incomplete_protocol" => lang
+            .pick("Tracker 回复不完整", "Incomplete tracker protocol reply")
+            .to_owned(),
+        "tracker_rejection" | "resource_unregistered" => lang
+            .pick("Tracker 协议拒绝", "Tracker protocol rejection")
+            .to_owned(),
+        "family_unavailable" | "unsupported" => lang
+            .pick(
+                "未发现该地址族的公开地址",
+                "No public address for this family",
+            )
+            .to_owned(),
+        "local_unavailable" | "network_unavailable" => lang
+            .pick("本机网络不可用", "Local network unavailable")
+            .to_owned(),
+        "local_or_network_unknown" => lang
+            .pick("本地或网络异常", "Local or network failure")
+            .to_owned(),
+        "operator_denied" | "local_restriction" => lang
+            .pick("本地策略跳过", "Deferred by local policy")
+            .to_owned(),
+        "budget_exhausted" => lang
+            .pick("本地预算不足", "Local budget exhausted")
+            .to_owned(),
+        "peers_unusable" => lang
+            .pick("回复中的节点不可用", "Returned peers were unusable")
+            .to_owned(),
+        "cancelled" => lang.pick("已取消", "Cancelled").to_owned(),
+        "os_error_10060" => lang
+            .pick(
+                "连接超时（系统错误 10060）",
+                "Connection timed out (OS error 10060)",
+            )
+            .to_owned(),
+        "unknown" => lang.pick("原因未知", "Reason unknown").to_owned(),
+        _ => lang.pick("其他原因", "Other reason").to_owned(),
+    })
+}
+
+/// Rows without an address for the checked family have no protocol reply or
+/// reason to report; both cells stay an explicit dash rather than "unknown".
+fn no_address(item: &Observation) -> bool {
+    item.result == "unsupported"
+        || matches!(
+            item.error_category.as_deref(),
+            Some("family_unavailable" | "unsupported")
+        )
+}
+
+/// The reason cell for the observation table. Unlike `reason_for`, an empty
+/// reason is rendered as the em dash that readers already recognise.
+fn reason_cell(item: &Observation, lang: Lang) -> String {
+    if no_address(item) {
+        return "—".to_owned();
+    }
+    reason_for(item.error_category.as_deref(), item.http_status, lang)
+        .unwrap_or_else(|| "—".to_owned())
+}
+
 fn observation_state(item: &Observation) -> &'static str {
     let reason = item.error_category.as_deref().unwrap_or("");
     if matches!(
@@ -600,9 +704,85 @@ fn measured_reply(item: &Observation) -> bool {
 fn pill(family: &str, status: Option<&FamilyStatus>, lang: Lang) -> String {
     let state = status.map(|s| s.state.as_str()).unwrap_or("unknown");
     let label = format!("{} · {}", family.to_uppercase(), state_text(state, lang));
+    let checked = status.and_then(|s| s.checked_at);
+    let when = time(checked, lang);
+    let title = match status {
+        Some(_) => match state {
+            "success" => format!(
+                "{}：{}（{}）。",
+                label,
+                lang.pick("最新一次观测成功", "Latest check succeeded"),
+                when
+            ),
+            "failure" => format!(
+                "{}：{}（{}）。",
+                label,
+                lang.pick("最新一次观测失败", "Latest check failed"),
+                when
+            ),
+            "partial" => format!(
+                "{}：{}（{}）。",
+                label,
+                lang.pick(
+                    "最新一次观测部分异常",
+                    "Latest check reported a partial failure"
+                ),
+                when
+            ),
+            "stale" => format!(
+                "{}：{}（{}）。{}",
+                label,
+                lang.pick(
+                    "最新一次结果已超出预期刷新间隔",
+                    "Latest result is older than the expected refresh window"
+                ),
+                when,
+                lang.pick(
+                    "24h 成功率是过去 24 小时的历史统计，与当前新鲜度不是同一指标。",
+                    "The 24h success rate is historical and is not the same as current freshness."
+                )
+            ),
+            "unsupported" => format!(
+                "{}：{}。",
+                label,
+                lang.pick(
+                    "未发现该地址族的公开地址，不计入成功率",
+                    "No public address was found for this family; it is excluded from success rates"
+                )
+            ),
+            "local_unavailable" => format!(
+                "{}：{}（{}）。",
+                label,
+                lang.pick(
+                    "本地网络不可用，不是 Tracker 故障",
+                    "Local network was unavailable, not a tracker fault"
+                ),
+                when
+            ),
+            _ => format!(
+                "{}：{}（{}）。{}",
+                label,
+                lang.pick("尚无有效结果", "No valid result yet"),
+                when,
+                lang.pick(
+                    "未测或结果已失效，不计入成功率。",
+                    "Untested or expired results are excluded from success rates."
+                )
+            ),
+        },
+        None => format!(
+            "{}：{}。",
+            label,
+            lang.pick(
+                "该地址族尚未检测",
+                "This address family has not been checked"
+            )
+        ),
+    };
     format!(
-        r#"<span class="pill pill--{}">{}</span>"#,
+        r#"<span class="pill pill--{}" title="{}">{}</span>"#,
         esc(state),
+        esc(&title),
         esc(&label)
     )
 }
@@ -637,7 +817,36 @@ fn country_flag(country: Option<&str>, lang: Lang) -> String {
     )
 }
 
-pub(crate) fn listing(page: &Page, query: &str, protocol: &str, lang: Lang) -> String {
+fn page_url(lang: Lang, query: &str, protocol: &str, limit: usize, page: usize) -> String {
+    let url = url::form_urlencoded::Serializer::new(String::new())
+        .append_pair("lang", lang.code())
+        .append_pair("q", query)
+        .append_pair("protocol", protocol)
+        .append_pair("limit", &limit.to_string())
+        .append_pair("page", &page.to_string())
+        .finish();
+    esc(&format!("/trackers?{url}"))
+}
+
+fn page_size_select(page: &Page, lang: Lang) -> String {
+    let mut options = String::new();
+    for size in [25usize, 50, 100] {
+        let selected = if page.limit == size { " selected" } else { "" };
+        options.push_str(&format!(
+            "<option value=\"{size}\"{selected}>{size}</option>"
+        ));
+    }
+    if ![25, 50, 100].contains(&page.limit) {
+        options.push_str(&format!(
+            "<option value=\"{}\" selected>{}</option>",
+            page.limit, page.limit
+        ));
+    }
+    let _ = lang;
+    options
+}
+
+pub(crate) fn listing_results(page: &Page, query: &str, protocol: &str, lang: Lang) -> String {
     let code = lang.code();
     let mut rows = String::new();
     for (offset, endpoint) in page.items.iter().enumerate() {
@@ -671,9 +880,33 @@ pub(crate) fn listing(page: &Page, query: &str, protocol: &str, lang: Lang) -> S
             .saturating_sub(1)
             .saturating_mul(page.limit)
             .saturating_add(offset + 1);
-        rows.push_str(&format!(r#"<article class="tracker-row"><span class="tracker-rank">{rank}</span><div class="tracker-name">{flag} <a href="/tracker/{}?lang={code}">{}</a>{new}<div class="url">{}</div></div><div class="stack-pills">{v4}{v6}</div><div class="row-stat"><small>{}</small><strong>{}</strong></div><div class="row-stat"><small>{}</small><strong>{}</strong></div><a class="row-link" href="/tracker/{}?lang={code}" aria-label="{}">↗</a></article>"#,
-            esc(&endpoint.id), esc(&endpoint.host), copy_url(lang.pick("Tracker 地址", "Tracker URL"), &endpoint.url, lang), lang.pick("24h 成功率", "24h success"),
-            esc(&pct(endpoint.evidence.success_rate_24h, lang)), lang.pick("响应延迟中位数", "Median latency"),
+        let evidence = &endpoint.evidence;
+        let rate_title = format!(
+            "{} {} / {} {}",
+            lang.pick(
+                "24h 成功率 = 成功次数 / 已完成的有效观测次数。本次：",
+                "24h success = accepted / completed observations. This endpoint:"
+            ),
+            evidence.successes_24h,
+            evidence.checks_24h,
+            lang.pick(
+                "未测、本地故障与未发现地址不计入。",
+                "Untested, locally failed and no-address observations are excluded."
+            )
+        );
+        let rate_note = if evidence.checks_24h > 0 {
+            format!(
+                r#"<small class="row-note">{}/{}</small>"#,
+                evidence.successes_24h, evidence.checks_24h
+            )
+        } else {
+            String::new()
+        };
+        rows.push_str(&format!(r#"<article class="tracker-row"><span class="tracker-rank">{rank}</span><div class="tracker-name">{flag} <a href="/tracker/{}?lang={code}">{}</a>{new}<div class="url">{}</div></div><div class="stack-pills">{v4}{v6}</div><div class="row-stat" title="{}"><small>{}</small><strong>{}</strong>{rate_note}</div><div class="row-stat" title="{}"><small>{}</small><strong>{}</strong></div><a class="row-link" href="/tracker/{}?lang={code}" aria-label="{}">↗</a></article>"#,
+            esc(&endpoint.id), esc(&endpoint.host), copy_url(lang.pick("Tracker 地址", "Tracker URL"), &endpoint.url, lang), esc(&rate_title), lang.pick("24h 成功率", "24h success"),
+            esc(&pct(endpoint.evidence.success_rate_24h, lang)),
+            lang.pick("只统计实际测量到响应的观测；超时与本地故障不计入。", "Only observations with a measured response are counted; timeouts and local failures are excluded."),
+            lang.pick("响应延迟中位数", "Median latency"),
             esc(&millis(endpoint.evidence.median_latency_ms, lang)), esc(&endpoint.id), lang.pick("查看详情", "Details")));
     }
     if rows.is_empty() {
@@ -692,38 +925,131 @@ pub(crate) fn listing(page: &Page, query: &str, protocol: &str, lang: Lang) -> S
         };
         rows = format!(r#"<div class="empty">{}</div>"#, message);
     }
-    let selected = |name: &str| if protocol == name { " selected" } else { "" };
-    let query_url: String = url::form_urlencoded::Serializer::new(String::new())
-        .append_pair("lang", code)
-        .append_pair("q", query)
-        .append_pair("protocol", protocol)
-        .finish();
-    let previous = if page.page > 1 {
-        format!(
-            r#"<a href="/trackers?{}&amp;page={}">← {}</a>"#,
-            esc(&query_url),
-            page.page - 1,
-            lang.pick("上一页", "Previous")
-        )
-    } else {
-        String::new()
-    };
-    let next = if page
+    let total_pages = page
         .total
-        .is_some_and(|total| (page.page as u64).saturating_mul(page.limit as u64) < total)
-    {
-        format!(
-            r#"<a href="/trackers?{}&amp;page={}">{} →</a>"#,
-            esc(&query_url),
-            page.page + 1,
-            lang.pick("下一页", "Next")
-        )
-    } else {
-        String::new()
+        .map(|total| total.div_ceil(page.limit.max(1) as u64).max(1));
+    let meta = match (page.total, total_pages) {
+        (Some(total), Some(pages)) => format!(
+            r#"<span>{}: {} · {} {} / {}</span>"#,
+            lang.pick("端点", "Endpoints"),
+            compact_number(total as f64, lang),
+            lang.pick("第", "Page"),
+            page.page,
+            compact_number(pages as f64, lang)
+        ),
+        _ => format!(r#"<span>{}: —</span>"#, lang.pick("端点", "Endpoints")),
     };
-    let body = format!(
-        r#"<form class="filters card" method="get" action="/trackers"><input type="hidden" name="lang" value="{code}"><label>{search}<input name="q" value="{query}" maxlength="128" placeholder="{placeholder}"></label><label>{proto}<select name="protocol"><option value="">{all}</option><option value="udp"{udp}>UDP</option><option value="http"{http}>HTTP</option><option value="https"{https}>HTTPS</option></select></label><button class="button" type="submit">{filter}</button></form><div class="list-meta"><span>{count}: {total}</span>{feed_link}</div><div class="tracker-list">{rows}</div><div class="pagination">{previous}<span>{page_label} {current}</span>{next}</div>"#,
+    let pagination = pagination(page, total_pages, query, protocol, lang);
+    let note = lang.pick(
+        "地址族徽标显示每个地址族最新一次观测：成功、失败、已过期（最新结果超出预期刷新间隔）、未知/未测或未发现地址。24h 成功率只统计已完成的有效观测，未测地址族不计入，所以“已过期 / 未知未测”与 100% 可以同时出现。",
+        "Family pills show the latest check for that family: success, failure, stale (older than the expected refresh window), unknown/untested, or no address. The 24h success rate counts only completed observations and excludes untested families, so a stale or untested family can coexist with 100%.",
+    );
+    format!(
+        r#"<div class="list-meta">{meta}{feed_link}</div><div class="tracker-list">{rows}</div>{pagination}<p class="list-note">{note}</p>"#,
         feed_link = copy_feed_link(lang),
+        note = esc(note)
+    )
+}
+
+fn pagination(
+    page: &Page,
+    total_pages: Option<u64>,
+    query: &str,
+    protocol: &str,
+    lang: Lang,
+) -> String {
+    let limit = page.limit.max(1);
+    let current = page.page;
+    let total_pages = total_pages.map(|value| value.clamp(1, 10_000));
+    let shown_page = total_pages
+        .map(|pages| (current as u64).clamp(1, pages) as usize)
+        .unwrap_or(current);
+    let mut links = String::new();
+    if current > 1 {
+        links.push_str(&format!(
+            r#"<a class="page-step" data-page="{}" href="{}" rel="prev">← {}</a>"#,
+            current - 1,
+            page_url(lang, query, protocol, limit, current - 1),
+            lang.pick("上一页", "Previous")
+        ));
+    } else {
+        links.push_str(&format!(
+            r#"<span class="page-step is-disabled">← {}</span>"#,
+            lang.pick("上一页", "Previous")
+        ));
+    }
+    if let Some(pages) = total_pages {
+        let mut numbers = Vec::new();
+        numbers.push(1u64);
+        let first = (shown_page as u64).saturating_sub(2).max(2);
+        let last = ((shown_page as u64).saturating_add(2)).min(pages.saturating_sub(1));
+        for number in first..=last {
+            numbers.push(number);
+        }
+        numbers.push(pages);
+        numbers.sort_unstable();
+        numbers.dedup();
+        links.push_str(r#"<span class="page-list">"#);
+        let mut expected = 1u64;
+        for number in numbers {
+            if number > expected {
+                links.push_str(r#"<span class="page-gap" aria-hidden="true">…</span>"#);
+            }
+            if number as usize == shown_page {
+                links.push_str(&format!(
+                    r#"<span class="page-current" aria-current="page">{number}</span>"#
+                ));
+            } else {
+                links.push_str(&format!(
+                    r#"<a class="page-number" data-page="{number}" href="{}">{number}</a>"#,
+                    page_url(lang, query, protocol, limit, number as usize)
+                ));
+            }
+            expected = number + 1;
+        }
+        links.push_str("</span>");
+    }
+    let has_next = match total_pages {
+        Some(pages) => (current as u64) < pages,
+        None => page.items.len() >= limit,
+    };
+    if has_next {
+        links.push_str(&format!(
+            r#"<a class="page-step" data-page="{}" href="{}" rel="next">{} →</a>"#,
+            current + 1,
+            page_url(lang, query, protocol, limit, current + 1),
+            lang.pick("下一页", "Next")
+        ));
+    } else {
+        links.push_str(&format!(
+            r#"<span class="page-step is-disabled">{} →</span>"#,
+            lang.pick("下一页", "Next")
+        ));
+    }
+    let jump = total_pages.filter(|pages| *pages > 1).map(|pages| {
+        format!(
+            r#"<form class="page-jump" method="get" action="/trackers" data-page-jump><input type="hidden" name="lang" value="{code}"><input type="hidden" name="q" value="{query}"><input type="hidden" name="protocol" value="{protocol}"><input type="hidden" name="limit" value="{limit}"><label>{label} <input type="number" name="page" value="{current}" min="1" max="{pages}" inputmode="numeric" aria-label="{label}"></label><button class="button secondary page-jump-button" type="submit">{go}</button></form>"#,
+            code = lang.code(),
+            query = esc(query),
+            protocol = esc(protocol),
+            label = lang.pick("跳至", "Go to"),
+            go = lang.pick("跳转", "Go"),
+            current = shown_page,
+            pages = pages
+        )
+    }).unwrap_or_default();
+    format!(
+        r#"<nav class="pagination" aria-label="{}">{links}{jump}</nav>"#,
+        lang.pick("列表分页", "List pagination")
+    )
+}
+
+pub(crate) fn listing(page: &Page, query: &str, protocol: &str, lang: Lang) -> String {
+    let code = lang.code();
+    let selected = |name: &str| if protocol == name { " selected" } else { "" };
+    let results = listing_results(page, query, protocol, lang);
+    let body = format!(
+        r#"<form class="filters card" method="get" action="/trackers" data-tracker-filters><input type="hidden" name="lang" value="{code}"><label>{search}<input name="q" value="{query}" maxlength="128" placeholder="{placeholder}" autocomplete="off" spellcheck="false" enterkeyhint="search"></label><label>{proto}<select name="protocol" data-tracker-filter><option value="">{all}</option><option value="udp"{udp}>UDP</option><option value="http"{http}>HTTP</option><option value="https"{https}>HTTPS</option></select></label><label>{size}<select name="limit" data-tracker-filter>{sizes}</select></label><button class="button" type="submit">{filter}</button><span class="filter-status" role="status" aria-live="polite"></span></form><div class="tracker-results" id="tracker-results" data-tracker-results aria-live="polite">{results}</div><script src="/assets/list.js?v=1.2.0" defer></script>"#,
         search = lang.pick("搜索", "Search"),
         query = esc(query),
         placeholder = lang.pick("域名或地址", "Host or address"),
@@ -732,39 +1058,117 @@ pub(crate) fn listing(page: &Page, query: &str, protocol: &str, lang: Lang) -> S
         udp = selected("udp"),
         http = selected("http"),
         https = selected("https"),
+        size = lang.pick("每页", "Per page"),
+        sizes = page_size_select(page, lang),
         filter = lang.pick("筛选", "Filter"),
-        count = lang.pick("端点", "Endpoints"),
-        total = page
-            .total
-            .map(|value| compact_number(value as f64, lang))
-            .unwrap_or_else(|| "—".to_owned()),
-        page_label = lang.pick("第", "Page"),
-        current = page.page
     );
     shell(lang.pick("Tracker 列表", "Trackers"), lang, &body)
 }
 
+/// The latest outcome for a family, described in plain language. The pill
+/// already carries the freshness state, so this avoids repeating "已过期" and
+/// instead says what actually happened, with a status code where relevant.
 fn latest(f: Option<&FamilyStatus>, protocol: &str, lang: Lang) -> String {
     let Some(f) = f else {
         return esc(lang.pick("未知 / 未测", "Unknown / untested"));
     };
+    if f.state == "unsupported" {
+        return esc(state_text("unsupported", lang));
+    }
     let mut parts = Vec::new();
-    if let Some(code) = f.http_status.filter(|_| protocol != "udp") {
+    let http_status = f.http_status.filter(|_| protocol != "udp");
+    if let Some(code) = http_status {
         parts.push(format!("HTTP {code}"));
     }
-    if let Some(result) = f.protocol_result.as_deref() {
+    if let Some(reason) = reason_for(f.error_category.as_deref(), http_status, lang) {
+        parts.push(reason);
+    } else if let Some(result) = f.protocol_result.as_deref() {
         parts.push(
             observed_result("announce", result, f.error_category.as_deref(), lang).to_owned(),
-        );
-    } else if f.error_category.is_some() {
-        parts.push(
-            observed_result("announce", "unknown", f.error_category.as_deref(), lang).to_owned(),
         );
     }
     if parts.is_empty() {
         parts.push(state_text(&f.state, lang).to_owned());
     }
     esc(&parts.join(" · "))
+}
+
+/// A one-sentence explanation of what a family state means for the success
+/// rate shown next to it. Deliberately shown only when it can be confusing.
+fn family_hint(f: Option<&FamilyStatus>, lang: Lang) -> &'static str {
+    match f.map(|value| value.state.as_str()) {
+        None => lang.pick(
+            "该地址族尚未检测，不计入 24h 成功率。",
+            "This family has not been checked and is excluded from the 24h success rate.",
+        ),
+        Some("stale") => lang.pick(
+            "“已过期”只表示最新一次结果超出预期刷新间隔；24h 成功率是过去 24 小时的历史统计，仍可能为 100%。",
+            "\"Stale\" only means the latest result is older than the expected refresh window; the 24h success rate is historical and can still be 100%.",
+        ),
+        Some("unknown") => lang.pick(
+            "“未知 / 未测”表示尚无有效结果，不计入 24h 成功率。",
+            "\"Unknown / untested\" means there is no valid result yet; it is excluded from the 24h success rate.",
+        ),
+        Some("unsupported") => lang.pick(
+            "“未发现地址”表示该地址族没有公开解析地址，不计入 24h 成功率。",
+            "\"No address\" means no public address resolved for this family; it is excluded from the 24h success rate.",
+        ),
+        Some("local_unavailable") => lang.pick(
+            "本地网络不可用不是 Tracker 故障；该次观测不计入 24h 成功率。",
+            "A local network failure is not tracker downtime; that observation is excluded from the 24h success rate.",
+        ),
+        _ => "",
+    }
+}
+
+/// The latest resolved target address for one family, when the observations
+/// still carry it. This is what makes a stale DNS answer diagnosable.
+fn latest_target_ip<'a>(observations: &'a [Observation], family: &'a str) -> Option<&'a str> {
+    observations
+        .iter()
+        .filter(|item| item.family == family && item.stage == "announce")
+        .max_by_key(|item| item.observed_at)
+        .and_then(|item| item.target_ip.as_deref())
+}
+
+fn family_observation_note(
+    observations: &[Observation],
+    now: i64,
+    family: &str,
+    lang: Lang,
+    replies: bool,
+) -> String {
+    let attempts: Vec<_> = observations
+        .iter()
+        .filter(|item| {
+            item.family == family
+                && item.stage == "announce"
+                && item.observed_at >= now.saturating_sub(86_400)
+                && if replies {
+                    item.result == "accepted" || item.result == "failed" || item.protocol_reply
+                } else {
+                    item.result == "accepted" || item.result == "failed"
+                }
+        })
+        .collect();
+    if attempts.is_empty() {
+        return format!(
+            "{} {}",
+            family.to_uppercase(),
+            lang.pick("未测", "untested")
+        );
+    }
+    let successes = attempts
+        .iter()
+        .filter(|item| {
+            if replies {
+                item.protocol_reply
+            } else {
+                item.result == "accepted"
+            }
+        })
+        .count();
+    format!("{} {}/{}", family.to_uppercase(), successes, attempts.len())
 }
 
 fn chart(observations: &[Observation], now: i64, lang: Lang) -> String {
@@ -811,8 +1215,13 @@ fn chart(observations: &[Observation], now: i64, lang: Lang) -> String {
             } else {
                 previous = None;
             }
+            let target = item
+                .target_ip
+                .as_deref()
+                .map(|ip| format!(" · {}", ip))
+                .unwrap_or_default();
             let title = format!(
-                "{} · {} · {} · {:.0} ms",
+                "{} · {} · {} · {:.0} ms{}",
                 time(Some(item.observed_at), lang),
                 family.to_uppercase(),
                 observed_result(
@@ -821,7 +1230,8 @@ fn chart(observations: &[Observation], now: i64, lang: Lang) -> String {
                     item.error_category.as_deref(),
                     lang
                 ),
-                latency
+                latency,
+                target
             );
             let class = match state {
                 "neutral" => " is-neutral",
@@ -913,8 +1323,13 @@ fn timeline(observations: &[Observation], families: &[&str], now: i64, lang: Lan
             let when = DateTime::<Utc>::from_timestamp_secs(item.observed_at)
                 .map(|v| v.format("%Y-%m-%d %H:%M:%S UTC").to_string())
                 .unwrap_or_else(|| lang.pick("未知", "Unknown").to_owned());
+            let target = item
+                .target_ip
+                .as_deref()
+                .map(|ip| format!(" · {}", ip))
+                .unwrap_or_default();
             let title = format!(
-                "{} · {} · {}",
+                "{} · {} · {}{}",
                 when,
                 display,
                 observed_result(
@@ -922,7 +1337,8 @@ fn timeline(observations: &[Observation], families: &[&str], now: i64, lang: Lan
                     &item.result,
                     item.error_category.as_deref(),
                     lang
-                )
+                ),
+                target
             );
             content.push_str(&format!(r#"<circle class="timeline-point {state}" cx="{x:.2}" cy="{y}" r="4"><title>{}</title></circle>"#, esc(&title)));
             previous = Some(item);
@@ -943,13 +1359,14 @@ fn timeline(observations: &[Observation], families: &[&str], now: i64, lang: Lan
 
 pub(crate) fn detail(
     endpoint: &Endpoint,
-    _observations: &[Observation],
     health_observations: &[Observation],
     now: i64,
     lang: Lang,
 ) -> String {
     let v4 = endpoint.families.iter().find(|f| f.family == "ipv4");
     let v6 = endpoint.families.iter().find(|f| f.family == "ipv6");
+    let families = supported_families(endpoint, health_observations);
+    let current_families = supported_families(endpoint, &[]).join(",");
     let mut rows = String::new();
     for o in health_observations.iter().take(100) {
         let transport = if o.stage == "handshake" {
@@ -961,39 +1378,60 @@ pub(crate) fn detail(
         } else {
             "UDP".to_owned()
         };
-        let reply = if matches!(o.stage.as_str(), "handshake" | "bitmap" | "unknown") {
-            "—"
-        } else if o.protocol_reply {
-            lang.pick("是", "Yes")
-        } else if (o.stage == "sample_announce"
-            && matches!(o.result.as_str(), "accepted" | "empty"))
-            || observation_state(o) == "unknown"
-        {
-            lang.pick("未知", "Unknown")
-        } else {
-            lang.pick("否", "No")
-        };
-        rows.push_str(&format!(r#"<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>"#,
-            esc(&time(Some(o.observed_at), lang)), esc(&o.family.to_uppercase()), esc(stage_text(&o.stage, lang)), esc(&transport), esc(observed_result(&o.stage, &o.result, o.error_category.as_deref(), lang)), reply, esc(&millis(if measured_reply(o) { o.latency_ms } else { None }, lang)), esc(o.error_category.as_deref().unwrap_or("—"))));
+        // No-address rows have no protocol reply or reason: both stay an
+        // explicit dash instead of "unknown" plus an internal code.
+        let reply =
+            if no_address(o) || matches!(o.stage.as_str(), "handshake" | "bitmap" | "unknown") {
+                "—"
+            } else if o.protocol_reply {
+                lang.pick("是", "Yes")
+            } else if (o.stage == "sample_announce"
+                && matches!(o.result.as_str(), "accepted" | "empty"))
+                || observation_state(o) == "unknown"
+            {
+                lang.pick("未知", "Unknown")
+            } else {
+                lang.pick("否", "No")
+            };
+        let reason = reason_cell(o, lang);
+        let target = o.target_ip.as_deref().unwrap_or("—");
+        rows.push_str(&format!(r#"<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>"#,
+            esc(&time(Some(o.observed_at), lang)), esc(&o.family.to_uppercase()), esc(stage_text(&o.stage, lang)), esc(&transport), esc(observed_result(&o.stage, &o.result, o.error_category.as_deref(), lang)), reply, esc(&millis(if measured_reply(o) { o.latency_ms } else { None }, lang)), esc(target), esc(&reason)));
     }
     if rows.is_empty() {
         rows = format!(
-            r#"<tr><td colspan="8">{}</td></tr>"#,
+            r#"<tr><td colspan="9">{}</td></tr>"#,
             lang.pick("暂无记录。", "No observations yet.")
         );
     }
     let evidence = &endpoint.evidence;
+    let success_note = format!(
+        "{} · {} · {} {} / {}",
+        family_observation_note(health_observations, now, "ipv4", lang, false),
+        family_observation_note(health_observations, now, "ipv6", lang, false),
+        lang.pick("合计", "Total"),
+        evidence.successes_24h,
+        evidence.checks_24h
+    );
+    let reply_note = format!(
+        "{} · {} · {} {} / {}",
+        family_observation_note(health_observations, now, "ipv4", lang, true),
+        family_observation_note(health_observations, now, "ipv6", lang, true),
+        lang.pick("合计", "Total"),
+        evidence.replies_24h,
+        evidence.reply_checks_24h
+    );
     let metrics = [
         stat(
             lang.pick("24h 通告成功率", "24h announce success"),
             &pct(evidence.success_rate_24h, lang),
-            &format!("{} / {}", evidence.successes_24h, evidence.checks_24h),
+            &success_note,
         ),
         stat(
             lang.pick("24h 有效回复率", "24h protocol reply"),
             &pct(evidence.reply_rate_24h, lang),
             &if evidence.reply_checks_24h > 0 {
-                format!("{} / {}", evidence.replies_24h, evidence.reply_checks_24h)
+                reply_note
             } else {
                 format!(
                     "{} {}",
@@ -1041,8 +1479,6 @@ pub(crate) fn detail(
     } else {
         String::new()
     };
-    let families = supported_families(endpoint, health_observations);
-    let current_families = supported_families(endpoint, &[]).join(",");
     let graph = if families.is_empty() {
         format!(
             r#"<div class="empty chart-empty">{}</div>"#,
@@ -1100,25 +1536,39 @@ pub(crate) fn detail(
     })
     .collect::<String>();
     let family_card = |name: &str, f: Option<&FamilyStatus>| {
+        let target = latest_target_ip(health_observations, name).unwrap_or("—");
+        let hint = family_hint(f, lang);
+        let hint = if hint.is_empty() {
+            String::new()
+        } else {
+            format!(r#"<small class="family-hint">{}</small>"#, esc(hint))
+        };
         format!(
-            r#"<div class="family-card">{}<strong>{}</strong><small>{}: {}</small></div>"#,
+            r#"<div class="family-card">{}<strong>{}</strong><small>{}: {}</small><small>{}: {}</small>{hint}</div>"#,
             pill(name, f, lang),
             latest(f, &endpoint.protocol, lang),
             lang.pick("检测时间", "Checked"),
-            esc(&time(f.and_then(|v| v.checked_at), lang))
+            esc(&time(f.and_then(|v| v.checked_at), lang)),
+            lang.pick("最近目标 IP", "Latest target IP"),
+            esc(target)
         )
     };
-    let body = format!(r#"<section class="page-head"><a class="back" href="/trackers?lang={code}">← {back}</a><p class="eyebrow">TRACKER DETAIL</p><h1>{host}{new}</h1>{url}{colocated}</section><section class="family-grid">{family4}{family6}</section><section class="section-heading"><div><p class="eyebrow">EVIDENCE</p><h2>{evidence_title}</h2><p>{evidence_note}</p></div></section><section class="metric-grid detail-metrics">{metrics}</section><section class="panel"><div class="section-heading compact"><div><p class="eyebrow">NETWORK</p><h2>{network_title}</h2><p>{network_note}</p></div></div><dl class="infra-compact">{infrastructure}</dl></section><section class="panel"><div class="section-heading compact"><div><p class="eyebrow">LAST 24 HOURS</p><h2>{history}</h2><p>{history_note}</p></div></div><p class="timeline-legend">{timeline_legend}</p><div data-observation-timeline class="observation-timeline" role="img" aria-label="24-hour timeline"></div><noscript>{timeline}</noscript><div class="chart-header"><strong>{latency_chart}</strong></div><div class="canvas-wrap"><canvas data-observation-chart role="img" aria-label="24-hour response latency"></canvas></div><noscript>{graph}</noscript><div class="table-wrap"><table><thead><tr><th>{time_label}</th><th>{family_label}</th><th>{stage}</th><th>{transport}</th><th>{result}</th><th>{reply}</th><th>{latency}</th><th>{reason}</th></tr></thead><tbody>{rows}</tbody></table></div></section><p class="footnote">{single}</p>"#,
+    let metric_note = lang.pick(
+        "成功率只统计已完成的有效观测（成功 / 失败）；未测、本地故障和未发现地址不计入。“已过期”只表示最新一次结果超出预期刷新间隔，24h 成功率仍是过去 24 小时的历史统计，因此两者可以同时出现。",
+        "Success rates count completed observations only (accepted / failed). Untested, locally failed and no-address checks are excluded. \"Stale\" only means the latest result is older than the expected refresh window; the 24h success rate is still historical, so both can appear together.",
+    );
+    let body = format!(r#"<section class="page-head"><a class="back" href="/trackers?lang={code}">← {back}</a><p class="eyebrow">TRACKER DETAIL</p><h1>{host}{new}</h1>{url}{colocated}</section><section class="family-grid">{family4}{family6}</section><section class="section-heading"><div><p class="eyebrow">EVIDENCE</p><h2>{evidence_title}</h2><p>{evidence_note}</p></div></section><section class="metric-grid detail-metrics">{metrics}</section><p class="detail-note">{metric_note}</p><section class="panel"><div class="section-heading compact"><div><p class="eyebrow">NETWORK</p><h2>{network_title}</h2><p>{network_note}</p></div></div><dl class="infra-compact">{infrastructure}</dl></section><section class="panel"><div class="section-heading compact"><div><p class="eyebrow">LAST 24 HOURS</p><h2>{history}</h2><p>{history_note}</p></div></div><p class="timeline-legend">{timeline_legend}</p><div data-observation-timeline class="observation-timeline" role="img" aria-label="24-hour timeline"></div><noscript>{timeline}</noscript><div class="chart-header"><strong>{latency_chart}</strong></div><div class="canvas-wrap"><canvas data-observation-chart role="img" aria-label="24-hour response latency"></canvas></div><noscript>{graph}</noscript><div class="table-wrap"><table><thead><tr><th>{time_label}</th><th>{family_label}</th><th>{stage}</th><th>{transport}</th><th>{result}</th><th>{reply}</th><th>{latency}</th><th>{target_label}</th><th>{reason}</th></tr></thead><tbody>{rows}</tbody></table></div></section><p class="footnote">{single}</p>"#,
         code=lang.code(), back=lang.pick("列表", "List"), host=esc(&endpoint.host), url=copy_url(lang.pick("Tracker 地址", "Tracker URL"), &endpoint.url, lang),
         family4=family_card("ipv4",v4), family6=family_card("ipv6",v6),
         evidence_title=lang.pick("观测证据", "Observed evidence"), evidence_note=lang.pick("握手仅验证采样节点；位图是节点声明，不证明文件可下载。", "Handshakes verify sampled peers; bitmaps are claims, not proof of downloadable content."),
+        metric_note=esc(metric_note),
         network_title=lang.pick("网络归属", "Network information"), network_note=lang.pick("归属信息来自公开网络数据，不能精确定位机房。", "Network ownership comes from public data and does not pinpoint a datacenter."),
-        history=lang.pick("24 小时探测记录", "24-hour observations"), history_note=lang.pick("图和事件表仅显示健康通告；连线不代表持续可用。", "The charts and event table show health announces only. Lines do not prove continuous availability."),
+        history=lang.pick("24 小时探测记录", "24-hour observations"), history_note=lang.pick("事件表仅显示健康通告。目标 IP 是本次请求实际解析并连接的地址，可用于判断 DNS 是否变化；图和连线不代表持续可用。", "The event table shows health announces only. The target IP is the resolved address actually contacted by this request, which exposes stale DNS changes; charts and lines do not prove continuous availability."),
         timeline_legend=lang.pick("绿：成功　红：失败　黄：限流/拒绝　灰：未知或本地不可用。IPv4 与 IPv6 两行各自代表独立探测，时间可能相近。", "Green: success · Red: failure · Amber: rate limit/rejection · Grey: unknown/local unavailable. IPv4 and IPv6 are separate checks and can occur close together."),
         latency_chart=lang.pick("实测响应延迟 (ms)", "Observed response latency (ms)"),
-        time_label=lang.pick("时间 (UTC)", "Time (UTC)"), family_label=lang.pick("地址族", "Family"), stage=lang.pick("阶段", "Stage"), transport=lang.pick("传输", "Transport"), result=lang.pick("观测结果", "Observation result"), reply=lang.pick("有效 Tracker 回复", "Valid tracker reply"), latency=lang.pick("阶段延迟", "Stage latency"), reason=lang.pick("原因", "Reason"),
+        time_label=lang.pick("时间 (UTC)", "Time (UTC)"), family_label=lang.pick("地址族", "Family"), stage=lang.pick("阶段", "Stage"), transport=lang.pick("传输", "Transport"), result=lang.pick("观测结果", "Observation result"), reply=lang.pick("有效 Tracker 回复", "Valid tracker reply"), latency=lang.pick("阶段延迟", "Stage latency"), target_label=lang.pick("目标 IP", "Target IP"), reason=lang.pick("原因", "Reason"),
         single=lang.pick("观测来自单一网络位置；缺测和探针本地故障不等于 Tracker 离线。", "Measurements come from one network; missing data and local probe failures are not tracker downtime."));
-    let scripts = r#"<script src="/assets/chart.umd.js?v=4.6.1" defer></script><script src="/assets/charts.js?v=1.1.1" defer></script>"#;
+    let scripts = r#"<script src="/assets/chart.umd.js?v=4.6.1" defer></script><script src="/assets/charts.js?v=1.2.0" defer></script>"#;
     shell(
         &endpoint.host,
         lang,

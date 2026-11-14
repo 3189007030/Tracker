@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.2.0 — interactive list, canonical endpoints and diagnostic observation detail
+
+- Filter the tracker list while typing. A short debounce fetches a server-rendered results fragment from the same origin and replaces the results region. This is progressive enhancement: the GET form still submits and renders a full page without JavaScript, and the active filter stays in the URL.
+- Rebuild pagination as numbered page links with ellipses, previous/next controls, a jump-to-page number input and a page-size selector (25/50/100). `page` and `limit` are preserved together with `q` and `protocol`, so changing the page or page size does not drop the active filter.
+- Update a filter or page through fetch and the History API instead of a full page reload: only the results region is replaced, the rest of the document stays, and back/forward navigate the recorded states.
+- Localize detail-page failure reasons and attach the status that caused them. An HTTP 429 reads `HTTP 429 · 频率限制` (rate limited) and an HTTP 502 reads `HTTP 502 · 网关错误` (bad gateway), alongside `超时` and `DNS 解析失败`, instead of a raw internal category string; HTTP status, protocol result and local failure remain separate facts.
+- Render an em dash in the 有效 Tracker 回复 and 原因 columns when an observation's result is 未发现地址 (no address for that family), instead of 未知 or an internal code; the 目标 IP column shows the same dash when no address was contacted.
+- Collapse duplicate endpoints of the same origin into one canonical endpoint. A hostname URL and its literal-IP URL on the same scheme, port and path announce to the same origin, so only the canonical endpoint is published and probed; aliases are hidden from the list and feeds, keep their detail redirect, and are not probed again, so the tracker does not receive a duplicated announce. Public endpoint JSON gains optional `alias_of`.
+- Expose optional `target_ip` on observations: the resolved public address the probe actually contacted, shown in a 目标 IP column in the detail observation log. A stale DNS record or a changed address is now distinguishable from a timeout. It is the tracker's server address, not a peer address, and only public addresses are recorded.
+- Separate freshness from historical success in what the pages say. Family status pills (成功/已过期/未知 / 未测/未发现地址) describe the latest observation's freshness, while 24h 成功率 is historical and counts only completed observations, with untested, locally failed and no-address observations outside the denominator. Help text, tooltips and the successful/completed count behind the rate (for example 12/12) state this explicitly, so a stale or untested family can show 100% without contradiction.
+- Bump the version to 1.2.0 as a minor release: the endpoint and observation schemas gain additive optional fields, and list/detail behavior changes; existing names and meanings are unchanged.
+
+Validation and deployment receipts are tracked separately in [1.2.0 validation](docs/validation-1.2.0.md); this entry describes the source change and does not claim a completed deployment.
+
 ## 1.1.0 — 24-hour runtime framing, single public hostname and hot-path work
 
 - Publish 24-hour announce totals on the home page instead of the counter that grows with process uptime. `native_summary` now also returns `announces_24h`, `http_announces_24h`, `udp_announces_24h`, `accepted_ipv6_24h`, `covered_seconds_24h` and `rate_24h`, derived from recorded minute samples: adjacent samples are differenced only while the instance identifier matches and the gap stays under 300 seconds, so restarts and collection outages are excluded rather than counted as zero. The since-start figure is retained and demoted to a footnote.
