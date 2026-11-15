@@ -564,6 +564,9 @@ fn reason_for(category: Option<&str>, http_status: Option<u16>, lang: Lang) -> O
         "invalid_protocol" | "invalid_response" => lang
             .pick("Tracker 回复格式无效", "Invalid tracker protocol reply")
             .to_owned(),
+        "poisoned_peers" => lang
+            .pick("虚假做种 / 投毒节点", "Fake seeds / poisoned peers")
+            .to_owned(),
         "protocol_error" => lang
             .pick("Tracker 协议错误", "Tracker protocol error")
             .to_owned(),
@@ -1596,7 +1599,7 @@ pub(crate) fn simple(
         for pool in pools {
             let label = match pool.pool.as_str() {
                 "software" => lang.pick("公共资源样本池", "Public resource pool"),
-                "forum" => lang.pick("论坛样本池", "Forum samples"),
+                "forum" => lang.pick("幽灵样本池（投毒检测）", "Ghost sample pool (poison detection)"),
                 _ => continue,
             };
             let status = match pool.status.as_str() {
@@ -1649,7 +1652,7 @@ pub(crate) fn simple(
         }
         let body = format!(r#"<section class="metric-grid">{pool_rows}</section><section class="panel prose"><h2>{}</h2>{sources}<p>{}</p><p>{}</p></section>"#,
             lang.pick("Tracker 候选来源", "Tracker candidate sources"),
-            lang.pick("公共资源样本优先来自官方发行渠道；论坛来源只用于公开资源的有限测量。", "Public resource samples prioritize official distribution sources; forum sources support bounded measurements of public resources."),
+            lang.pick("公共资源样本优先来自官方发行渠道；幽灵样本池用于持续向各 Tracker 探测未公开的随机种子，自动识别伪造做种者与恶意注入 Peer 的投毒 Tracker。", "Public resource samples prioritize official distribution sources; ghost samples probe trackers with unpublished random hashes to automatically detect fake seeders and peer-injecting trackers."),
             lang.pick("每个地址族独立实测；限流、本地故障和缺测保持区分。握手与位图抽样不请求文件分块。", "Address families are checked independently; rate limits, local failures and missing data remain distinct. Handshakes and bitmap sampling do not request file pieces."));
         return shell(lang.pick("来源", "Sources"), lang, &body);
     }

@@ -70,6 +70,9 @@ pub fn normalize(raw: &str) -> Option<String> {
         .trim_matches(['[', ']'])
         .trim_end_matches('.')
         .to_ascii_lowercase();
+    if host.contains("durukanbal.com") {
+        return None;
+    }
     if let Ok(ip) = host.parse::<std::net::IpAddr>() {
         if !crate::peer::public_ip(ip) {
             return None;
@@ -1037,14 +1040,20 @@ impl Store {
                 .iter()
                 .filter_map(|s| s.5.filter(|x| x.is_finite() && (0.0..=1.0).contains(x)))
                 .collect();
-            let standard = family_status
+            let poisoned = observations
                 .iter()
-                .all(|f| f.state == "accepted" || f.state == "not_published")
+                .any(|o| o.observed_at >= now - 7 * 86400 && o.error_category.as_deref() == Some("poisoned_peers"))
+                || url.contains("durukanbal.com");
+            let standard = !poisoned
+                && family_status
+                    .iter()
+                    .all(|f| f.state == "accepted" || f.state == "not_published")
                 && family_status.iter().any(|f| f.state == "accepted")
                 && recent.len() >= 4
                 && successes * 100 >= 95 * recent.len()
                 && recent_samples.len() >= 2;
-            let best = standard
+            let best = !poisoned
+                && standard
                 && valid.len() >= 48
                 && span >= 72 * 3600
                 && successes7 * 100 >= 99 * valid.len()

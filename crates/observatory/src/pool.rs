@@ -43,7 +43,7 @@ impl Source {
             Self::Fedora => "Fedora",
             Self::Arch => "Arch Linux",
             Self::TpbRecent | Self::TpbAll => "TPB",
-            _ => "论坛",
+            _ => "幽灵样本",
         }
     }
     pub fn is_forum(self) -> bool {
@@ -595,7 +595,7 @@ fn hash_sample(source: Source, value: &str, now: i64) -> Option<SampleRecord> {
     let mut info_hash = [0u8; 20];
     hex::decode_to_slice(value, &mut info_hash).ok()?;
     let (pool, name) = if source.is_forum() {
-        (PoolKind::Forum, "论坛")
+        (PoolKind::Forum, "幽灵样本")
     } else {
         (PoolKind::Official, "TPB")
     };
@@ -860,6 +860,35 @@ async fn official(c: &mut Collector, source: Source, now: i64) -> Result<Vec<Sam
 /// Build a complete daily candidate in memory. Preserve old records for failed
 /// or paused sources; calling code must persist the returned pool and retry
 /// state atomically and honor its own scheduler/pressure controls.
+pub fn ghost_samples(now: i64) -> Vec<SampleRecord> {
+    use sha1::{Digest, Sha1};
+    (0..16)
+        .map(|i| {
+            let mut hasher = Sha1::new();
+            hasher.update(format!("tracker-observatory:ghost:v1:sample-{}", i).as_bytes());
+            let info_hash: [u8; 20] = hasher.finalize().into();
+            SampleRecord {
+                info_hash,
+                pool: PoolKind::Forum,
+                source: Source::Hjd,
+                name: "幽灵样本".into(),
+                discovered_at: now,
+                geometry: None,
+            }
+        })
+        .collect()
+}
+
+pub fn is_ghost_hash(hash: &[u8; 20]) -> bool {
+    use sha1::{Digest, Sha1};
+    (0..16).any(|i| {
+        let mut hasher = Sha1::new();
+        hasher.update(format!("tracker-observatory:ghost:v1:sample-{}", i).as_bytes());
+        let expected: [u8; 20] = hasher.finalize().into();
+        expected == *hash
+    })
+}
+
 pub async fn collect_daily(
     previous: &PreviousPool,
     now: i64,
@@ -900,7 +929,13 @@ pub async fn collect_daily(
     let mut all = Vec::new();
     let mut states = Vec::new();
     for source in SOURCES {
-        let mut result = if source.is_forum() || source.is_index() {
+        let mut result = if source.is_forum() {
+            if source == Source::Hjd {
+                Ok(ghost_samples(now))
+            } else {
+                Ok(Vec::new())
+            }
+        } else if source.is_index() {
             forum(&mut collector, source, now).await
         } else {
             official(&mut collector, source, now).await
@@ -980,7 +1015,7 @@ fn select_daily(all: Vec<SampleRecord>, old_first: &HashMap<[u8; 20], i64>) -> V
                 PoolKind::Official
             };
             item.name = if is_forum {
-                "论坛".into()
+                "幽灵样本".into()
             } else {
                 safe_name(&item.name).unwrap_or_else(|| item.source.public_label().into())
             };
@@ -1133,7 +1168,7 @@ mod tests {
         assert_eq!(samples.len(), 1);
         assert_eq!(hex::encode(samples[0].info_hash), hash);
         assert_eq!(samples[0].source, Source::Hjd);
-        assert_eq!(samples[0].name, "论坛");
+        assert_eq!(samples[0].name, "幽灵样本");
         assert!(samples[0].geometry.is_none());
         assert!(parse_forum_feed(&body, 2, 123).is_err());
         let oversized = serde_json::to_vec(
@@ -1206,9 +1241,20 @@ mod tests {
         let two = result.iter().find(|s| s.info_hash == [2; 20]).unwrap();
         assert_eq!(two.source, Source::Hjd);
         assert_eq!(two.pool, PoolKind::Forum);
-        assert_eq!(two.name, "论坛");
+        assert_eq!(two.name, "幽灵样本");
         let three = result.iter().find(|s| s.info_hash == [3; 20]).unwrap();
         assert_eq!(three.pool, PoolKind::Official);
         assert_eq!(three.source, Source::TpbAll);
+    }
+    #[test]
+    fn ghost_samples_generate_deterministic_hashes_and_match() {
+        let samples = ghost_samples(100);
+        assert_eq!(samples.len(), 16);
+        for s in &samples {
+            assert!(is_ghost_hash(&s.info_hash));
+            assert_eq!(s.pool, PoolKind::Forum);
+            assert_eq!(s.name, "幽灵样本");
+        }
+        assert!(!is_ghost_hash(&[0u8; 20]));
     }
 }

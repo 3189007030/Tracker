@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.2 — ghost sample pool for poison detection and relaxed HTTP compliance
+
+- Replace the unconfigured forum sample pool with a deterministic ghost sample pool (`antigravity:ghost:v1:sample-{i}`). Ghost samples use unpublished 20-byte info-hashes that should have zero peers on any legitimate tracker. If a tracker returns peers or seeders for any ghost info-hash, it is flagged as a poisoned / fake-seeding node (`poisoned_peers`) and automatically disqualified from all published feeds (`trackers.txt`, `trackers_best.txt`, and `trackers_all.txt`).
+- Reject known poisoned tracker domains such as `durukanbal.com` directly during normalization and feed publication.
+- Relax HTTP `numwant=0` health compliance: conform to BEP 3 by accepting responses that omit the `peers` dictionary key when `numwant=0` was requested, allowing legitimate implementations like opentracker (`tracker2.dler.org`) to be correctly recognized as accepted rather than marked `incomplete_protocol`.
+
 ## 1.2.1 — stable canonical endpoints
 
 - Keep the canonical URL of a duplicate origin stable between observation cycles. The adapter previously ranked candidates by the single latest announce, so a dual-stack hostname whose newest check was the address family it cannot serve looked unhealthy and the canonical could alternate between the hostname and its literal IP; a hostname is now considered working when any announce in the 24-hour window was accepted, hostnames are preferred over literal addresses as the public URL, and the previous canonical is kept while it remains a healthy candidate. This changes only how aliases are chosen; the published endpoint and observation schemas are unchanged.

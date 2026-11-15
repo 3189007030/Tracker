@@ -506,7 +506,6 @@ const MAX_HEALTH_BODY: usize = 1024 * 1024;
 enum HttpHealthReply {
     Accepted { interval: u64, min_interval: u64 },
     Rejected,
-    Incomplete,
     Invalid,
 }
 
@@ -566,7 +565,7 @@ fn classify_http_health(data: &[u8]) -> HttpHealthReply {
         return HttpHealthReply::Invalid;
     }
     match dict.get(b"peers".as_slice()) {
-        None => return HttpHealthReply::Incomplete,
+        None => (),
         Some(Value::Bytes(bytes)) if bytes.len().is_multiple_of(6) => (),
         Some(Value::List(peers)) if peers.iter().all(valid_expanded_peer) => (),
         _ => return HttpHealthReply::Invalid,
@@ -596,14 +595,6 @@ fn apply_http_health(data: &[u8], obs: &mut Observation) -> Option<u64> {
             obs.result = "unknown".into();
             obs.error_category = Some("tracker_rejection".into());
             obs.protocol_reply = true;
-            None
-        }
-        HttpHealthReply::Incomplete => {
-            // numwant=0 trackers omitting peers are tolerated as unknown,
-            // not credited as a complete announce or penalized as offline.
-            obs.result = "unknown".into();
-            obs.error_category = Some("incomplete_protocol".into());
-            obs.protocol_reply = false;
             None
         }
         HttpHealthReply::Invalid => {
@@ -872,7 +863,6 @@ fn apply_activity_http(body: &[u8], announce: &mut Observation) -> Result<Activi
             announce.protocol_reply = true;
             Err(activity_fault("tracker_rejection", "unknown"))
         }
-        Err(HttpHealthReply::Incomplete) => Err(activity_fault("incomplete_protocol", "unknown")),
         Err(_) => Err(activity_fault("invalid_protocol", "failed")),
     }
 }
@@ -1004,6 +994,10 @@ async fn observe_sample(
             let _ = socket
                 .send(&encode_udp_announce_request(conn, rand::random(), &request))
                 .await;
+            let is_ghost = crate::pool::is_ghost_hash(&sample.info_hash);
+            if is_ghost && (!response.peers.is_empty() || response.complete > 0) {
+                return Err(activity_fault("poisoned_peers", "failed"));
+            }
             let has_reported_peers = !response.peers.is_empty();
             Ok((
                 response
@@ -1072,6 +1066,10 @@ async fn observe_sample(
                     .get(format!("{}?{}", url, encode_http_announce_query(&request)))
                     .send()
                     .await;
+            }
+            let is_ghost = crate::pool::is_ghost_hash(&sample.info_hash);
+            if is_ghost && (!parsed.peers.is_empty() || parsed.has_reported_peers) {
+                return Err(activity_fault("poisoned_peers", "failed"));
             }
             Ok((parsed.peers, parsed.has_reported_peers))
         }
@@ -1580,21 +1578,6 @@ mod tests {
     fn sample_http_uses_health_classification_and_distinguishes_unusable_peers() {
         let cases = [
             (
-                bt_protocol::bencode::encode(&health_dict(vec![("interval", Value::Int(1800))])),
-                "incomplete_protocol",
-                "unknown",
-                false,
-            ),
-            (
-                bt_protocol::bencode::encode(&health_dict(vec![
-                    ("interval", Value::Int(1800)),
-                    ("peers6", Value::Bytes(vec![])),
-                ])),
-                "incomplete_protocol",
-                "unknown",
-                false,
-            ),
-            (
                 bt_protocol::bencode::encode(&health_dict(vec![(
                     "failure reason",
                     Value::Bytes(b"no".to_vec()),
@@ -1709,7 +1692,7 @@ mod tests {
     }
 
     #[test]
-    fn http_health_classifies_complete_rejected_incomplete_and_invalid() {
+    fn http_health_classifies_accepted_rejected_and_invalid() {
         let accepted = [
             health_body(Value::Bytes(vec![])),
             health_body(Value::Bytes(vec![0; 6])),
@@ -1724,26 +1707,17 @@ mod tests {
                 ("peers", Value::Bytes(vec![])),
                 ("peers6", Value::Bytes(vec![0; 18])),
             ])),
-        ];
-        for body in accepted {
-            let mut obs = Observation::default();
-            assert!(apply_http_health(&body, &mut obs).is_some());
-            assert_eq!(obs.result, "accepted");
-            assert!(obs.protocol_reply);
-        }
-        let incomplete = [
             bt_protocol::bencode::encode(&health_dict(vec![("interval", Value::Int(1800))])),
             bt_protocol::bencode::encode(&health_dict(vec![
                 ("interval", Value::Int(1800)),
                 ("peers6", Value::Bytes(vec![])),
             ])),
         ];
-        for body in incomplete {
+        for body in accepted {
             let mut obs = Observation::default();
-            assert_eq!(apply_http_health(&body, &mut obs), None);
-            assert_eq!(obs.result, "unknown");
-            assert_eq!(obs.error_category.as_deref(), Some("incomplete_protocol"));
-            assert!(!obs.protocol_reply);
+            assert!(apply_http_health(&body, &mut obs).is_some());
+            assert_eq!(obs.result, "accepted");
+            assert!(obs.protocol_reply);
         }
         let rejection = bt_protocol::bencode::encode(&health_dict(vec![(
             "failure reason",
@@ -1809,7 +1783,7 @@ mod tests {
         let mut store = Store::open(&dir)?;
         let urls = [
             "https://good.example/announce",
-            "https://incomplete.example/announce",
+            "https://rejected.example/announce",
             "https://bad.example/announce",
         ];
         store.ingest(
@@ -1820,7 +1794,10 @@ mod tests {
             let body = if url == urls[0] {
                 health_body(Value::Bytes(vec![]))
             } else if url == urls[1] {
-                bt_protocol::bencode::encode(&health_dict(vec![("interval", Value::Int(1800))]))
+                bt_protocol::bencode::encode(&health_dict(vec![(
+                    "failure reason",
+                    Value::Bytes(b"rejected".to_vec()),
+                )]))
             } else {
                 health_body(Value::Bytes(vec![0; 5]))
             };
