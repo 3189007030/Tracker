@@ -159,9 +159,11 @@ async fn home(State(site): State<Site>, Query(params): Query<Params>) -> Respons
     })
     .await
     {
-        Ok((overview, native)) => {
-            Html(html::home(&overview, native.as_ref(), lang)).into_response()
-        }
+        Ok((overview, native)) => (
+            [(header::CACHE_CONTROL, "public, max-age=10, s-maxage=30")],
+            Html(html::home(&overview, native.as_ref(), lang)),
+        )
+            .into_response(),
         Err(_) => unavailable_page(lang),
     }
 }
@@ -175,7 +177,11 @@ async fn trackers_page(State(site): State<Site>, Query(params): Query<Params>) -
     let query = filters.query.clone();
     let protocol = filters.protocol.clone();
     match read(move || site.store.page(filters, unix_now())).await {
-        Ok(page) => Html(html::listing(&page, &query, &protocol, lang)).into_response(),
+        Ok(page) => (
+            [(header::CACHE_CONTROL, "public, max-age=10, s-maxage=30")],
+            Html(html::listing(&page, &query, &protocol, lang)),
+        )
+            .into_response(),
         Err(_) => unavailable_page(lang),
     }
 }
@@ -248,9 +254,11 @@ async fn tracker_detail(
             "",
         )
             .into_response(),
-        Ok((Some(endpoint), health, None, now)) => {
-            Html(html::detail(&endpoint, &health, now, lang)).into_response()
-        }
+        Ok((Some(endpoint), health, None, now)) => (
+            [(header::CACHE_CONTROL, "public, max-age=15, s-maxage=60")],
+            Html(html::detail(&endpoint, &health, now, lang)),
+        )
+            .into_response(),
         Ok((None, _, _, _)) => not_found_page(lang),
         Err(_) => unavailable_page(lang),
     }
@@ -277,9 +285,11 @@ async fn sources(State(site): State<Site>, Query(params): Query<Params>) -> Resp
     })
     .await
     {
-        Ok((overview, pools)) => {
-            Html(html::simple("sources", &overview, None, &pools, lang)).into_response()
-        }
+        Ok((overview, pools)) => (
+            [(header::CACHE_CONTROL, "public, max-age=60, s-maxage=300")],
+            Html(html::simple("sources", &overview, None, &pools, lang)),
+        )
+            .into_response(),
         Err(_) => unavailable_page(lang),
     }
 }
@@ -306,7 +316,11 @@ async fn status_redirect(Query(params): Query<Params>) -> Response {
 }
 
 async fn declaration(Query(params): Query<Params>) -> Response {
-    Html(html::declaration(language(&params))).into_response()
+    (
+        [(header::CACHE_CONTROL, "public, max-age=3600, s-maxage=86400")],
+        Html(html::declaration(language(&params))),
+    )
+        .into_response()
 }
 
 async fn health() -> impl IntoResponse {
@@ -340,7 +354,7 @@ async fn api_overview(State(site): State<Site>) -> Response {
             let cache = if overview.warming {
                 "no-store"
             } else {
-                "public, max-age=15"
+                "public, max-age=15, s-maxage=30"
             };
             let mut body = match serde_json::to_value(&overview) {
                 Ok(value) => value,
@@ -370,7 +384,7 @@ async fn api_trackers(State(site): State<Site>, Query(params): Query<Params>) ->
         Err(code) => return api_error(StatusCode::BAD_REQUEST, code),
     };
     match read(move || site.store.page(filters, unix_now())).await {
-        Ok(page) => ([(header::CACHE_CONTROL, "public, max-age=15")], Json(page)).into_response(),
+        Ok(page) => ([(header::CACHE_CONTROL, "public, max-age=15, s-maxage=30")], Json(page)).into_response(),
         Err(_) => unavailable(),
     }
 }
@@ -381,7 +395,7 @@ async fn api_detail(State(site): State<Site>, Path(id): Path<String>) -> Respons
     }
     match read(move || site.store.endpoint(&id, unix_now())).await {
         Ok(Some(endpoint)) => (
-            [(header::CACHE_CONTROL, "public, max-age=15")],
+            [(header::CACHE_CONTROL, "public, max-age=15, s-maxage=60")],
             Json(endpoint),
         )
             .into_response(),
@@ -398,7 +412,7 @@ async fn api_history(State(site): State<Site>, Query(params): Query<Params>) -> 
     let window = window.to_owned();
     match read(move || site.store.history(&window, unix_now())).await {
         Ok(history) => (
-            [(header::CACHE_CONTROL, "public, max-age=30, s-maxage=60")],
+            [(header::CACHE_CONTROL, "public, max-age=30, s-maxage=120")],
             Json(history),
         )
             .into_response(),
@@ -448,7 +462,7 @@ async fn api_observations(
     .await
     {
         Ok(Some(items)) => (
-            [(header::CACHE_CONTROL, "public, max-age=15")],
+            [(header::CACHE_CONTROL, "public, max-age=15, s-maxage=60")],
             Json(json!({"window":"24h", "items":items})),
         )
             .into_response(),
@@ -536,7 +550,7 @@ async fn feed_head(State(site): State<Site>, Path(filename): Path<String>) -> Re
         _ => "text/plain; charset=utf-8",
     };
     let cache = if published {
-        "public, max-age=30, s-maxage=60"
+        "public, max-age=60, s-maxage=300"
     } else {
         "no-store"
     };
@@ -636,7 +650,7 @@ async fn feed(
         .insert(header::CONTENT_TYPE, HeaderValue::from_static(content_type));
     response.headers_mut().insert(
         header::CACHE_CONTROL,
-        HeaderValue::from_static("public, max-age=30, s-maxage=60"),
+        HeaderValue::from_static("public, max-age=60, s-maxage=300"),
     );
     if let Ok(value) = HeaderValue::from_str(&etag) {
         response.headers_mut().insert(header::ETAG, value);
@@ -648,7 +662,10 @@ async fn style() -> Response {
     (
         [
             (header::CONTENT_TYPE, "text/css; charset=utf-8"),
-            (header::CACHE_CONTROL, "public, max-age=3600"),
+            (
+                header::CACHE_CONTROL,
+                "public, max-age=31536000, s-maxage=31536000, immutable",
+            ),
         ],
         include_str!("../assets/style.css"),
     )
@@ -659,7 +676,10 @@ async fn tools_script() -> Response {
     (
         [
             (header::CONTENT_TYPE, "text/javascript; charset=utf-8"),
-            (header::CACHE_CONTROL, "public, max-age=3600"),
+            (
+                header::CACHE_CONTROL,
+                "public, max-age=31536000, s-maxage=31536000, immutable",
+            ),
         ],
         include_str!("../assets/tools.js"),
     )
@@ -670,7 +690,10 @@ async fn list_script() -> Response {
     (
         [
             (header::CONTENT_TYPE, "text/javascript; charset=utf-8"),
-            (header::CACHE_CONTROL, "public, max-age=3600"),
+            (
+                header::CACHE_CONTROL,
+                "public, max-age=31536000, s-maxage=31536000, immutable",
+            ),
         ],
         include_str!("../assets/list.js"),
     )
@@ -709,7 +732,10 @@ fn asset(content_type: &'static str, bytes: &'static [u8]) -> Response {
     (
         [
             (header::CONTENT_TYPE, content_type),
-            (header::CACHE_CONTROL, "public, max-age=3600"),
+            (
+                header::CACHE_CONTROL,
+                "public, max-age=31536000, s-maxage=31536000, immutable",
+            ),
         ],
         bytes,
     )
