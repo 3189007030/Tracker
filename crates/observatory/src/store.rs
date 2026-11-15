@@ -928,6 +928,7 @@ impl Store {
                 // candidates, and a cached payload whose alias status changed
                 // is rebuilt below instead of reused.
                 if endpoint.alias_of.is_none() {
+                    let poisoned = url.contains("durukanbal.com");
                     let score = endpoint.evidence.success_rate_24h.unwrap_or(0.0);
                     let candidate = (
                         service_id.clone(),
@@ -936,13 +937,13 @@ impl Store {
                         endpoint.evidence.sample_count_7d as usize,
                         endpoint.evidence.median_latency_ms.unwrap_or(f64::INFINITY),
                     );
-                    if all_eligible != 0 {
+                    if !poisoned && all_eligible != 0 {
                         all_candidates.push(candidate.clone());
                     }
-                    if endpoint.evidence.standard_eligible {
+                    if !poisoned && endpoint.evidence.standard_eligible {
                         standard_candidates.push(candidate.clone());
                     }
-                    if endpoint.evidence.best_eligible {
+                    if !poisoned && endpoint.evidence.best_eligible {
                         best_candidates.push(candidate);
                     }
                 }
@@ -1109,9 +1110,10 @@ impl Store {
                 median,
             );
             if alias_of.is_none() {
-                if observations
-                    .iter()
-                    .any(|o| o.observed_at >= now - 86400 && o.result == "accepted")
+                if !poisoned
+                    && observations
+                        .iter()
+                        .any(|o| o.observed_at >= now - 86400 && o.result == "accepted")
                 {
                     all_candidates.push(candidate.clone());
                 }
