@@ -1049,10 +1049,11 @@ pub(crate) fn listing(page: &Page, query: &str, protocol: &str, lang: Lang) -> S
     let selected = |name: &str| if protocol == name { " selected" } else { "" };
     let results = listing_results(page, query, protocol, lang);
     let body = format!(
-        r#"<form class="filters card" method="get" action="/trackers" data-tracker-filters><input type="hidden" name="lang" value="{code}"><label>{search}<input name="q" value="{query}" maxlength="128" placeholder="{placeholder}" autocomplete="off" spellcheck="false" enterkeyhint="search"></label><label>{proto}<select name="protocol" data-tracker-filter><option value="">{all}</option><option value="udp"{udp}>UDP</option><option value="http"{http}>HTTP</option><option value="https"{https}>HTTPS</option></select></label><label>{size}<select name="limit" data-tracker-filter>{sizes}</select></label><button class="button" type="submit">{filter}</button><span class="filter-status" role="status" aria-live="polite"></span></form><div class="tracker-results" id="tracker-results" data-tracker-results aria-live="polite">{results}</div><script src="/assets/list.js?v=1.2.0" defer></script>"#,
+        r#"<form class="filters card" method="get" action="/trackers" data-tracker-filters><input type="hidden" name="lang" value="{code}"><label>{search}<div class="search-input-wrap"><input name="q" value="{query}" maxlength="128" placeholder="{placeholder}" autocomplete="off" spellcheck="false" enterkeyhint="search"><button type="button" class="search-clear" data-search-clear aria-label="{clear_label}" hidden title="{clear_label}">×</button></div></label><label>{proto}<select name="protocol" data-tracker-filter><option value="">{all}</option><option value="udp"{udp}>UDP</option><option value="http"{http}>HTTP</option><option value="https"{https}>HTTPS</option></select></label><label>{size}<select name="limit" data-tracker-filter>{sizes}</select></label><button class="button filter-submit" type="submit">{filter}</button><span class="filter-status" role="status" aria-live="polite"></span></form><div class="tracker-results" id="tracker-results" data-tracker-results aria-live="polite">{results}</div><script src="/assets/list.js?v=1.2.0" defer></script>"#,
         search = lang.pick("搜索", "Search"),
         query = esc(query),
         placeholder = lang.pick("域名或地址", "Host or address"),
+        clear_label = lang.pick("清空搜索", "Clear search"),
         proto = lang.pick("协议", "Protocol"),
         all = lang.pick("全部协议", "All protocols"),
         udp = selected("udp"),

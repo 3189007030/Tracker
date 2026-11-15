@@ -9,9 +9,12 @@
     const results = document.querySelector("[data-tracker-results]");
     if (!form || !results || !window.fetch || !window.URLSearchParams) return;
 
+    form.classList.add("has-live-search");
+
     const zh = document.documentElement.lang !== "en";
     const text = (cn, en) => (zh ? cn : en);
     const input = form.querySelector("input[name='q']");
+    const clearBtn = form.querySelector("[data-search-clear]");
     const protocol = form.querySelector("select[name='protocol']");
     const limit = form.querySelector("select[name='limit']");
     const status = form.querySelector(".filter-status");
@@ -31,10 +34,16 @@
             button.hidden = false;
         });
     };
+    const updateClearBtn = () => {
+        if (clearBtn) {
+            clearBtn.hidden = !input || !input.value;
+        }
+    };
     const syncForm = (params) => {
         if (input) input.value = params.get("q") || "";
         if (protocol) protocol.value = params.get("protocol") || "";
         if (limit && params.get("limit")) limit.value = params.get("limit");
+        updateClearBtn();
     };
     const showStatus = (message) => {
         if (status) status.textContent = message;
@@ -62,6 +71,12 @@
             if (mode === "push") history.pushState({ trackers: true }, "", url);
             else if (mode === "replace") history.replaceState({ trackers: true }, "", url);
             showStatus("");
+            if (page > 1 || mode === "push") {
+                const rect = results.getBoundingClientRect();
+                if (rect.top < 0) {
+                    window.scrollTo({ top: window.scrollY + rect.top - 24, behavior: "smooth" });
+                }
+            }
         } catch (error) {
             if (error && error.name === "AbortError") return;
             showStatus(text("更新失败，可提交表单重试。", "Update failed; submit the form to retry."));
@@ -71,10 +86,25 @@
     };
     const schedule = () => {
         clearTimeout(timer);
-        timer = setTimeout(() => load(1, "replace"), 250);
+        timer = setTimeout(() => load(1, "replace"), 300);
     };
 
-    if (input) input.addEventListener("input", schedule);
+    if (input) {
+        input.addEventListener("input", () => {
+            updateClearBtn();
+            schedule();
+        });
+    }
+    if (clearBtn) {
+        clearBtn.addEventListener("click", () => {
+            if (input) {
+                input.value = "";
+                input.focus();
+            }
+            updateClearBtn();
+            load(1, "replace");
+        });
+    }
     if (protocol) protocol.addEventListener("change", () => load(1, "replace"));
     if (limit) limit.addEventListener("change", () => load(1, "replace"));
     form.addEventListener("submit", (event) => {
@@ -104,5 +134,6 @@
         load(Number.isInteger(page) && page > 0 ? page : 1, "none");
     });
 
+    updateClearBtn();
     revealCopyButtons();
 })();
