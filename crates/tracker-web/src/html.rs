@@ -199,8 +199,8 @@ fn copy_feed_link(lang: Lang) -> String {
 fn charts(lang: Lang) -> String {
     let title = lang.pick("统计趋势", "Trends");
     let fields: &[(&str, &str, &str)] = &[
-        ("peers", "登记节点", "Registered peers"),
-        ("swarms", "蜂群", "Swarms"),
+        ("peers", "在线用户", "Registered peers"),
+        ("swarms", "活跃种子", "Swarms"),
         (
             "accepted_announces",
             "成功通告 / 秒",
@@ -221,7 +221,7 @@ fn charts(lang: Lang) -> String {
         r#"<section class="trends-heading"><div class="trends-title-row"><h2>{}</h2><p class="trends-unit">{}</p></div><div class="trends-sub-row"><p>{}</p><label>{} <select data-history-window aria-label="{}"><option value="24h">24h</option><option value="7d">7d</option><option value="30d">30d</option></select></label></div></section><div class="history-grid" data-history-root data-lang="{}">{}</div><p class="footnote" data-history-rate-note></p><p class="footnote">{}</p><script src="/assets/chart.umd.js?v=4.6.1" defer></script><script src="/assets/charts.js?v=1.2.0" defer></script>"#,
         title,
         lang.pick(
-            "纵轴：节点与蜂群为数量，速率为每秒；横轴为 UTC 时间。",
+            "纵轴：用户与种子为数量，速率为每秒；横轴为 UTC 时间。",
             "Y axis: peers and swarms are counts, rates are per second. X axis: UTC time."
         ),
         lang.pick(
@@ -233,7 +233,7 @@ fn charts(lang: Lang) -> String {
         lang.code(),
         panels,
         lang.pick(
-            "节点数表示本站登记，并非在线可达保证。",
+            "用户数表示本地服务记录的做种与下载客户端，并非在线可达保证。",
             "Peer counts are local registrations, not proof of reachability."
         )
     )
@@ -277,14 +277,14 @@ pub(crate) fn home(overview: &Overview, native: Option<&serde_json::Value>, lang
         ));
     }
     kpis.push_str(&kpi(
-        lang.pick("登记节点", "Registered peers"),
+        lang.pick("在线用户", "Registered peers"),
         &count_text(peers, lang),
-        lang.pick("本地内存登记", "Local in-memory registrations"),
+        lang.pick("做种与下载客户端 (Peers)", "Local in-memory registrations"),
     ));
     kpis.push_str(&kpi(
-        lang.pick("蜂群", "Swarms"),
+        lang.pick("活跃种子", "Swarms"),
         &count_text(swarms, lang),
-        lang.pick("已登记资源", "Registered resources"),
+        lang.pick("正在分享的资源 (Swarms)", "Registered resources"),
     ));
 
     let mut coverage_note = String::new();
@@ -623,10 +623,10 @@ fn no_address(item: &Observation) -> bool {
 /// reason is rendered as the em dash that readers already recognise.
 fn reason_cell(item: &Observation, lang: Lang) -> String {
     if no_address(item) {
-        return "—".to_owned();
+        return "-".to_owned();
     }
     reason_for(item.error_category.as_deref(), item.http_status, lang)
-        .unwrap_or_else(|| "—".to_owned())
+        .unwrap_or_else(|| "-".to_owned())
 }
 
 fn observation_state(item: &Observation) -> &'static str {
@@ -1378,7 +1378,7 @@ pub(crate) fn detail(
         } else if endpoint.protocol != "udp" {
             o.http_status
                 .map(|x| format!("HTTP {x}"))
-                .unwrap_or_else(|| "—".to_owned())
+                .unwrap_or_else(|| "-".to_owned())
         } else {
             "UDP".to_owned()
         };
@@ -1386,7 +1386,7 @@ pub(crate) fn detail(
         // explicit dash instead of "unknown" plus an internal code.
         let reply =
             if no_address(o) || matches!(o.stage.as_str(), "handshake" | "bitmap" | "unknown") {
-                "—"
+                "-"
             } else if o.protocol_reply {
                 lang.pick("是", "Yes")
             } else if (o.stage == "sample_announce"
@@ -1398,7 +1398,7 @@ pub(crate) fn detail(
                 lang.pick("否", "No")
             };
         let reason = reason_cell(o, lang);
-        let target = o.target_ip.as_deref().unwrap_or("—");
+        let target = o.target_ip.as_deref().unwrap_or("-");
         rows.push_str(&format!(r#"<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>"#,
             esc(&time(Some(o.observed_at), lang)), esc(&o.family.to_uppercase()), esc(stage_text(&o.stage, lang)), esc(&transport), esc(observed_result(&o.stage, &o.result, o.error_category.as_deref(), lang)), reply, esc(&millis(if measured_reply(o) { o.latency_ms } else { None }, lang)), esc(target), esc(&reason)));
     }
@@ -1540,7 +1540,7 @@ pub(crate) fn detail(
     })
     .collect::<String>();
     let family_card = |name: &str, f: Option<&FamilyStatus>| {
-        let target = latest_target_ip(health_observations, name).unwrap_or("—");
+        let target = latest_target_ip(health_observations, name).unwrap_or("-");
         let hint = family_hint(f, lang);
         let hint = if hint.is_empty() {
             String::new()

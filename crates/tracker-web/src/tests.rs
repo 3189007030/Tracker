@@ -1154,7 +1154,7 @@ async fn detail_shows_target_ip_localized_reasons_and_dashes_for_no_address() {
     assert!(!body.contains("rate_limited"));
     assert!(!body.contains("family_unavailable"));
     let row = body.split("<td>IPV6</td>").nth(1).unwrap_or("");
-    assert!(body.contains("<td>IPV6</td><td>\u{5065}\u{5eb7}\u{901a}\u{544a}</td><td>\u{2014}</td><td>\u{672a}\u{53d1}\u{73b0}\u{5730}\u{5740}</td><td>\u{2014}</td><td>\u{672a}\u{77e5}</td><td>\u{2014}</td><td>\u{2014}</td>"), "row was {}", &row[..row.len().min(200)]);
+    assert!(body.contains("<td>IPV6</td><td>\u{5065}\u{5eb7}\u{901a}\u{544a}</td><td>-</td><td>\u{672a}\u{53d1}\u{73b0}\u{5730}\u{5740}</td><td>-</td><td>\u{672a}\u{77e5}</td><td>-</td><td>-</td>"), "row was {}", &row[..row.len().min(200)]);
     assert!(body.contains("\u{4e0d}\u{8ba1}\u{5165} 24h \u{6210}\u{529f}\u{7387}"));
     assert!(body.contains("\u{5408}\u{8ba1}"));
 }
