@@ -1641,7 +1641,10 @@ pub(crate) fn simple(
         for pool in pools {
             let label = match pool.pool.as_str() {
                 "software" => lang.pick("公共资源样本池", "Public resource pool"),
-                "forum" => lang.pick("幽灵样本池（投毒检测）", "Ghost sample pool (poison detection)"),
+                "forum" => lang.pick(
+                    "幽灵样本池（投毒检测）",
+                    "Ghost sample pool (poison detection)",
+                ),
                 _ => continue,
             };
             let status = match pool.status.as_str() {

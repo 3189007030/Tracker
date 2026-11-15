@@ -196,7 +196,9 @@ impl PublicStore {
             "SELECT payload FROM endpoints WHERE length(CAST(payload AS BLOB))<=65536 AND json_valid(payload) AND json_extract(payload,'$.alias_of') IS NULL AND lower(url) LIKE ?1 ESCAPE '\\' AND lower(url) LIKE ?2 ORDER BY COALESCE(CAST(json_extract(payload,'$.evidence.success_rate_24h') AS REAL),-1.0) DESC, COALESCE(CAST(json_extract(payload,'$.evidence.sample_count_7d') AS INTEGER),0) DESC, COALESCE(CAST(json_extract(payload,'$.evidence.median_latency_ms') AS REAL),1.0e99) ASC, url COLLATE NOCASE",
         ).map_err(|_| StoreError)?;
         let rows = statement
-            .query_map(params![pattern, protocol_pattern], |r| r.get::<_, String>(0))
+            .query_map(params![pattern, protocol_pattern], |r| {
+                r.get::<_, String>(0)
+            })
             .map_err(|_| StoreError)?;
         let mut all_items = Vec::new();
         for payload in rows.flatten() {
@@ -214,11 +216,7 @@ impl PublicStore {
         let last_page = total.div_ceil(limit as u64).clamp(1, 10_000) as usize;
         let page = page.min(last_page);
         let offset = (page - 1).saturating_mul(limit);
-        let items = all_items
-            .into_iter()
-            .skip(offset)
-            .take(limit)
-            .collect();
+        let items = all_items.into_iter().skip(offset).take(limit).collect();
         Ok(Page {
             items,
             total: Some(total),

@@ -317,7 +317,10 @@ async fn status_redirect(Query(params): Query<Params>) -> Response {
 
 async fn declaration(Query(params): Query<Params>) -> Response {
     (
-        [(header::CACHE_CONTROL, "public, max-age=3600, s-maxage=86400")],
+        [(
+            header::CACHE_CONTROL,
+            "public, max-age=3600, s-maxage=86400",
+        )],
         Html(html::declaration(language(&params))),
     )
         .into_response()
@@ -384,7 +387,11 @@ async fn api_trackers(State(site): State<Site>, Query(params): Query<Params>) ->
         Err(code) => return api_error(StatusCode::BAD_REQUEST, code),
     };
     match read(move || site.store.page(filters, unix_now())).await {
-        Ok(page) => ([(header::CACHE_CONTROL, "public, max-age=15, s-maxage=30")], Json(page)).into_response(),
+        Ok(page) => (
+            [(header::CACHE_CONTROL, "public, max-age=15, s-maxage=30")],
+            Json(page),
+        )
+            .into_response(),
         Err(_) => unavailable(),
     }
 }
