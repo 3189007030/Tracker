@@ -1041,10 +1041,10 @@ impl Store {
                 .iter()
                 .filter_map(|s| s.5.filter(|x| x.is_finite() && (0.0..=1.0).contains(x)))
                 .collect();
-            let poisoned = observations
-                .iter()
-                .any(|o| o.observed_at >= now - 7 * 86400 && o.error_category.as_deref() == Some("poisoned_peers"))
-                || url.contains("durukanbal.com");
+            let poisoned = observations.iter().any(|o| {
+                o.observed_at >= now - 7 * 86400
+                    && o.error_category.as_deref() == Some("poisoned_peers")
+            }) || url.contains("durukanbal.com");
             let standard = !poisoned
                 && family_status
                     .iter()
