@@ -1,12 +1,10 @@
-# S1 native deployment
+# Native deployment
 
-The steps below describe the 1.0.4 release procedure. Consult [1.0.4 validation](validation-1.0.4.md) for the actual gate, short-test and deployment status; a deployment template alone is not proof of promotion. Use matching source, configuration and release-specific receipts before promotion.
-
-This release uses Debian 12, systemd and Nginx. It does not require Docker, Redis or a Python application environment. The production registry is a single process; multiple independent replicas would split discovery state.
+This guide describes the current immutable-release procedure for the Tracker Observatory services. It is version-neutral: use the release version, source commit and validation ledger that are actually being promoted. A procedure is not evidence that a release was built, deployed or accepted by a third party; record those facts in `docs/validation-<version>.md`.
 
 ## Build an immutable release
 
-Use the toolchain in `rust-toolchain.toml` (1.99.1), the committed `Cargo.lock`, and one build job on S1. Stop capacity tests while compiling. From a clean checkout:
+Build on the target Debian 12 host or an equivalent Linux x86-64 builder with the toolchain pinned by `rust-toolchain.toml` and the committed `Cargo.lock`. Stop capacity tests while compiling. From a clean checkout:
 
 ```sh
 rustup toolchain install 1.99.1 --profile minimal --component rustfmt --component clippy
@@ -16,42 +14,30 @@ cargo clippy --workspace --all-targets --locked -j 1 -- -D warnings
 cargo build --workspace --release --locked -j 1
 ```
 
-Install `nginx`, `certbot`, `build-essential`, `pkg-config`, `libssl-dev`, `ca-certificates` and `curl` using the OS package manager. Create a system user `tracker` with no login shell. Keep binaries root-owned under `/opt/tracker-v1/releases/<release-id>/`, and link `/opt/tracker-v1/current` to that immutable directory. The four executables are `tracker-server`, `observatory`, `tracker-web` and `tracker-loadgen`. Record the source commit and SHA-256 of every executable with each release.
+Record the source commit, exact toolchain output and SHA-256 of `tracker-server`, `observatory`, `tracker-web` and `tracker-loadgen`. Keep binaries root-owned under `/opt/tracker-v1/releases/<version>-<commit>/`, then atomically point `/opt/tracker-v1/current` at that immutable directory. Preserve the preceding qualified release for rollback.
 
-Copy `config/config.example.toml` and `config/sources.toml` to `/etc/tracker-v1/`, owned by root:tracker with mode 0640. Create `/var/lib/tracker-v1` owned by tracker:tracker, mode 0750. Copy the tracker-server, observatory and tracker-web systemd units to `/etc/systemd/system/`, run `systemctl daemon-reload`, and enable/start the services. Only the observatory has a writable data directory.
+Install `nginx`, `certbot`, `build-essential`, `pkg-config`, `libssl-dev`, `ca-certificates` and `curl` using the OS package manager. Run the services as the dedicated `tracker` user with no login shell. Copy `config/config.example.toml` and the private `sources.toml` to `/etc/tracker-v1/`, owned by `root:tracker` with mode `0640`; create `/var/lib/tracker-v1` owned by `tracker:tracker` with mode `0750`. Only the observatory writes its data directory. The website opens `public.sqlite3` read-only.
 
-The baseline caps are 1536 MiB for the registry, 192 MiB for observations and 128 MiB for the website. Nginx is separately capped at 128 MiB. These are process control limits, not evidence that all limits can be consumed together. Keep OS/network headroom and measure actual RSS. The registry's 1024 MiB logical admission budget is a conservative state estimate, distinct from RSS and the systemd cap; check the final configuration before release.
+The baseline process memory caps are deployment settings, not capacity evidence. Keep OS, Nginx and network headroom and verify actual RSS after each promotion. Do not run two observatory writers against the same data directory.
 
-## TLS and ingress
+## Services and ingress
 
-Use `deploy/nginx.conf`, `deploy/ingress.conf`, `deploy/tracker-browser.conf` and `deploy/tracker-locations.inc`. Put the ingress server block and browser-navigation maps under `/etc/nginx/conf.d/` and the location include at `/etc/nginx/tracker-locations.inc`. A parameter-free browser GET requesting HTML opens the client guide; real announce queries and BT protocol replies remain unchanged. The final ingress expects a valid certificate at `/etc/letsencrypt/live/tracker-v1/`. Bootstrap certificate issuance through the HTTP ACME location, then switch to final TLS ingress; run `nginx -t` before every reload. Keep `certbot.timer` enabled with a deploy hook that tests and reloads Nginx.
+Install the tracker-server, observatory and tracker-web systemd units, run `systemctl daemon-reload`, and enable the units. Restart only services whose binaries changed. Verify `/healthz` and `/readyz` for the native and web listeners before exposing the release.
 
-`tracker.augrains.com` retains proxied CDN ingress and is the canonical host for HTTP/HTTPS announce, scrape and the website. `udp.augrains.com` points directly to S1 and is the canonical UDP alias; it needs no rename because UDP packets carry no hostname. `announce.augrains.com` is retired and is no longer an advertised address. Publish AAAA only after external IPv6 ingress succeeds. Both hosts share the same registry.
+Use `deploy/nginx.conf`, `deploy/ingress.conf`, `deploy/tracker-browser.conf` and `deploy/tracker-locations.inc` as the reviewed Nginx templates. The canonical public hosts are `tracker.augrains.com` for HTTP/HTTPS announce, scrape and the website, and `udp.augrains.com` for direct UDP. Keep announce, scrape, health, readiness and metrics uncached. Never expose the loopback Rust listener or trust an arbitrary forwarded-address header.
 
-Install the trusted Cloudflare source ranges and verify client-address recovery as described in [Cloudflare ingress](cloudflare-ingress.md). Nginx overwrites `X-Real-IP`; never expose the loopback Rust HTTP port or trust an arbitrary caller's forwarded headers. Announce, scrape, health, readiness and metrics must bypass CDN caching. Remove only this project's old Worker routes.
+Cloudflare-proxied ingress must trust `CF-Connecting-IP` only from the current Cloudflare IPv4 and IPv6 ranges, overwrite `X-Real-IP`, and retain the last known-good ranges if refresh or `nginx -t` fails. Access logging remains disabled because announce queries can contain sensitive addresses and hashes. Use readiness, aggregate metrics and systemd state for operations instead of raw request logs.
 
-Nginx access logging is disabled and its runtime error sink is `/dev/null`: even a critical request error may otherwise include the complete announce query and source address. Use configuration-test output, systemd exit/OOM counters, readiness and aggregate request metrics for operations; do not enable raw request logging to investigate load.
-
-The production firewall template allows SSH, HTTP/HTTPS, UDP 6969, ICMP and required DHCP. Adapt SSH access to the actual host before applying it. Stage a timed rollback and verify a second independent SSH connection before persisting a firewall replacement. Temporary benchmark ports require separate owner-only rules and must be removed after testing.
-
-The `/releases/` location serves only the separately curated, versioned public release directory `/opt/tracker-v1/public/releases/`. Create it root-owned and publish reviewed source/runtime archives, aggregate evidence and checksums there after validation. Never place application state, private configuration, raw logs or keys under that directory. Directory browsing is disabled; only GET/HEAD are permitted. Confirm checksums from the public URL before calling an archive published. The presence of this route does not mean a release has already been published.
+Before every firewall or Nginx change, keep a timed rollback and verify an independent SSH session. Do not apply a template without adapting SSH access, certificates, interfaces and private source settings to the actual host.
 
 ## Data and restart behavior
 
-`private.sqlite3` contains sample identities and private measurement evidence; do not publish it or expose its directory. The website opens `public.sqlite3` read-only. No old database is imported.
+`private.sqlite3` contains measurement evidence and must never be published. The public website reads only the sanitized public projection. Native registry state is volatile: restarting the tracker-server clears peer registrations and counters, after which normal announces rebuild state. Observatory and website restarts do not require a registry restart.
 
-Registry state is volatile. Restarting it clears peer registrations and resident completion counters; normal announces rebuild state. This is expected behavior, not a performance improvement. Observatory and website restarts do not require a registry restart.
-
-The native tracker returns only peers genuinely registered in its local registry; scrape counts are local. Verify actual configuration, pressure limits, runtime state, local-only announce and scrape behavior, and clean restart handling with the released build. The 1.0.2 migration removes legacy public sample and run tables; preserve a protected rollback backup before upgrading the database.
-
-Check native `/healthz`, `/readyz` and `/stats.json` through the announce host, and website `/readyz` through the website host. Check systemd restart/OOM counters, snapshot age, probe progress and real cross-transport discovery. A fresh public snapshot may be ready while strict lists are still warming.
+Check the native `/healthz`, `/readyz` and `/stats.json`, and the website `/readyz`, through the intended ingress host. Confirm systemd restart/OOM counters, snapshot freshness, probe progress and real cross-transport discovery. A fresh public snapshot may still be warming strict lists.
 
 ## Promotion and rollback
 
-Preserve the current and preceding qualified release packages plus their config/checksum manifests. Promote by atomically replacing `current`, then restart only changed services and verify readiness and real protocol behavior. A code rollback uses the preceding immutable directory and its matching config. Native state cannot be rolled back because it is never persisted.
+Create a protected rollback copy of the current release and configuration before promotion. Switch `/opt/tracker-v1/current` atomically, restart only changed services, and verify readiness, the public API, feeds and real announce behavior. If a check fails, point `current` back to the preceding immutable directory and restart the affected units. Native peer state cannot be rolled back because it is not persisted.
 
-Back up necessary SSH/network/firewall/TLS configuration off-host in a private location before host cleanup. Do not include private keys, API credentials, peer evidence or historical application data in public release archives. Cleanup is restricted to S1's authorized applications; it must not touch S2 or other domains' services.
-
-## Connection reuse policy
-
-The 1.0.4 Nginx template keeps client connections idle for up to 75 seconds and recycles them after at most 10,000 requests. The local native upstream caches up to 128 idle connections per worker with a 300-second idle timeout and a 10,000-request cap. These are connection-reuse limits, not throughput guarantees or caps on all active connections. Retain the existing worker/connection/cgroup bounds and compare memory under real traffic. Origin TLS session tickets remain disabled; stateful replies remain uncached.
+Keep private SSH, firewall, TLS, configuration, database and evidence backups off-host. Never place secrets, raw logs, private databases or keys in a source/runtime archive or in the public `/releases/` directory. Publish a release archive only after its validation ledger and checksum manifest have been reviewed.

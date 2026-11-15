@@ -1,6 +1,6 @@
-# Public API — 1.2.0
+# Public API — 1.2.3
 
-The observation routes retain the 1.0.2 contract; 1.0.4 added native rejection diagnostics. 1.2.0 adds the optional endpoint field `alias_of` and observation field `target_ip`, and documents list pagination. Both are additive optional fields, so existing consumers are unaffected and the change is a minor release. `/trackers/partial` is an internal HTML fragment, not a JSON route. The 1.0.4 diagnostics are recorded in [1.0.4 validation](validation-1.0.4.md); this change is tracked in [1.2.0 validation](validation-1.2.0.md).
+This document describes the current public contract. The 1.2.x releases added canonical endpoint aliases, resolved probe addresses and progressive list pagination while retaining the existing observation and aggregate routes. The 1.2.3 release also refreshes the web presentation and hardens list requests; it does not add a new JSON field or remove an existing public route. `/trackers/partial` is an internal HTML fragment, not a JSON route. Release-specific gate and deployment facts are recorded in [1.2.3 validation](validation-1.2.3.md), while [1.2.1](validation-1.2.1.md) and [1.2.0](validation-1.2.0.md) remain historical ledgers.
 
 The new API does not retain the Python JSON schema or composite score. Unknown is `null`, and a real, published empty dataset is distinct from a missing snapshot.
 

@@ -1,6 +1,42 @@
 "use strict";
 
 document.querySelectorAll("[data-copy-button]").forEach((button) => { button.hidden = false; });
+
+const languageSwitcher = document.querySelector("[data-language-switcher]");
+if (languageSwitcher) {
+    languageSwitcher.querySelectorAll("a[lang]").forEach((link) => {
+        const url = new URL(window.location.href);
+        url.searchParams.set("lang", link.getAttribute("lang"));
+        link.href = `${url.pathname}?${url.searchParams.toString()}${url.hash}`;
+    });
+}
+
+
+const menuToggle = document.querySelector("[data-menu-toggle]");
+const siteNav = document.querySelector("[data-site-nav]");
+if (menuToggle && siteNav) {
+    const closeMenu = () => {
+        siteNav.classList.remove("is-open");
+        menuToggle.setAttribute("aria-expanded", "false");
+    };
+    menuToggle.addEventListener("click", () => {
+        const open = siteNav.classList.toggle("is-open");
+        menuToggle.setAttribute("aria-expanded", String(open));
+    });
+    siteNav.addEventListener("click", (event) => {
+        if (event.target.closest("a")) closeMenu();
+    });
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") closeMenu();
+    });
+}
+
+const path = window.location.pathname;
+const activeKey = path === "/" ? "home" : path.startsWith("/trackers") || path.startsWith("/tracker/") ? "trackers" : path.startsWith("/sources") ? "sources" : path.startsWith("/declaration") ? "declaration" : "";
+document.querySelectorAll("[data-nav-key]").forEach((item) => {
+    if (item.dataset.navKey === activeKey && item.matches("a")) item.setAttribute("aria-current", "page");
+});
+
 document.addEventListener("click", async (event) => {
     const button = event.target.closest("[data-copy-button]");
     if (!button) return;

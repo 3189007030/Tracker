@@ -22,6 +22,10 @@
         return {...options, scales: {...options.scales, x: {...options.scales.x, min: now - seconds, max: now}}};
     };
     const historyRoot = document.querySelector("[data-history-root]");
+    if (historyRoot && !window.Chart) {
+        historyRoot.dataset.state = "unavailable";
+        historyRoot.setAttribute("aria-label", text("历史数据暂不可用", "History data unavailable"));
+    }
     if (historyRoot && window.Chart) {
         let rendered = [], requestId = 0;
         const selector = document.querySelector("[data-history-window]");
@@ -137,14 +141,32 @@
         return node;
     };
     const state = (o) => {
-        if (["rate_limited", "tracker_rejection", "resource_unregistered"].includes(o.error_category) || ["rate_limited", "rejected", "tracker_rejection", "resource_unregistered"].includes(o.result)) return "neutral";
+        if (["rate_limited", "tracker_rejection", "resource_unregistered", "peers_unusable"].includes(o.error_category) || ["rate_limited", "rejected", "tracker_rejection", "resource_unregistered", "peers_unusable"].includes(o.result)) return "neutral";
         if (["incomplete_protocol", "operator_denied", "family_unavailable", "local_or_network_unknown", "local_unavailable", "local_restriction", "network_unavailable", "budget_exhausted", "dns_timeout"].includes(o.error_category) || ["unknown", "local_unavailable", "local_restriction", "network_unavailable", "skipped", "unsupported"].includes(o.result)) return "unknown";
         return ["announce_ok", "accepted", "success", "zero_peers"].includes(o.result) ? "success" : "failure";
     };
+    const errorLabel = (category) => ({
+        timeout: text("超时", "Timeout"),
+        connect_timeout: text("连接超时", "Connection timeout"),
+        response_timeout: text("响应超时", "Response timeout"),
+        dns_timeout: text("DNS 超时", "DNS timeout"),
+        dns_error: text("DNS 失败", "DNS error"),
+        http_error: text("HTTP 错误", "HTTP error"),
+        tracker_rejection: text("Tracker 拒绝", "Tracker rejection"),
+        peers_unusable: text("节点不可用", "Peers unusable"),
+        rate_limited: text("被限流", "Rate limited"),
+        family_unavailable: text("地址族不可用", "Address family unavailable"),
+        network_unavailable: text("网络不可用", "Network unavailable"),
+        local_unavailable: text("本地网络不可用", "Local network unavailable"),
+        local_or_network_unknown: text("本地或网络状态未知", "Local or network state unknown"),
+        operator_denied: text("运营方拒绝", "Operator denied"),
+        budget_exhausted: text("探测预算已用尽", "Probe budget exhausted"),
+        incomplete_protocol: text("协议响应不完整", "Incomplete protocol response")
+    })[category] || text("其他错误", "Other error");
     const stateLabel = (o) => {
         const label = ({success:text("成功", "Success"), failure:text("失败", "Failed"), neutral:text("限流 / 拒绝", "Rate limit / rejection"), unknown:text("未知", "Unknown")})[state(o)];
         const http = Number.isInteger(o.http_status) ? ` · HTTP ${o.http_status}` : "";
-        return `${label}${http}${o.error_category ? ` · ${o.error_category}` : ""}`;
+        return `${label}${http}${o.error_category ? ` · ${errorLabel(o.error_category)}` : ""}`;
     };
     const displayFamily = (family) => family === "ipv4" ? "IPv4" : "IPv6";
     const drawTimeline = (items, families, start, end, width) => {

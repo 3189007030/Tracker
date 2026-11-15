@@ -2,7 +2,7 @@
 
 A Rust BitTorrent tracker and observatory. The native tracker serves HTTP and UDP announces from a shared, sharded in-memory swarm. The separate observatory measures public trackers and publishes a read-only view for the bilingual website.
 
-[ç®€ä½“ä¸­æ–‡](README.zh-CN.md)
+[简体中文](README.zh-CN.md)
 
 The workspace contains `tracker-server`, `observatory`, `tracker-web`, and `tracker-loadgen`, plus shared protocol, state and model libraries. The load generator is an operator tool; the other three are independent services.
 
@@ -19,7 +19,7 @@ The workspace contains `tracker-server`, `observatory`, `tracker-web`, and `trac
 - Detail observations state failure reasons in localized terms with the status where one applies (`HTTP 429 · rate limited`, timed out, `DNS lookup failed`, `HTTP 502 · bad gateway`) instead of raw internal categories, and show the resolved public address the probe actually contacted. The address is the tracker's server address, not a peer address, and observation JSON carries it as optional `target_ip`; it distinguishes stale DNS or a changed address from a timeout. An observation whose result is no address for that family renders an em dash instead of unknown in the reply and reason columns.
 - Endpoint family status (success, stale, unknown/untested, no address) describes the latest observation's freshness. 24h success rate is historical and counts only completed observations, with untested, locally failed and no-address observations outside the denominator; the pages say so and show the successful/completed count (for example 12/12), so a stale or untested family can display 100% without contradiction.
 
-The live service is [Tracker Observatory](https://tracker.augrains.com/). Historical [1.0.0](https://tracker.augrains.com/releases/v1.0.0/), [1.0.1](https://tracker.augrains.com/releases/v1.0.1/) and [1.0.2](https://tracker.augrains.com/releases/v1.0.2/) release material describes those particular deployments, not this checkout's present status or performance. The 1.2.x list, detail and schema changes are in the current sources; validation and deployment receipts are tracked in [1.2.1 validation](docs/validation-1.2.1.md) and [1.2.0 validation](docs/validation-1.2.0.md). A build, a short test or a listing check does not establish sustained capacity or third-party acceptance.
+The live service is [Tracker Observatory](https://tracker.augrains.com/). Historical release material describes the deployment and test conditions of its own version, not this checkout's present status or performance. The current 1.2.3 release combines the observatory UI refresh, list reliability fixes and the existing 1.2.x public API; the current validation ledger is [1.2.3 validation](docs/validation-1.2.3.md), with the [changelog](CHANGELOG.md), [1.2.1 validation](docs/validation-1.2.1.md) and [1.2.0 validation](docs/validation-1.2.0.md) retained as release history. A build, a short test or a listing check does not establish sustained capacity or third-party acceptance.
 
 ## Build and verify
 

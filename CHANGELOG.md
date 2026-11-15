@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.3 — observatory UI refresh and list reliability
+
+- Rebuild the public web interface around a calmer observatory layout with responsive navigation, clearer evidence hierarchy, tracker connection workflows and mobile-safe tables/cards.
+- Preserve language and filter state across navigation, improve live-list request cancellation, and clamp sanitized pagination consistently so displayed counts and rows agree.
+- Add chart/timeline fallback states and localize user-facing observation error labels without exposing internal error categories.
+- Validation and deployment facts are recorded in [1.2.3 validation](docs/validation-1.2.3.md); this changelog entry does not claim promotion by itself.
+
 ## 1.2.2 — ghost sample pool for poison detection and relaxed HTTP compliance
 
 - Replace the unconfigured forum sample pool with a deterministic ghost sample pool (`antigravity:ghost:v1:sample-{i}`). Ghost samples use unpublished 20-byte info-hashes that should have zero peers on any legitimate tracker. If a tracker returns peers or seeders for any ghost info-hash, it is flagged as a poisoned / fake-seeding node (`poisoned_peers`) and automatically disqualified from all published feeds (`trackers.txt`, `trackers_best.txt`, and `trackers_all.txt`).

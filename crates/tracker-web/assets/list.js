@@ -48,6 +48,13 @@
     const showStatus = (message) => {
         if (status) status.textContent = message;
     };
+    const cancelPending = () => {
+        clearTimeout(timer);
+        timer = 0;
+        if (controller) controller.abort();
+        requested += 1;
+    };
+
     const load = async (page, mode) => {
         const params = formParams();
         if (page > 1) params.set("page", String(page));
@@ -97,6 +104,7 @@
     }
     if (clearBtn) {
         clearBtn.addEventListener("click", () => {
+            cancelPending();
             if (input) {
                 input.value = "";
                 input.focus();
@@ -105,11 +113,11 @@
             load(1, "replace");
         });
     }
-    if (protocol) protocol.addEventListener("change", () => load(1, "replace"));
-    if (limit) limit.addEventListener("change", () => load(1, "replace"));
+    if (protocol) protocol.addEventListener("change", () => { cancelPending(); load(1, "replace"); });
+    if (limit) limit.addEventListener("change", () => { cancelPending(); load(1, "replace"); });
     form.addEventListener("submit", (event) => {
         event.preventDefault();
-        clearTimeout(timer);
+        cancelPending();
         load(1, "push");
     });
     results.addEventListener("click", (event) => {
@@ -117,7 +125,10 @@
         if (!link) return;
         event.preventDefault();
         const page = Number(link.dataset.page);
-        if (Number.isInteger(page) && page > 0) load(page, "push");
+        if (Number.isInteger(page) && page > 0) {
+            cancelPending();
+            load(page, "push");
+        }
     });
     results.addEventListener("submit", (event) => {
         const jump = event.target.closest("[data-page-jump]");
@@ -125,9 +136,13 @@
         event.preventDefault();
         const field = jump.querySelector("input[name='page']");
         const page = Number(field && field.value);
-        if (Number.isInteger(page) && page > 0) load(page, "push");
+        if (Number.isInteger(page) && page > 0) {
+            cancelPending();
+            load(page, "push");
+        }
     });
     window.addEventListener("popstate", () => {
+        cancelPending();
         const params = new URLSearchParams(location.search);
         syncForm(params);
         const page = Number(params.get("page") || "1");

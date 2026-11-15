@@ -1,6 +1,6 @@
 # Architecture
 
-This page describes the implemented 1.0.2 architecture. Final validation and deployment status are recorded in [1.0.2 validation](validation-1.0.2.md). Architecture alone is not proof of capacity or third-party acceptance.
+This page describes the current 1.2.3 architecture. Release-specific gate and deployment facts are recorded in [1.2.3 validation](validation-1.2.3.md); older ledgers remain historical evidence. Architecture alone is not proof of capacity or third-party acceptance.
 
 ## Request path
 
@@ -14,7 +14,7 @@ The native request path returns only same-resource peers genuinely registered in
 
 ## Independent evidence path
 
-Public tracker lists and selected public torrents feed the observatory. Daily collection maintains forum and public sample pools, each targeting and capped at 100 entries. Cross-pool deduplication gives official open-source samples first claim, forum samples second, and The Pirate Bay daily ranking fills remaining public-pool capacity. When both pools have eligible samples, selection chooses the pool with 50/50 probability, then randomly chooses an eligible sample within that pool while retaining due-work fairness. The forum JSON adapter is present, but its upstream returned HTTP 502 and the observed forum pool had zero entries; a source failure or unfilled pool is visible rather than fabricated. The observatory resolves and validates addresses, checks IPv4 and IPv6 separately, and records transport, protocol and local outcomes. A bounded pool verifies returned peer handshakes and bitmaps without requesting payload.
+Public tracker lists and selected public torrents feed the observatory when their configured sources are available. Daily collection keeps bounded official and secondary pools, preserves source status and retry state, and never fabricates public samples when a source is unavailable. An unconfigured forum-source slot is filled with deterministic ghost hashes used only to detect poisoned or fake-seeding responses; those hashes are not real content and are not presented as community samples. The observatory resolves and validates addresses, checks IPv4 and IPv6 separately, and records transport, protocol and local outcomes. A bounded pool verifies returned peer handshakes and bitmaps without requesting payload.
 
 Private sample state is separated from the public SQLite contract. The website and public APIs no longer expose individual sample records or magnets; ordinary client hashes, peer endpoints, credentials and private forum source details remain private. The migration drops the old public sample and run tables; private sampling, handshake/bitmap evidence and subscription thresholds remain in use. Public endpoints and observations use typed allowlisted models from `tracker-model`. The website opens public data read-only. Web requests never initiate a probe or open the private sample store.
 

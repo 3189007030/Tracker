@@ -1973,7 +1973,7 @@ dependencies = [
 
 [[package]]
 name = "tracker-loadgen"
-version = "1.2.2"
+version = "1.2.3"
 dependencies = [
  "anyhow",
  "bt-protocol",
@@ -1994,7 +1994,7 @@ dependencies = [
 
 [[package]]
 name = "tracker-model"
-version = "1.2.2"
+version = "1.2.3"
 dependencies = [
  "serde",
  "serde_json",
@@ -2002,7 +2002,7 @@ dependencies = [
 
 [[package]]
 name = "tracker-server"
-version = "1.2.2"
+version = "1.2.3"
 dependencies = [
  "anyhow",
  "axum",
@@ -2022,7 +2022,7 @@ dependencies = [
 
 [[package]]
 name = "tracker-web"
-version = "1.2.2"
+version = "1.2.3"
 dependencies = [
  "anyhow",
  "axum",
