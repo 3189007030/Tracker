@@ -143,7 +143,7 @@ pub(crate) fn shell(title: &str, lang: Lang, body: &str) -> String {
     };
     let code = lang.code();
     format!(
-        r#"<!doctype html><html lang="{code}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><title>{title} · Tracker Observatory</title><link rel="icon" type="image/svg+xml" href="/assets/brand.svg?v=1.0.2"><link rel="icon" href="/favicon.ico?v=1.0.2" sizes="any"><link rel="apple-touch-icon" href="/assets/brand.png?v=1.0.2"><link rel="stylesheet" href="/assets/style.css?v=1.2.1"></head><body><header class="masthead"><div class="wrap nav-wrap"><a class="brand" href="/?lang={code}"><img class="brand-icon" src="/assets/brand.svg?v=1.0.2" alt=""><span>Tracker <b>Observatory</b></span></a><nav aria-label="{nav_label}"><a href="/?lang={code}">{nav_home}</a><a href="/trackers?lang={code}">{nav_trackers}</a><a href="/sources?lang={code}">{nav_sources}</a><a href="/declaration?lang={code}">{nav_declaration}</a></nav><div class="nav-actions"><div class="language" aria-label="Language">{language}</div><a class="github-link" href="https://github.com/3189007030/Tracker" rel="noopener noreferrer" aria-label="{github_label}" title="{github_label}"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="currentColor"><path d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.11.79-.25.79-.56v-2.19c-3.21.7-3.89-1.36-3.89-1.36-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.97.11-.75.4-1.26.73-1.55-2.56-.29-5.26-1.28-5.26-5.71 0-1.26.45-2.29 1.18-3.1-.12-.29-.51-1.46.11-3.05 0 0 .97-.31 3.16 1.18a10.98 10.98 0 0 1 5.75 0c2.19-1.49 3.15-1.18 3.15-1.18.63 1.59.24 2.76.12 3.05.74.81 1.18 1.84 1.18 3.1 0 4.44-2.7 5.41-5.28 5.7.42.36.78 1.06.78 2.14v3.22c0 .31.21.68.79.56A11.5 11.5 0 0 0 12 .5Z"/></svg></a></div></div></header><main class="wrap">{body}</main><footer class="wrap footer"><span>Tracker Observatory · {version}</span><span>{footnote}</span></footer><script src="/assets/tools.js?v=1.0.2" defer></script></body></html>"#,
+        r#"<!doctype html><html lang="{code}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><title>{title} · Tracker Observatory</title><link rel="icon" type="image/svg+xml" href="/assets/brand.svg?v=1.0.2"><link rel="icon" href="/favicon.ico?v=1.0.2" sizes="any"><link rel="apple-touch-icon" href="/assets/brand.png?v=1.0.2"><link rel="stylesheet" href="/assets/style.css?v=1.2.2"></head><body><header class="masthead"><div class="wrap nav-wrap"><a class="brand" href="/?lang={code}"><img class="brand-icon" src="/assets/brand.svg?v=1.0.2" alt=""><span>Tracker <b>Observatory</b></span></a><nav aria-label="{nav_label}"><a href="/?lang={code}">{nav_home}</a><a href="/trackers?lang={code}">{nav_trackers}</a><a href="/sources?lang={code}">{nav_sources}</a><a href="/declaration?lang={code}">{nav_declaration}</a></nav><div class="nav-actions"><div class="language" aria-label="Language">{language}</div><a class="github-link" href="https://github.com/3189007030/Tracker" rel="noopener noreferrer" aria-label="{github_label}" title="{github_label}"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="currentColor"><path d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.11.79-.25.79-.56v-2.19c-3.21.7-3.89-1.36-3.89-1.36-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.97.11-.75.4-1.26.73-1.55-2.56-.29-5.26-1.28-5.26-5.71 0-1.26.45-2.29 1.18-3.1-.12-.29-.51-1.46.11-3.05 0 0 .97-.31 3.16 1.18a10.98 10.98 0 0 1 5.75 0c2.19-1.49 3.15-1.18 3.15-1.18.63 1.59.24 2.76.12 3.05.74.81 1.18 1.84 1.18 3.1 0 4.44-2.7 5.41-5.28 5.7.42.36.78 1.06.78 2.14v3.22c0 .31.21.68.79.56A11.5 11.5 0 0 0 12 .5Z"/></svg></a></div></div></header><main class="wrap">{body}</main><footer class="wrap footer"><span>Tracker Observatory · {version}</span><span>{footnote}</span></footer><script src="/assets/tools.js?v=1.0.2" defer></script></body></html>"#,
         title = esc(title),
         version = esc(VERSION),
         nav_label = lang.pick("主导航", "Main navigation"),
@@ -176,6 +176,27 @@ fn copy_url(label: &str, url: &str, lang: Lang) -> String {
         esc(label),
         esc(url),
         esc(label),
+        esc(&name),
+        esc(&name)
+    )
+}
+
+fn copy_endpoint_url(url: &str, lang: Lang) -> String {
+    let name = format!(
+        "{}: {}",
+        lang.pick("复制", "Copy"),
+        lang.pick("Tracker 地址", "Tracker URL")
+    );
+    format!(
+        r#"<span class="url-copy" data-copy-row data-copy-ok="{}" data-copy-fail="{}"><code class="url-text">{}</code><input type="text" value="{}" aria-label="{}" readonly hidden><button class="copy-icon copy-icon--inline" type="button" data-copy-button hidden aria-label="{}" title="{}"><svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true"><path d="M8 7V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2h-3M5 7h9a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></button><small class="copy-status" role="status" aria-live="polite"></small></span>"#,
+        lang.pick("已复制。", "Copied."),
+        lang.pick(
+            "无法自动复制，请选中地址后手动复制。",
+            "Could not copy automatically. Select the address and copy it manually."
+        ),
+        esc(url),
+        esc(url),
+        esc(lang.pick("Tracker 地址", "Tracker URL")),
         esc(&name),
         esc(&name)
     )
@@ -905,12 +926,21 @@ pub(crate) fn listing_results(page: &Page, query: &str, protocol: &str, lang: La
         } else {
             String::new()
         };
-        rows.push_str(&format!(r#"<article class="tracker-row"><span class="tracker-rank">{rank}</span><div class="tracker-name">{flag} <a href="/tracker/{}?lang={code}">{}</a>{new}<div class="url">{}</div></div><div class="stack-pills">{v4}{v6}</div><div class="row-stat" title="{}"><small>{}</small><strong>{}</strong>{rate_note}</div><div class="row-stat" title="{}"><small>{}</small><strong>{}</strong></div><a class="row-link" href="/tracker/{}?lang={code}" aria-label="{}">↗</a></article>"#,
-            esc(&endpoint.id), esc(&endpoint.host), copy_url(lang.pick("Tracker 地址", "Tracker URL"), &endpoint.url, lang), esc(&rate_title), lang.pick("24h 成功率", "24h success"),
+        rows.push_str(&format!(
+            r#"<article class="tracker-row"><span class="tracker-rank">{rank}</span><div class="tracker-name">{flag} <a href="/tracker/{}?lang={code}">{}</a>{new}<div class="url">{}</div></div><div class="stack-pills">{v4}{v6}</div><div class="row-stat" title="{}"><small>{}</small><strong>{}</strong>{rate_note}</div><div class="row-stat" title="{}"><small>{}</small><strong>{}</strong></div></article>"#,
+            esc(&endpoint.id),
+            esc(&endpoint.host),
+            copy_endpoint_url(&endpoint.url, lang),
+            esc(&rate_title),
+            lang.pick("24h 成功率", "24h success"),
             esc(&pct(endpoint.evidence.success_rate_24h, lang)),
-            lang.pick("只统计实际测量到响应的观测；超时与本地故障不计入。", "Only observations with a measured response are counted; timeouts and local failures are excluded."),
+            lang.pick(
+                "只统计实际测量到响应的观测；超时与本地故障不计入。",
+                "Only observations with a measured response are counted; timeouts and local failures are excluded."
+            ),
             lang.pick("响应延迟中位数", "Median latency"),
-            esc(&millis(endpoint.evidence.median_latency_ms, lang)), esc(&endpoint.id), lang.pick("查看详情", "Details")));
+            esc(&millis(endpoint.evidence.median_latency_ms, lang))
+        ));
     }
     if rows.is_empty() {
         let message = if !page.has_snapshot {
