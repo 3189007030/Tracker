@@ -871,10 +871,10 @@ async fn legacy_pages_redirect_and_home_has_copyable_endpoints() {
     }
     assert!(!home.contains("announce.augrains.com"));
     assert!(home.contains("id=\"native-trackers\""));
-    assert!(home.contains("/assets/style.css?v=1.2.3"));
+    assert!(home.contains("/assets/style.css?v=1.2.4"));
     assert!(home.contains("href=\"https://github.com/3189007030/Tracker\""));
-    assert!(home.contains("/assets/tools.js?v=1.2.3"));
-    assert!(home.contains("/assets/charts.js?v=1.2.3"));
+    assert!(home.contains("/assets/tools.js?v=1.2.4"));
+    assert!(home.contains("/assets/charts.js?v=1.2.4"));
     assert!(home.contains("/assets/chart.umd.js?v=4.6.1"));
     assert!(!home.contains("/api/v1/experiments"));
     assert!(!home.contains("href=\"/tools"));
@@ -1072,7 +1072,7 @@ async fn list_page_uses_live_search_and_accessible_pagination() {
     for needle in [
         "data-tracker-filters",
         "data-tracker-results",
-        "/assets/list.js?v=1.2.3",
+        "/assets/list.js?v=1.2.4",
         "data-page-jump",
         "name=\"limit\"",
         "第 1 / 2",
