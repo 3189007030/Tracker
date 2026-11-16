@@ -5,6 +5,16 @@
         const theme = localStorage.getItem("theme");
         if (theme === "light" || theme === "dark") {
             document.documentElement.setAttribute("data-theme", theme);
+        } else {
+            const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+            document.documentElement.setAttribute("data-theme", prefersDark ? "dark" : "light");
+        }
+        if (window.matchMedia) {
+            window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (e) => {
+                if (!localStorage.getItem("theme")) {
+                    document.documentElement.setAttribute("data-theme", e.matches ? "dark" : "light");
+                }
+            });
         }
     } catch (_) {}
 })();
