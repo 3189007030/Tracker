@@ -1,5 +1,14 @@
 "use strict";
 
+(() => {
+    try {
+        const theme = localStorage.getItem("theme");
+        if (theme === "light" || theme === "dark") {
+            document.documentElement.setAttribute("data-theme", theme);
+        }
+    } catch (_) {}
+})();
+
 document.querySelectorAll("[data-copy-button]").forEach((button) => { button.hidden = false; });
 
 const languageSwitcher = document.querySelector("[data-language-switcher]");
@@ -8,6 +17,16 @@ if (languageSwitcher) {
         const url = new URL(window.location.href);
         url.searchParams.set("lang", link.getAttribute("lang"));
         link.href = `${url.pathname}?${url.searchParams.toString()}${url.hash}`;
+    });
+}
+
+const themeToggle = document.querySelector("[data-theme-toggle]");
+if (themeToggle) {
+    themeToggle.addEventListener("click", () => {
+        const current = document.documentElement.getAttribute("data-theme") || (window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+        const next = current === "dark" ? "light" : "dark";
+        document.documentElement.setAttribute("data-theme", next);
+        try { localStorage.setItem("theme", next); } catch (_) {}
     });
 }
 
