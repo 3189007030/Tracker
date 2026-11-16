@@ -112,7 +112,11 @@ html[data-theme="light"] {
 }
 
 * { box-sizing: border-box; }
-html { scroll-behavior: smooth; }
+html {
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
 body {
   margin: 0;
   background-color: var(--bg);
@@ -123,13 +127,17 @@ body {
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 ::selection { background: var(--accent-soft); color: var(--accent-strong); }
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-track { background: var(--surface-soft); }
-::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
 
 a { color: var(--accent-strong); text-decoration: none; transition: color .15s ease; }
 a:hover { color: var(--accent); text-decoration: underline; }
@@ -155,7 +163,7 @@ button { color: inherit; }
 }
 .skip-link:focus { top: 16px; }
 
-/* Obsidian OS Floating Frosted Glass Navbar */
+/* Obsidian OS Floating Frosted Glass Navbar with Scroll Depth Feedback */
 .masthead {
   position: sticky;
   top: 16px;
@@ -168,9 +176,64 @@ button { color: inherit; }
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--line);
   box-shadow: var(--shadow-glass);
-  transition: all .2s ease;
+  overflow: hidden;
+  transition: box-shadow .25s ease, border-color .25s ease;
 }
+.masthead.is-scrolled {
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+html[data-theme="light"] .masthead.is-scrolled {
+  box-shadow: 0 14px 35px rgba(15, 23, 42, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  border-color: rgba(15, 23, 42, 0.14);
+}
+
+/* Scroll Depth Background Gradient Fill */
+.masthead::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg,
+    rgba(16, 185, 129, 0.22) 0%,
+    rgba(56, 189, 248, 0.18) var(--scroll-depth, 0%),
+    transparent var(--scroll-depth, 0%)
+  );
+  pointer-events: none;
+  z-index: 0;
+  transition: background 0.04s linear;
+}
+html[data-theme="light"] .masthead::before {
+  background: linear-gradient(90deg,
+    rgba(16, 185, 129, 0.14) 0%,
+    rgba(2, 132, 199, 0.12) var(--scroll-depth, 0%),
+    transparent var(--scroll-depth, 0%)
+  );
+}
+
+/* Scroll Depth Bottom Capsule Glowing Line */
+.masthead::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2.5px;
+  width: var(--scroll-depth, 0%);
+  background: linear-gradient(90deg, var(--accent), var(--accent-cyan));
+  box-shadow: 0 0 10px var(--accent);
+  border-radius: var(--radius-pill);
+  pointer-events: none;
+  z-index: 1;
+  transition: width 0.04s linear;
+}
+html[data-theme="light"] .masthead::after {
+  background: linear-gradient(90deg, #059669, #0284c7);
+  box-shadow: 0 0 8px rgba(5, 150, 105, 0.45);
+}
+
 .nav-wrap {
+  position: relative;
+  z-index: 2;
   min-height: 56px;
   padding: 0 18px;
   display: flex;
@@ -1153,7 +1216,7 @@ td:nth-child(8) {
 
 @media (max-width: 768px) {
   .wrap { width: min(100% - 32px, 640px); }
-  .masthead { position: relative; top: 8px; margin: 8px auto 0; border-radius: 16px; }
+  .masthead { position: sticky; top: 8px; margin: 8px auto 0; border-radius: 16px; }
   .nav-wrap { min-height: 58px; flex-wrap: wrap; gap: 10px; padding: 10px 16px; }
   .menu-toggle { display: block; margin-left: auto; }
   .site-nav, .nav-wrap nav {

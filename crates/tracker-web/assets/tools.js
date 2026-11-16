@@ -60,6 +60,28 @@ if (menuToggle && siteNav) {
     });
 }
 
+// Dynamic scroll depth indicator on floating masthead
+const masthead = document.querySelector(".masthead");
+if (masthead) {
+    let ticking = false;
+    const updateScrollProgress = () => {
+        const doc = document.documentElement;
+        const total = doc.scrollHeight - window.innerHeight;
+        const progress = total > 0 ? Math.min(1, Math.max(0, window.scrollY / total)) : 0;
+        masthead.style.setProperty("--scroll-depth", `${(progress * 100).toFixed(1)}%`);
+        masthead.classList.toggle("is-scrolled", window.scrollY > 12);
+        ticking = false;
+    };
+    window.addEventListener("scroll", () => {
+        if (!ticking) {
+            window.requestAnimationFrame(updateScrollProgress);
+            ticking = true;
+        }
+    }, { passive: true });
+    window.addEventListener("resize", updateScrollProgress, { passive: true });
+    updateScrollProgress();
+}
+
 const path = window.location.pathname;
 const activeKey = path === "/" ? "home" : path.startsWith("/trackers") || path.startsWith("/tracker/") ? "trackers" : path.startsWith("/sources") ? "sources" : path.startsWith("/declaration") ? "declaration" : "";
 document.querySelectorAll("[data-nav-key]").forEach((item) => {
