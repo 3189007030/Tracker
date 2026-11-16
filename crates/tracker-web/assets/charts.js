@@ -8,14 +8,44 @@
         if (!response.ok) throw new Error("unavailable");
         return response.json();
     };
-    const colors = ["#16896b", "#6c70d7"];
+    const colors = ["#10b981", "#38bdf8"];
     const options = {
         responsive: true, maintainAspectRatio: false, animation: false,
-        parsing: false, spanGaps: false, plugins: {legend: {display: true}},
-        scales: {x: {type: "linear", ticks: {maxTicksLimit: 6, callback(value) {
-            const d = new Date(value * 1000);
-            return Number.isFinite(d.getTime()) ? d.toISOString().slice(5, 16).replace("T", " ") : "";
-        }}}, y: {beginAtZero: true}}
+        parsing: false, spanGaps: false,
+        plugins: {
+            legend: {
+                display: true,
+                labels: { color: "#cbd5e1", font: { size: 12, family: "Inter, system-ui, sans-serif" }, boxWidth: 14, padding: 12 }
+            },
+            tooltip: {
+                backgroundColor: "rgba(14, 20, 26, 0.92)",
+                titleColor: "#f8fafc",
+                bodyColor: "#cbd5e1",
+                borderColor: "rgba(255, 255, 255, 0.12)",
+                borderWidth: 1,
+                padding: 10,
+                cornerRadius: 8
+            }
+        },
+        scales: {
+            x: {
+                type: "linear",
+                grid: { color: "rgba(255, 255, 255, 0.05)" },
+                ticks: {
+                    color: "#94a3b8",
+                    maxTicksLimit: 6,
+                    callback(value) {
+                        const d = new Date(value * 1000);
+                        return Number.isFinite(d.getTime()) ? d.toISOString().slice(5, 16).replace("T", " ") : "";
+                    }
+                }
+            },
+            y: {
+                beginAtZero: true,
+                grid: { color: "rgba(255, 255, 255, 0.05)" },
+                ticks: { color: "#94a3b8" }
+            }
+        }
     };
     const optionsForWindow = (seconds) => {
         const now = Date.now() / 1000;
