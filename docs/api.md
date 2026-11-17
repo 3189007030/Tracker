@@ -1,8 +1,8 @@
-# Public API — 1.2.3
+# Public API
 
-This document describes the current public contract. The 1.2.x releases added canonical endpoint aliases, resolved probe addresses and progressive list pagination while retaining the existing observation and aggregate routes. The 1.2.3 release also refreshes the web presentation and hardens list requests; it does not add a new JSON field or remove an existing public route. `/trackers/partial` is an internal HTML fragment, not a JSON route. Release-specific gate and deployment facts are recorded in [1.2.3 validation](validation-1.2.3.md), while [1.2.1](validation-1.2.1.md) and [1.2.0](validation-1.2.0.md) remain historical ledgers.
+This page describes the public routes, fields and data boundaries in the current source. See the [changelog](<../CHANGELOG.md>) for source changes and [release records](<releases/README.md>) for version-specific validation and deployment evidence.
 
-The new API does not retain the Python JSON schema or composite score. Unknown is `null`, and a real, published empty dataset is distinct from a missing snapshot.
+The public API does not retain the Python JSON schema or composite score. Unknown is `null`, and a real, published empty dataset is distinct from a missing snapshot.
 
 | Route | Behavior |
 | --- | --- |
@@ -28,11 +28,13 @@ An endpoint that duplicates another endpoint of the same origin — a hostname U
 
 `announce` events determine health, family status and subscription eligibility. `sample_announce` records a selected public-sample request and distinguishes a valid empty response from an error. `handshake` records an aggregate attempt outcome without peer addresses. These diagnostic stages do not increase health-success denominators or qualify a tracker by themselves.
 
-Observation query results may include optional `target_ip`: the resolved public address the probe actually contacted, the value the detail observation log shows in its 目标 IP column. It is the tracker's server address, not a peer address, and it is omitted when no address was selected or the address is not public. It separates stale DNS or a changed address from a timeout, which otherwise produce the same failed observation.
+Observation query results may include optional `target_ip`: the resolved public address the probe actually contacted, the value the detail observation log shows in its 目标 IP column. It is the tracker's server address, not a peer address, and it is omitted when no address was selected or the address is not public. It separates stale DNS or a changed address from a timeout, which otherwise produce the same failed observation. The detail log localizes failure reasons and includes HTTP status when applicable rather than displaying raw internal categories. A no-address result shows a dash in the reply and reason columns; the target-address column also shows a dash when no address was contacted.
 
 `families[].state` describes the latest observation's state and freshness (for example success, stale, unknown/untested or no address). `evidence.success_rate_24h` is historical and counts only completed observations: untested families, local failures and families with no address are not in that denominator. A stale or untested family can therefore show a 100% rate without contradiction; the website states this explicitly, including the successful/completed count behind the rate (for example 12/12).
 
-HTTP success requires structurally valid tracker fields. `incomplete_protocol` is an unverified reply missing required peer fields, even when HTTP is 200. `peers_unusable` means entries were returned but none can be used by the bounded peer verifier; it is distinct from an empty reply and does not imply an attempted or failed handshake.
+HTTP success requires structurally valid tracker fields. Since 1.2.2 a reply to a `numwant=0` health request may omit the peer fields, and the observatory no longer writes `incomplete_protocol`; the label remains accepted for observations recorded earlier. `peers_unusable` means entries were returned but none can be used by the bounded peer verifier; it is distinct from an empty reply and does not imply an attempted or failed handshake.
+
+Observation `error_category` uses an allowlist: a category the website does not recognise is published as null rather than passed through; `handshake_failed` is allowed. The observatory's ghost-sample verdict is not on this allowlist. It remains a private diagnostic, is not published as `error_category`, and does not affect family status, success rates or feed membership; the [release evidence](<releases/1.2.5.md>) explains why.
 
 Native `/stats.json` exposes a coarse `pressure.active` flag and reason for bounded background cooperation. State admission at 90% of the logical budget, a recent global capacity refusal or near-exhausted HTTP handler slots raises the flag. This is a resource signal, not a quality score or a throughput guarantee.
 

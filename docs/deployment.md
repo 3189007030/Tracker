@@ -1,6 +1,6 @@
 # Native deployment
 
-This guide describes the current immutable-release procedure for the Tracker Observatory services. It is version-neutral: use the release version, source commit and validation ledger that are actually being promoted. A procedure is not evidence that a release was built, deployed or accepted by a third party; record those facts in `docs/validation-<version>.md`.
+This guide describes the current immutable-release procedure for the Tracker Observatory services. It is version-neutral: use the release version, source commit and validation ledger that are actually being promoted. A procedure is not evidence that a release was built, deployed or accepted by a third party; record those facts in `docs/releases/<version>.md`.
 
 ## Build an immutable release
 

@@ -1,27 +1,35 @@
 # Tracker Observatory
 
-一个使用 Rust 实现的 BitTorrent Tracker 与观测项目。原生 Tracker 的 HTTP 和 UDP 共用分片内存蜂群；独立观测器检测公开 Tracker，并为双语网站发布只读数据。
+Tracker Observatory 是一个 Rust 工作区，包含三个独立服务：原生 BitTorrent Tracker `tracker-server` 的 HTTP/UDP 通告共用分片内存蜂群；观测器 `observatory` 探测公开 Tracker、发布只读数据；`tracker-web` 提供双语网站和公开 API。另有运维负载生成工具 `tracker-loadgen` 和共享协议、状态、数据模型库。线上：[Tracker Observatory](<https://tracker.augrains.com/>)。
 
-工作区包含 `tracker-server`、`observatory`、`tracker-web` 和 `tracker-loadgen`，以及共享的协议、状态和数据模型库。前三者是独立服务，负载生成器是运维工具。
+[English](<README.md>)
 
-## 行为与边界
+## 它做什么
 
-- 通告只返回本站同一资源中真实登记的节点，不向其他 Tracker 查询。Scrape 计数只反映本站；登记状态和完成计数驻留内存，会随相应蜂群或进程结束而清除。
-- 观测器分别检测 IPv4 和 IPv6，区分 HTTP 状态、Tracker 协议结果和本地故障。未知保持未知，空列表不凑数。
-- 节点握手和位图观测不请求文件分块；握手成功或节点声称拥有位图，并不能证明内容可以下载。
-- 节点 IP 和端口会返回给通告同一资源的其他客户端。原生登记信息驻留内存，观测器保存私有测量证据；项目不承诺匿名或法律豁免。网站和公开 API 不展示单个样本、资源磁力链接、原始节点地址或普通客户端资源 hash。
-- 两个样本池均有上限，实际数量取决于来源是否可用；来源故障时不虚构样本。论坛来源设置由部署者私下管理。
-- 网站提供首页、列表、来源和声明，支持观测及文本/JSON/RSS 订阅。网站读取已发布的分钟级汇总，不因每次访问查询原生统计。
-- 列表页支持边输入边筛选：短暂停顿后向同源地址请求服务端渲染的结果片段，只替换结果区域；没有 JavaScript 时同一个 GET 表单照常提交并整页渲染。分页提供带省略号的页码链接、上一页/下一页、跳转页码输入框和每页 25/50/100 条选择；`q`、`protocol`、`page`、`limit` 一起保留在 URL 中，筛选或翻页通过 fetch 和 History API 更新，不整页刷新。
-- 同一 origin 的重复端点——同一 scheme、端口和路径下的域名地址与字面 IP 地址——归并为一个规范端点：只发布并探测规范端点，别名不进入列表和订阅，详情页保留跳转，也不再探测，避免同一 Tracker 来源收到重复通告。公开端点 JSON 新增可选 `alias_of`。
-- 详情页的观测失败原因使用本地化说法，适用时带上状态信息（如 `HTTP 429 · 频率限制`、`超时`、`DNS 解析失败`、`HTTP 502 · 网关错误`），不再直接显示内部类别字符串；并展示探测实际连接的解析后公网地址（观测 JSON 中为可选 `target_ip`）。该地址是 Tracker 服务器地址，不是节点地址，可区分 DNS 陈旧或地址变化与单纯超时。结果为未发现地址的观测在“有效 Tracker 回复”和“原因”列显示破折号（—），不再显示“未知”或内部代码。
-- 地址族状态（成功/已过期/未知 / 未测/未发现地址）描述最近一次观测的新鲜度；24h 成功率是历史统计，只计已完成观测，未测、本地故障和未发现地址都不进入分母。页面会明确说明这一点以及成功率背后的成功/已完成次数（例如 12/12），因此已过期或未测的地址族可以同时显示 100%。
+- **原生 Tracker：** HTTP/UDP 通告与本站 Scrape 计数。
+- **观测器：**探测公开 Tracker，保留私有测量证据。
+- **网站与订阅：**首页、列表、来源、声明；原生统计读取已发布的分钟汇总，不因每次访问查询原生服务。六种订阅 `trackers.txt`、`trackers_best.txt`、`trackers_all.txt`、`trackers_udp.txt`、`trackers_http.txt`、`trackers_https.txt` 均有 txt/JSON/RSS 格式，按端点证据入选，每个服务一条，证据不足可为空。
+- **公开 API：**端点状态、观测与汇总历史，见 [API 说明](<docs/api.md>)。
 
-线上服务：[Tracker Observatory](https://tracker.augrains.com/)。历史版本材料只描述各自版本的部署和测试条件，不能代表当前源码或性能。当前 1.2.3 版本合并了观测台界面重构、列表可靠性修复和既有 1.2.x 公共 API；当前验证账本见 [1.2.3 验证](docs/validation-1.2.3.md)，[1.2.1 验证](docs/validation-1.2.1.md) 与 [1.2.0 验证](docs/validation-1.2.0.md) 保留作历史记录。构建成功、短时测试或一次列表检测均不能证明持续承载能力或第三方收录。
+## 它不做什么 / 边界
+
+- 通告只返回本站同资源的真实登记节点，不查询其他 Tracker。登记和完成计数驻留内存，随相应蜂群或进程结束而清除。
+- 未知保持未知，空列表不凑数。两个样本池均有上限，数量取决于来源可用性；故障时不虚构公开样本。论坛来源配置私有；幽灵样本命中只作私有诊断，不影响订阅资格。
+- 节点观测不请求文件分块；握手成功或声称拥有位图，不证明内容可下载。
+- 节点 IP/端口会返回给通告同资源的其他客户端；不承诺匿名或法律豁免。网站与公开 API 不展示单个样本、磁力链接、原始节点地址或普通客户端资源 hash。
+- 构建成功、短测或列表检测不证明持续承载能力或第三方收录。历史验证只适用所记部署、测试条件，不代表当前源码状态或性能。
+- 不要对第三方做负载测试，也不要让两个观测器同时写同一数据目录。
+
+## 公开数据的口径
+
+- IPv4/IPv6 分开判定；HTTP 状态、Tracker 协议结果、本地故障互不等同。
+- 地址族状态描述最近一次观测的新鲜度；24h 成功率只计历史已完成观测，未测、本地故障、未发现地址不入分母。“已过期”或“未测”可与 100% 同时出现。
+- 同协议、端口、路径下，同源的域名与字面 IP 端点合并为一个规范端点；仅规范端点进入列表、订阅并接受探测。别名保留详情跳转和可选 `alias_of`。
+- 可选 `target_ip` 是实际连接的公网 Tracker 服务器地址，不是节点地址；可区分 DNS 陈旧、地址变化与超时。
 
 ## 构建与验证
 
-通过 rustup 安装 Rust；工具链和组件由 `rust-toolchain.toml` 固定。内置 SQLite 构建还需要 C 编译器和常用构建工具。在仓库根目录执行：
+用 rustup 安装 Rust，[rust-toolchain.toml](<rust-toolchain.toml>) 固定工具链和组件；内置 SQLite 构建还需 C 编译器和常用构建工具。在仓库根目录执行：
 
 ```sh
 cargo fmt --all -- --check
@@ -30,10 +38,23 @@ cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo build --workspace --release --locked
 ```
 
-测试使用固定样本和本机回环模拟，不要求访问线上 Tracker 或生产服务器。安装依赖需要访问配置的 Rust 包源。不要对第三方服务进行负载测试。
+测试用固定样本和本机回环模拟，不依赖线上 Tracker 或生产主机；安装依赖须能访问配置的 Rust 包源。
 
-配置示例位于 `config/`。部署前请复制并按实际环境修改，检查监听地址和来源设置，并阅读[部署指南](docs/deployment.md)、[API](docs/api.md)和[发布打包](docs/release-packaging.md)。部分示例配置和网站链接目前仍绑定原站；使用其他域名前请阅读[开源审查](docs/open-source-review.md)。不要让两个观测器同时写入同一数据目录。
+## 配置与部署
 
-另见[贡献指南](CONTRIBUTING.md)、[安全说明](SECURITY.md)、[开源审查](docs/open-source-review.md)和[第三方许可声明](docs/third-party-notices.txt)。项目代码使用 [MIT 许可证](LICENSE)，内置组件另有各自的许可说明。
+按实际环境复制、修改[配置示例](<config/>)，检查监听地址与来源设置。部分示例键和网站链接绑定原站；换用域名前读[部署指南](<docs/deployment.md>)、[API](<docs/api.md>)、[发布打包](<docs/release-packaging.md>)和[开源审查](<docs/open-source-review.md>)。
 
-原生通告优化与实测边界：[1.0.4 验证](docs/validation-1.0.4.md)、[参考项目研究](docs/optimization-1.0.4.md)及[日请求量与状态容量](docs/billion-request-envelope.md)。
+## 文档导航
+
+从[文档索引](<docs/README.md>)开始。
+
+- [CHANGELOG.md](<CHANGELOG.md>)：源码改了什么。
+- [各版本记录](<docs/releases/README.md>)：每个版本的验证与部署证据。
+- [发布流程](<docs/release-process.md>)：如何记录与发布版本。
+- [容量研究](<docs/capacity/>)：方法、实测边界与请求量 / 状态容量。
+
+部署实际运行的版本，只以它的 `/healthz` 为准。
+
+## 贡献、安全与许可
+
+请阅读[贡献指南](<CONTRIBUTING.md>)、[安全说明](<SECURITY.md>)和[第三方许可声明](<docs/third-party-notices.txt>)。项目代码使用 [MIT 许可证](<LICENSE>)，内置组件另有各自的许可说明。

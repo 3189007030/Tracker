@@ -1,6 +1,6 @@
 # Architecture
 
-This page describes the current 1.2.3 architecture. Release-specific gate and deployment facts are recorded in [1.2.3 validation](validation-1.2.3.md); older ledgers remain historical evidence. Architecture alone is not proof of capacity or third-party acceptance.
+This page describes the request, evidence and publication paths and operating boundaries in the current source. See the [changelog](<../CHANGELOG.md>) and [release records](<releases/README.md>) for source changes and version-specific validation and deployment evidence; architecture alone is not proof of capacity or third-party acceptance.
 
 ## Request path
 
@@ -14,7 +14,7 @@ The native request path returns only same-resource peers genuinely registered in
 
 ## Independent evidence path
 
-Public tracker lists and selected public torrents feed the observatory when their configured sources are available. Daily collection keeps bounded official and secondary pools, preserves source status and retry state, and never fabricates public samples when a source is unavailable. An unconfigured forum-source slot is filled with deterministic ghost hashes used only to detect poisoned or fake-seeding responses; those hashes are not real content and are not presented as community samples. The observatory resolves and validates addresses, checks IPv4 and IPv6 separately, and records transport, protocol and local outcomes. A bounded pool verifies returned peer handshakes and bitmaps without requesting payload.
+Public tracker lists and selected public torrents feed the observatory when their configured sources are available. Daily collection keeps bounded official and secondary pools, preserves source status and retry state, and never fabricates public samples when a source is unavailable. An unconfigured forum-source slot is filled with deterministic ghost hashes intended to detect poisoned or fake-seeding responses; those hashes are not real content and are not presented as community samples. A tracker that returns peers for a ghost hash is flagged privately. The flag does not change feed eligibility, address-family status or success rates, and is not published as an observation `error_category`. Measured on the production host, it fires on about a fifth of listed endpoints, long-established trackers included; the [release ledger](<releases/1.2.5.md>) explains why it remains a diagnostic, not a verdict. The observatory resolves and validates addresses, checks IPv4 and IPv6 separately, and records transport, protocol and local outcomes. A bounded pool verifies returned peer handshakes and bitmaps without requesting payload.
 
 Private sample state is separated from the public SQLite contract. The website and public APIs no longer expose individual sample records or magnets; ordinary client hashes, peer endpoints, credentials and private forum source details remain private. The migration drops the old public sample and run tables; private sampling, handshake/bitmap evidence and subscription thresholds remain in use. Public endpoints and observations use typed allowlisted models from `tracker-model`. The website opens public data read-only. Web requests never initiate a probe or open the private sample store.
 

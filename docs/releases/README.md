@@ -1,0 +1,30 @@
+# Release index
+
+This table summarizes each version's ledger and deployment evidence. Status terms are defined in the [release process](../release-process.md); entries distinguish confirmed events from inferred or missing evidence.
+
+| Version | Status | Promoted (UTC) | Built commit(s) | Tag → commit | Ledger | Notes |
+|---|---|---|---|---|---|---|
+| 1.0.0 | superseded | 2026-11-10 19:26:34Z; 2026-11-11 03:41:05Z (web guide only) | `a828e425` (binaries; ledger names source `0bc0ef76`); `69bed920` (web-only correction) | None recorded | [1.0.0](1.0.0.md) | 118 tests recorded. Four full binary hashes not recorded. |
+| 1.0.1 | superseded | 2026-11-11 06:06:33Z | `09e8dd1` | None recorded | [1.0.1](1.0.1.md) | 116 tests passed. Four full binary hashes not recorded. |
+| 1.0.2 | superseded | 2026-11-11 09:48:09Z | `e39cdf5` | None recorded | [1.0.2](1.0.2.md) | 117 offline tests passed. Four full binary hashes not recorded. This patch release removed public APIs and tables; current version semantics classify structural/schema changes as minor. |
+| 1.0.3 | incomplete record | Not recorded | Build commit not recorded; release directory identifies source `49ba8738` | On origin; `v1.0.3` → `49ba873` (build match not recorded) | [1.0.3](1.0.3.md) | S1 contains `1.0.3-49ba8738` with a manifest, but no cutover time was recovered. The ledger says deployment was not claimed when written. |
+| 1.0.4 | superseded | 2026-11-12 05:10:12Z | `a63434c` | Local only; `v1.0.4` → `0aaf8c9` (documentation commit, not build commit) | [1.0.4](1.0.4.md) | 124 tests passed. Ledger records the full native server hash, but not full SHA-256 values for all four binaries. |
+| 1.1.0 | superseded | 2026-11-12 21:51:08Z (`1.1.0-0aaf8c9e`); 22:33:29Z (`1.1.0-c5fc4cab`); 22:49:32Z (`1.1.0-d0c873df`) | `0aaf8c9`, `c5fc4ca`, `d0c873d` | Local only; `v1.1.0` → `d0c873d` (matches final cutover) | [1.1.0](1.1.0.md) | Ledger reports 0 failed tests but no total test count; binary hashes are prefixes only. Three same-version cutovers. |
+| 1.2.0 | superseded | 2026-11-14 19:56:54Z (`1.2.0-b3acc310`) | `b3acc31` | Local only; `v1.2.0` → `eb49179` (ledger commit, not build commit) | [1.2.0](1.2.0.md) | 145 tests passed. Binary hashes are prefixes only. |
+| 1.2.1 | superseded | 2026-11-14 20:35:10Z (`1.2.1-3cf8ea82`); 20:46:54Z (`1.2.1-4ea93a47`); 2026-11-15 07:20:50Z (`1.2.1-ae9e5e59`); 15:42:12Z (`1.2.1-f1ab2f4f`) | `3cf8ea8`, `4ea93a4`, `ae9e5e5`, `f1ab2f4` | Local only; `v1.2.1` → `f232228` (documentation commit, not build commit) | [1.2.1](1.2.1.md) | 148 tests passed. Four cutovers; the ledger records only the first two. Binary hashes are prefixes only. |
+| 1.2.2 | incomplete record | 2026-11-15 16:30:17Z (`1.2.2-812cf6f2`); 16:37:54Z (`1.2.2-0fd88cc8`); 16:52:33Z (`1.2.2-346d30b6`); 17:08:00Z (`1.2.2-e107f388`); 17:30:30Z (`1.2.2-0dda00ea`) | `812cf6f`, `0fd88cc`, `346d30b`, `e107f38`, `0dda00e` | No tag | None | Confirmed live in five cutovers. No ledger, tag, or gate logs/test counts were found. |
+| 1.2.3 | incomplete record | 2026-11-15 20:22:29Z (`1.2.3-8d19294`); 2026-11-16 02:54:39Z (restore to `1.2.3-8d19294`); 02:59:40Z (`1.2.3-6cbf04d3`); 03:15:56Z (`1.2.3-336c7101`); 03:35:22Z (`1.2.3-d86ba869`); 03:46:21Z (`1.2.3-743cacd0`); 03:57:07Z (return to `1.2.3-743cacd0`) | `8d19294` (directory suffix only, source commit not independently verified), `6cbf04d`, `336c710`, `d86ba86`, `743cacd` | No tag | [1.2.3](1.2.3.md) | Five builds, seven activations; `1.2.3-743cacd0` is the build running as of 2026-11-17. The first directory has no manifest. Production returned to a 1.2.2 build for about 20 seconds at 2026-11-16 02:54:19Z; which directory was not recorded. Release artifacts exist, but no fmt/test/clippy logs or test counts. The running build's manifest commit and four hashes are in the ledger correction. |
+| 1.2.4 | rolled back | 2026-11-16 03:56:47Z (inferred trial); 03:57:07Z (inferred return to 1.2.3) | `bdbda2fc` | No tag | [1.2.4](1.2.4.md) | Directory `1.2.4-bdbda2fc`; only `tracker-web` was rebuilt (`a0980ac3…`). The switch is inferred from restart times; no gate evidence or rollback reason was found. |
+| 1.2.5 | candidate | Not promoted | Not committed yet; gated build inputs are identified by a blob list in the ledger | No tag | [1.2.5](1.2.5.md) | All four gates passed on 2026-11-17 with 153 tests; four full binary hashes recorded. Not promoted. |
+
+## Known gaps in the record
+
+- 1.2.1, 1.2.2 and 1.2.3 each had several builds cut over under one version (four, five and five). Since `/healthz` exposes only the version, it cannot distinguish them.
+- The 1.2.4 short trial is supported only by restart timing and directory evidence; the transient `current` target and rollback reason were not recorded directly.
+- 1.2.2 has five manifest-backed cutovers and no ledger or tag. The cutover times in this table for 1.2.1 through 1.2.4 come from the service start log on the host, read on 2026-11-17, not from records written at the time.
+- S1 contains an 1.0.3 release directory and manifest, while its ledger says production deployment was not claimed when written. The cutover time remains unavailable.
+- Several tags are misplaced relative to historical builds: `v1.0.4`, `v1.2.0` and `v1.2.1` point to documentation commits. Four tags (`v1.0.4`, `v1.1.0`, `v1.2.0`, `v1.2.1`) remain local only, not on `origin`.
+- Older ledgers generally lack full SHA-256 values for all four binaries; 1.1.0's gate record also lacks the total test count.
+- The public `/releases/` directory contains assets for v1.0.0, v1.0.1, v1.0.2 and v1.0.4. It has no v1.0.3, 1.1.x or 1.2.x assets. The 1.0.0 ledger's `/releases/v1.0.0/` link is therefore present, not broken.
+- The 1.0.2 release removed public API routes and tables while retaining a patch version. Current version semantics classify structural/schema changes as minor; this policy does not rename past releases.
+- The 1.2.2 changelog overstated the feed effect of `poisoned_peers`; the correction and evidence are in the 1.2.5 ledger.

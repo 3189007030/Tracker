@@ -15,12 +15,16 @@ import tarfile
 import tempfile
 import tomllib
 
-VERSION = "1.0.4"
+VERSION_RE = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+")
+LEDGER_RE = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+\.md")
 BINARIES = ("tracker-server", "observatory", "tracker-web", "tracker-loadgen")
 MAX_SOURCE_BYTES = 64 * 1024 * 1024
 MAX_BINARY_BYTES = 100 * 1024 * 1024
 ROOT_FILES = {"Cargo.toml", "Cargo.lock", "rust-toolchain.toml", "README.md", "README.zh-CN.md", "LICENSE", "CHANGELOG.md", "SECURITY.md", "CONTRIBUTING.md", ".gitignore", ".gitattributes"}
-DOCS = {"architecture.md", "api.md", "validation.md", "validation-1.0.1.md", "validation-1.0.2.md", "validation-1.0.3.md", "validation-1.0.4.md", "optimization-1.0.4.md", "billion-request-envelope.md", "open-source-review.md", "benchmark-method.md", "capacity-report.md", "memory-profile-analysis.md", "listing-status.md", "newtrackon-nz-request.md", "ngosang-submission.md", "deployment.md", "cloudflare-ingress.md", "release-packaging.md", "third-party-notices.txt"}
+TOP_DOCS = {"README.md", "architecture.md", "api.md", "deployment.md", "cloudflare-ingress.md", "release-packaging.md", "release-process.md", "open-source-review.md", "third-party-notices.txt"}
+CAPACITY = {"benchmark-method.md", "capacity-report.md", "billion-request-envelope.md", "memory-profile-analysis.md", "optimization-1.0.4.md"}
+LISTINGS = {"listing-status.md", "ngosang-submission.md", "newtrackon-nz-request.md"}
+RELEASES = {"README.md", "TEMPLATE.md"}
 DEPLOY = {"tracker-browser.conf", "ingress.conf", "ingress-bootstrap.conf", "nftables.conf", "nginx.conf", "tracker-locations.inc", "tracker-web.service", "tracker-v1.service", "tracker-observatory.service", "tracker-cloudflare-realip.service", "tracker-cloudflare-realip.timer", "refresh-cloudflare-realip.py"}
 VALIDATION = {"README.md", "wirecheck.rs", "capacity_guard.rs", "capacity-guard.md", "http_connection_probe.rs", "http-connection-probe.md", "package_release.py"}
 BENCHMARKS = {"v1.0.4-offline-gate.json", "v1.0.4-short-comparison.json"}
@@ -40,8 +44,16 @@ def allowed(name):
         return False
     if name in {"config/config.example.toml", "config/sources.toml"}:
         return True
-    if len(p.parts) == 2 and ((p.parts[0] == "docs" and p.name in DOCS) or (p.parts[0] == "deploy" and p.name in DEPLOY) or (p.parts[0] == "validation" and p.name in VALIDATION) or (p.parts[0] == "benchmarks" and p.name in BENCHMARKS)):
+    if len(p.parts) == 2 and ((p.parts[0] == "deploy" and p.name in DEPLOY) or (p.parts[0] == "validation" and p.name in VALIDATION) or (p.parts[0] == "benchmarks" and p.name in BENCHMARKS)):
         return True
+    if p.parts[0] == "docs":
+        if len(p.parts) == 2:
+            return p.name in TOP_DOCS
+        if len(p.parts) == 3:
+            group, name = p.parts[1], p.parts[2]
+            return ((group == "capacity" and name in CAPACITY) or
+                    (group == "listings" and name in LISTINGS) or
+                    (group == "releases" and (name in RELEASES or LEDGER_RE.fullmatch(name) is not None)))
     return (len(p.parts) >= 3 and p.parts[0] == "crates" and
             ((len(p.parts) == 3 and p.name == "Cargo.toml") or
              (p.parts[2] in {"src", "tests", "examples", "assets"} and
@@ -64,9 +76,9 @@ def source_snapshot(repo, commit):
         if kind != b"blob" or mode not in (b"100644", b"100755"):
             raise ValueError(f"non-regular source entry: {name}")
         paths.append(name)
-    required = ROOT_FILES | {"config/config.example.toml", "config/sources.toml"} | {f"docs/{name}" for name in DOCS} | {f"validation/{name}" for name in VALIDATION}
-    if not required.issubset(paths) or not 1 <= len(paths) <= 500:
-        raise ValueError("commit is missing required release files or has too many source files")
+    required = ROOT_FILES | {"config/config.example.toml", "config/sources.toml"} | {f"docs/{name}" for name in TOP_DOCS} | {"docs/releases/README.md"} | {f"validation/{name}" for name in VALIDATION}
+    if not 1 <= len(paths) <= 500:
+        raise ValueError("commit contains no source files or too many source files")
     with tempfile.TemporaryFile() as archive:
         subprocess.run(["git", "archive", "--format=tar", commit, "--", *paths], cwd=repo, stdout=archive, stderr=subprocess.PIPE, check=True)
         if archive.tell() > MAX_SOURCE_BYTES:
@@ -84,10 +96,17 @@ def source_snapshot(repo, commit):
                 files[member.name] = (tar.extractfile(member).read(), 0o755 if member.mode & 0o111 else 0o644)
         if set(files) != set(paths):
             raise ValueError("git archive did not contain all selected files")
+    if "Cargo.toml" not in files:
+        raise ValueError("commit is missing Cargo.toml")
     cargo = tomllib.loads(files["Cargo.toml"][0].decode("utf-8"))
-    if cargo["workspace"]["package"]["version"] != VERSION:
-        raise ValueError("workspace version does not match release version")
-    return files
+    version = cargo["workspace"]["package"]["version"]
+    if not isinstance(version, str) or VERSION_RE.fullmatch(version) is None:
+        raise ValueError("workspace version is not a strict X.Y.Z release version")
+    required |= {f"docs/releases/{version}.md"}
+    missing = sorted(required - set(files))
+    if missing:
+        raise ValueError("commit is missing required release files: " + ", ".join(missing))
+    return files, version
 
 
 def reject_link_path(path):
@@ -146,7 +165,10 @@ def main():
     mode.add_argument("--linux-release-dir", type=Path)
     parser.add_argument("--build-toolchain", help="declared exact rustc version for Linux binaries")
     parser.add_argument("--binary-build-commit", help="declared Git commit used to build the supplied Linux executables")
+    parser.add_argument("--expect-version", help="fail unless the archived commit declares this exact X.Y.Z workspace version")
     args = parser.parse_args()
+    if args.expect_version is not None and VERSION_RE.fullmatch(args.expect_version) is None:
+        raise ValueError("--expect-version must be a strict X.Y.Z version")
     repo = args.repo.resolve(strict=True)
     if git("status", "--porcelain=v1", "--untracked-files=no", cwd=repo):
         raise ValueError("tracked working tree or index is dirty; commit or stash changes first")
@@ -163,20 +185,22 @@ def main():
         raise ValueError("output directory must exist and be empty")
     if args.linux_release_dir and (not args.build_toolchain or not re.fullmatch(r"[A-Za-z0-9 ._+()/\-]{1,120}", args.build_toolchain)):
         raise ValueError("provide a concise --build-toolchain declaration for Linux binaries")
-    source = source_snapshot(repo, commit)
+    source, version = source_snapshot(repo, commit)
+    if args.expect_version is not None and args.expect_version != version:
+        raise ValueError(f"commit declares version {version}, not --expect-version {args.expect_version}")
     toolchain = tomllib.loads(source["rust-toolchain.toml"][0].decode())["toolchain"]["channel"]
-    meta = (f"version: {VERSION}\nsource_commit: {commit}\nsource_toolchain: {toolchain}\n"
+    meta = (f"version: {version}\nsource_commit: {commit}\nsource_toolchain: {toolchain}\n"
             f"linux_build_toolchain_declared: {args.build_toolchain or 'not supplied'}\n"
             f"binary_build_commit_declared: {build_commit or 'not supplied'}\n"
             f"build_input_trees_match: {'yes' if build_commit else 'not checked'}\n"
             "binary_provenance: supplied by operator; not independently verified\n").encode()
     binaries = linux_binaries(args.linux_release_dir) if args.linux_release_dir else None
     source = {**source, "RELEASE-METADATA.txt": (meta, 0o644)}
-    archives = [output / f"tracker-v{VERSION}-source.tar.gz"]
+    archives = [output / f"tracker-v{version}-source.tar.gz"]
     package(archives[0], source)
     if binaries is not None:
         runtime = {name: data for name, data in source.items() if name in ROOT_FILES or name.startswith("config/") or name.startswith("deploy/") or name in {"docs/third-party-notices.txt", "docs/deployment.md", "docs/cloudflare-ingress.md", "docs/release-packaging.md", "RELEASE-METADATA.txt"}}
-        archives.append(output / f"tracker-v{VERSION}-linux-x86_64.tar.gz")
+        archives.append(output / f"tracker-v{version}-linux-x86_64.tar.gz")
         package(archives[-1], {**runtime, **binaries})
     (output / "SHA256SUMS").write_text("".join(f"{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.name}\n" for p in archives), encoding="ascii", newline="\n")
     for archive in archives:
