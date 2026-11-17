@@ -81,7 +81,12 @@
             if (page > 1 || mode === "push") {
                 const rect = results.getBoundingClientRect();
                 if (rect.top < 0) {
-                    window.scrollTo({ top: window.scrollY + rect.top - 24, behavior: "smooth" });
+                    const reduceMotion = typeof window.matchMedia === "function"
+                        && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+                    window.scrollTo({
+                        top: window.scrollY + rect.top - 24,
+                        behavior: reduceMotion ? "auto" : "smooth"
+                    });
                 }
             }
         } catch (error) {

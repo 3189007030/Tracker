@@ -12,7 +12,11 @@ use tracker_model::{
     Endpoint, Evidence, FamilyStatus, Infrastructure, Observation, Overview, PUBLIC_SCHEMA, VERSION,
 };
 
-use crate::{app, store::public_tracker_url};
+use crate::{
+    app,
+    html::{Lang, compact_number},
+    store::public_tracker_url,
+};
 
 async fn get(router: &Router, uri: &str) -> (StatusCode, axum::http::HeaderMap, String) {
     let response = router
@@ -307,7 +311,12 @@ async fn stale_snapshot_is_marked_stale_and_not_ready() {
     );
     let (_, _, body) = get(&router, "/").await;
     assert!(body.contains("runtime-strip"));
-    assert!(!body.contains("class=\"hero\""));
+    // The page still renders its hero section; the previous check looked for a
+    // class the home page no longer produces ("hero" alone), so it never failed.
+    assert!(body.contains("class=\"hero home-hero\""));
+    // This fixture publishes no native minute sample, so the first KPI must
+    // stay an explicit unknown instead of rendering a misleading zero.
+    assert!(body.contains("暂无已发布采样"));
 }
 
 #[tokio::test]
@@ -871,10 +880,10 @@ async fn legacy_pages_redirect_and_home_has_copyable_endpoints() {
     }
     assert!(!home.contains("announce.augrains.com"));
     assert!(home.contains("id=\"native-trackers\""));
-    assert!(home.contains("/assets/style.css?v=1.2.4"));
+    assert!(home.contains("/assets/style.css?v=1.2.5"));
     assert!(home.contains("href=\"https://github.com/3189007030/Tracker\""));
-    assert!(home.contains("/assets/tools.js?v=1.2.4"));
-    assert!(home.contains("/assets/charts.js?v=1.2.4"));
+    assert!(home.contains("/assets/tools.js?v=1.2.5"));
+    assert!(home.contains("/assets/charts.js?v=1.2.5"));
     assert!(home.contains("/assets/chart.umd.js?v=4.6.1"));
     assert!(!home.contains("/api/v1/experiments"));
     assert!(!home.contains("href=\"/tools"));
@@ -1072,7 +1081,7 @@ async fn list_page_uses_live_search_and_accessible_pagination() {
     for needle in [
         "data-tracker-filters",
         "data-tracker-results",
-        "/assets/list.js?v=1.2.4",
+        "/assets/list.js?v=1.2.5",
         "data-page-jump",
         "name=\"limit\"",
         "第 1 / 2",
@@ -1208,4 +1217,116 @@ async fn aliased_endpoint_is_hidden_from_the_list_and_redirects_to_canonical() {
     let (_, _, detail) = get(&router, "/api/v1/trackers/alias_id").await;
     let alias_json: serde_json::Value = serde_json::from_str(&detail).unwrap();
     assert_eq!(alias_json["alias_of"], "example_id");
+}
+
+#[test]
+fn english_compact_numbers_use_the_thousand_scale() {
+    assert_eq!(compact_number(9_999.0, Lang::En), "9999");
+    assert_eq!(compact_number(10_000.0, Lang::En), "10.0k");
+    assert_eq!(compact_number(12_345.0, Lang::En), "12.3k");
+    assert_eq!(compact_number(566_542.0, Lang::En), "566.5k");
+    assert_eq!(compact_number(999_960.0, Lang::En), "1.0M");
+    assert_eq!(compact_number(1_234_567.0, Lang::En), "1.2M");
+    assert_eq!(compact_number(566_542.0, Lang::Zh), "56.7 万");
+    assert_eq!(compact_number(1_234_567.0, Lang::Zh), "123.5 万");
+}
+
+#[tokio::test]
+async fn failed_handshakes_are_reported_and_the_ghost_verdict_stays_unpublished() {
+    let dir = TempDir::new().unwrap();
+    fixture(dir.path());
+    let db = Connection::open(dir.path().join("public.sqlite3")).unwrap();
+    let now = tracker_model::unix_now();
+    for category in ["poisoned_peers", "handshake_failed"] {
+        add_observation(
+            &db,
+            &Observation {
+                endpoint_id: "example_id".into(),
+                observed_at: now - 10,
+                family: "ipv4".into(),
+                stage: "announce".into(),
+                result: "failed".into(),
+                protocol_reply: false,
+                http_status: None,
+                latency_ms: None,
+                error_category: Some(category.to_owned()),
+                target_ip: None,
+            },
+        );
+    }
+    drop(db);
+    let router = app(dir.path().to_path_buf());
+    let (status, _, body) = get(
+        &router,
+        "/api/v1/trackers/example_id/observations?family=ipv4&window=24h",
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let value: serde_json::Value = serde_json::from_str(&body).unwrap();
+    let mut categories: Vec<&str> = Vec::new();
+    for item in value["items"].as_array().unwrap() {
+        let details = item.get("error_category");
+        if let Some(category) = details.and_then(serde_json::Value::as_str) {
+            categories.push(category);
+        }
+    }
+    assert!(
+        categories.contains(&"handshake_failed"),
+        "categories: {categories:?}"
+    );
+    // The ghost-sample verdict is not reliable enough to publish as a label.
+    assert!(
+        !categories.contains(&"poisoned_peers"),
+        "categories: {categories:?}"
+    );
+}
+
+#[tokio::test]
+async fn light_theme_palettes_stay_in_sync() {
+    let dir = TempDir::new().unwrap();
+    let router = app(dir.path().to_path_buf());
+    let (status, headers, css) = get(&router, "/assets/style.css").await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(
+        headers[header::CONTENT_TYPE]
+            .to_str()
+            .unwrap()
+            .contains("text/css")
+    );
+    // Both light palettes are required: the media-query one keeps a
+    // system-light visitor from seeing a dark first paint, the attribute one
+    // serves an explicit choice. They must therefore never diverge.
+    let normalize = |text: &str| text.split_whitespace().collect::<Vec<_>>().join(" ");
+    let automatic = normalize(block_body(&css, ":root:not([data-theme=\"dark\"])"));
+    let explicit = normalize(block_body(&css, "html[data-theme=\"light\"]"));
+    for name in ["--faint", "--on-accent", "--chart-line-1"] {
+        assert!(automatic.contains(name), "automatic palette lost {name}");
+        assert!(explicit.contains(name), "explicit palette lost {name}");
+    }
+    assert_eq!(automatic, explicit, "the two light palettes diverged");
+}
+
+/// The declarations between the first `{` after `marker` and its matching `}`.
+fn block_body<'a>(css: &'a str, marker: &str) -> &'a str {
+    let Some(position) = css.find(marker) else {
+        panic!("style.css no longer contains {marker}");
+    };
+    let rest = &css[position + marker.len()..];
+    let Some(open) = rest.find('{') else {
+        panic!("style.css has no block after {marker}");
+    };
+    let mut depth = 0usize;
+    for (offset, character) in rest[open..].char_indices() {
+        match character {
+            '{' => depth += 1,
+            '}' => {
+                depth -= 1;
+                if depth == 0 {
+                    return &rest[open + 1..open + offset];
+                }
+            }
+            _ => {}
+        }
+    }
+    panic!("style.css has an unbalanced block after {marker}");
 }

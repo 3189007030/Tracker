@@ -1041,10 +1041,13 @@ impl Store {
                 .iter()
                 .filter_map(|s| s.5.filter(|x| x.is_finite() && (0.0..=1.0).contains(x)))
                 .collect();
-            let poisoned = observations.iter().any(|o| {
-                o.observed_at >= now - 7 * 86400
-                    && o.error_category.as_deref() == Some("poisoned_peers")
-            }) || url.contains("durukanbal.com");
+            // Feed eligibility deliberately ignores the ghost-sample verdict
+            // (`poisoned_peers`, recorded on `sample_announce` rows). Measured
+            // against the public snapshot it flagged a fifth of all endpoints,
+            // long-established trackers included, so it stays a diagnostic
+            // until the check can tell fabricated peers from real ones. See
+            // docs/releases/1.2.5.md.
+            let poisoned = url.contains("durukanbal.com");
             let standard = !poisoned
                 && family_status
                     .iter()
@@ -1891,6 +1894,68 @@ mod tests {
             |r| r.get(0),
         )?;
         Ok(serde_json::from_str(&payload)?)
+    }
+
+    #[test]
+    fn ghost_sample_verdict_is_recorded_but_does_not_gate_feeds() -> Result<()> {
+        let dir =
+            std::env::temp_dir().join(format!("tracker-ghost-verdict-{}", rand::random::<u64>()));
+        let mut store = Store::open(&dir)?;
+        let url = "https://flagged.example.org/announce";
+        store.ingest(&[url.into()], &Default::default())?;
+        let now = unix_now();
+        let id = target_id(&store, url)?;
+        announce(&mut store, &id, "accepted", now, "203.0.113.20")?;
+
+        // Production records the verdict as a `sample_announce` stage through
+        // `sample_evidence`; it never becomes a health `announce` event.
+        let ghost = crate::pool::ghost_samples(now).remove(0);
+        assert!(crate::pool::is_ghost_hash(&ghost.info_hash));
+        let sample = crate::samples::Sample {
+            info_hash: ghost.info_hash,
+            piece_count: 0,
+            piece_length: 0,
+            total_length: 0,
+        };
+        let stages = vec![Observation {
+            endpoint_id: id.clone(),
+            family: "ipv4".into(),
+            stage: "sample_announce".into(),
+            observed_at: now,
+            result: "failed".into(),
+            protocol_reply: true,
+            error_category: Some("poisoned_peers".into()),
+            ..Default::default()
+        }];
+        store.sample_evidence(ActivityEvidence {
+            endpoint: &id,
+            source: "hjd",
+            sample: &sample,
+            peers: &[],
+            bitmaps: 0,
+            coverage: None,
+            stages: &stages,
+        })?;
+        let recorded: Option<String> = store.private.query_row(
+            "SELECT announce_error FROM samples WHERE endpoint_id=?1",
+            [&id],
+            |r| r.get(0),
+        )?;
+        assert_eq!(recorded.as_deref(), Some("poisoned_peers"));
+
+        // The verdict is a diagnostic. It must not change feed membership or
+        // the health figures, on a fresh publication or on the cached path.
+        for _ in 0..2 {
+            store.publish(1800, &[])?;
+            assert_eq!(published_feed(&store, "trackers_all.txt")?, url);
+            assert_eq!(published_overview(&store)?.all_count, 1);
+            let endpoint = published_endpoint(&store, url)?;
+            assert_eq!(endpoint.evidence.checks_24h, 1);
+            assert_eq!(endpoint.evidence.successes_24h, 1);
+        }
+        drop(store);
+        std::fs::remove_dir_all(dir)?;
+        Ok(())
     }
 
     #[test]

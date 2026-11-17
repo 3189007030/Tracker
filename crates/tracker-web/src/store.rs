@@ -648,6 +648,7 @@ fn safe_reason(value: Option<String>) -> Option<String> {
                 | "invalid_protocol"
                 | "incomplete_protocol"
                 | "peers_unusable"
+                | "handshake_failed"
                 | "protocol_error"
                 | "tracker_rejection"
                 | "resource_unregistered"

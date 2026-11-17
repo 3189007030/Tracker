@@ -8,20 +8,45 @@
         if (!response.ok) throw new Error("unavailable");
         return response.json();
     };
-    const colors = ["#10b981", "#38bdf8"];
-    const options = {
+    // Chart ink comes from CSS custom properties so both themes stay readable;
+    // the literals below are only a fallback for a document without the sheet.
+    const fallbackColors = {
+        text: "#cbd5e1",
+        muted: "#94a3b8",
+        grid: "rgba(255, 255, 255, 0.05)",
+        line1: "#10b981",
+        line2: "#38bdf8",
+        tooltipBg: "rgba(14, 20, 26, 0.92)",
+        tooltipText: "#f8fafc",
+        tooltipBorder: "rgba(255, 255, 255, 0.12)"
+    };
+    const themeColors = () => {
+        const style = window.getComputedStyle(document.documentElement);
+        const read = (name, fallback) => style.getPropertyValue(name).trim() || fallback;
+        return {
+            text: read("--chart-text", fallbackColors.text),
+            muted: read("--chart-muted", fallbackColors.muted),
+            grid: read("--chart-grid", fallbackColors.grid),
+            line1: read("--chart-line-1", fallbackColors.line1),
+            line2: read("--chart-line-2", fallbackColors.line2),
+            tooltipBg: read("--chart-tooltip-bg", fallbackColors.tooltipBg),
+            tooltipText: read("--chart-tooltip-text", fallbackColors.tooltipText),
+            tooltipBorder: read("--chart-tooltip-border", fallbackColors.tooltipBorder)
+        };
+    };
+    const options = (colors) => ({
         responsive: true, maintainAspectRatio: false, animation: false,
         parsing: false, spanGaps: false,
         plugins: {
             legend: {
                 display: true,
-                labels: { color: "#cbd5e1", font: { size: 12, family: "Inter, system-ui, sans-serif" }, boxWidth: 14, padding: 12 }
+                labels: { color: colors.text, font: { size: 12, family: "Inter, system-ui, sans-serif" }, boxWidth: 14, padding: 12 }
             },
             tooltip: {
-                backgroundColor: "rgba(14, 20, 26, 0.92)",
-                titleColor: "#f8fafc",
-                bodyColor: "#cbd5e1",
-                borderColor: "rgba(255, 255, 255, 0.12)",
+                backgroundColor: colors.tooltipBg,
+                titleColor: colors.tooltipText,
+                bodyColor: colors.tooltipText,
+                borderColor: colors.tooltipBorder,
                 borderWidth: 1,
                 padding: 10,
                 cornerRadius: 8
@@ -30,9 +55,9 @@
         scales: {
             x: {
                 type: "linear",
-                grid: { color: "rgba(255, 255, 255, 0.05)" },
+                grid: { color: colors.grid },
                 ticks: {
-                    color: "#94a3b8",
+                    color: colors.muted,
                     maxTicksLimit: 6,
                     callback(value) {
                         const d = new Date(value * 1000);
@@ -42,15 +67,55 @@
             },
             y: {
                 beginAtZero: true,
-                grid: { color: "rgba(255, 255, 255, 0.05)" },
-                ticks: { color: "#94a3b8" }
+                grid: { color: colors.grid },
+                ticks: { color: colors.muted }
             }
         }
-    };
-    const optionsForWindow = (seconds) => {
+    });
+    const optionsForWindow = (colors, seconds) => {
         const now = Date.now() / 1000;
-        return {...options, scales: {...options.scales, x: {...options.scales.x, min: now - seconds, max: now}}};
+        const value = options(colors);
+        value.scales.x.min = now - seconds;
+        value.scales.x.max = now;
+        return value;
     };
+    // Every live chart plus the option builder that created it, so a theme
+    // change can rebuild that chart's options and repaint it.
+    const charts = [];
+    const registerChart = (chart, builder) => {
+        charts.push({chart, builder});
+        return chart;
+    };
+    const forgetChart = (chart) => {
+        const index = charts.findIndex((entry) => entry.chart === chart);
+        if (index >= 0) charts.splice(index, 1);
+    };
+    const paintChart = ({chart, builder}) => {
+        const colors = themeColors();
+        // Chart.js re-resolves its options from `config.options` on every
+        // update, so replacing that object is what makes the new colors stick
+        // (the read-only `chart.options` resolver would be rebuilt).
+        chart.config.options = builder(colors);
+        chart.data.datasets.forEach((dataset) => {
+            // `lineKey` is ours, not a Chart.js option: it keeps a series on
+            // the same palette slot (an IPv6-only chart stays on line 2).
+            dataset.borderColor = colors[dataset.lineKey] || colors.line1;
+        });
+        chart.update("none");
+    };
+    if (typeof MutationObserver === "function") {
+        new MutationObserver(() => {
+            charts.slice().forEach((entry) => {
+                try {
+                    paintChart(entry);
+                } catch (_) {
+                    // A chart that can no longer update is dropped, so one
+                    // failure cannot stop the remaining charts from repainting.
+                    forgetChart(entry.chart);
+                }
+            });
+        }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    }
     const historyRoot = document.querySelector("[data-history-root]");
     if (historyRoot && !window.Chart) {
         historyRoot.dataset.state = "unavailable";
@@ -127,9 +192,13 @@
                     flush();
                     return points;
                 };
-                rendered.forEach((chart) => chart.destroy());
+                rendered.forEach((chart) => {
+                    forgetChart(chart);
+                    chart.destroy();
+                });
                 rendered = [];
-                const windowOptions = optionsForWindow(({"24h":86400, "7d":604800, "30d":2592000})[windowName]);
+                const palette = themeColors();
+                const windowSeconds = ({"24h":86400, "7d":604800, "30d":2592000})[windowName];
                 historyRoot.querySelectorAll("[data-history-chart]").forEach((canvas) => {
                     const key = canvas.dataset.historyChart;
                     const rate = !["peers", "swarms", "rss_bytes"].includes(key);
@@ -143,14 +212,18 @@
                             const left = data[index-1], right = data[index+1];
                             return Number.isFinite(left?.y) || Number.isFinite(right?.y) ? 0 : 2.5;
                         });
-                        return {label:entry === "http_announces" ? "HTTP(S)" : entry === "udp_announces" ? "UDP" : canvas.getAttribute("aria-label"), data, borderColor:colors[i], pointRadius, pointHoverRadius:4, borderWidth:2, tension:0};
+                        return {label:entry === "http_announces" ? "HTTP(S)" : entry === "udp_announces" ? "UDP" : canvas.getAttribute("aria-label"), data, lineKey:i === 0 ? "line1" : "line2", borderColor:i === 0 ? palette.line1 : palette.line2, pointRadius, pointHoverRadius:4, borderWidth:2, tension:0};
                     });
-                    const tooltip = rate ? {callbacks:{label(context) {
+                    const callbacks = rate ? {label(context) {
                         const point = context.raw;
                         return `${context.dataset.label}: ${context.parsed.y.toFixed(2)} /s · ${averageLabel} · ${text("实际观测", "observed")} ${point.elapsed}s`;
-                    }}} : undefined;
-                    const chartOptions = rate ? {...windowOptions, plugins:{...windowOptions.plugins, tooltip}} : windowOptions;
-                    rendered.push(new Chart(canvas, {type:"line", data:{datasets:sets}, options:chartOptions}));
+                    }} : undefined;
+                    const makeOptions = (colors) => {
+                        const value = optionsForWindow(colors, windowSeconds);
+                        if (callbacks) value.plugins.tooltip = {...value.plugins.tooltip, callbacks};
+                        return value;
+                    };
+                    rendered.push(registerChart(new Chart(canvas, {type:"line", data:{datasets:sets}, options:makeOptions(palette)}), makeOptions));
                 });
                 historyRoot.dataset.state = rows.length ? "ready" : "empty";
             } catch (_) { if (current === requestId) historyRoot.dataset.state = "unavailable"; }
@@ -187,11 +260,14 @@
         rate_limited: text("被限流", "Rate limited"),
         family_unavailable: text("地址族不可用", "Address family unavailable"),
         network_unavailable: text("网络不可用", "Network unavailable"),
+        transport: text("连接失败（传输错误）", "Connection failed (transport error)"),
+        invalid_protocol: text("Tracker 回复格式无效", "Invalid tracker protocol reply"),
         local_unavailable: text("本地网络不可用", "Local network unavailable"),
         local_or_network_unknown: text("本地或网络状态未知", "Local or network state unknown"),
         operator_denied: text("运营方拒绝", "Operator denied"),
         budget_exhausted: text("探测预算已用尽", "Probe budget exhausted"),
-        incomplete_protocol: text("协议响应不完整", "Incomplete protocol response")
+        incomplete_protocol: text("协议响应不完整", "Incomplete protocol response"),
+        handshake_failed: text("握手失败", "Handshake failed")
     })[category] || text("其他错误", "Other error");
     const stateLabel = (o) => {
         const label = ({success:text("成功", "Success"), failure:text("失败", "Failed"), neutral:text("限流 / 拒绝", "Rate limit / rejection"), unknown:text("未知", "Unknown")})[state(o)];
@@ -245,6 +321,7 @@
                 observer.observe(timeline);
             }
             if (!families.length || !window.Chart) { observations.parentElement.hidden = true; return; }
+            const palette = themeColors();
             const datasets = families.map((family) => {
                 const points = [];
                 let previous = null;
@@ -253,9 +330,10 @@
                     points.push({x:observation.observed_at, y:Number.isFinite(observation.latency_ms) ? observation.latency_ms : null});
                     previous = observation.observed_at;
                 }
-                return {label:displayFamily(family), borderColor:colors[family === "ipv4" ? 0 : 1], pointRadius:2, pointHoverRadius:4, borderWidth:2, spanGaps:false, tension:0, data:points};
+                return {label:displayFamily(family), lineKey:family === "ipv4" ? "line1" : "line2", borderColor:family === "ipv4" ? palette.line1 : palette.line2, pointRadius:2, pointHoverRadius:4, borderWidth:2, spanGaps:false, tension:0, data:points};
             });
-            new Chart(observations, {type:"line", data:{datasets}, options:optionsForWindow(86400)});
+            const makeOptions = (colors) => optionsForWindow(colors, 86400);
+            registerChart(new Chart(observations, {type:"line", data:{datasets}, options:makeOptions(palette)}), makeOptions);
         }).catch(() => { timeline.textContent = text("观测数据暂不可用。", "Observations temporarily unavailable."); observations.parentElement.hidden = true; });
     }
 })();
