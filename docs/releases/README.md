@@ -17,7 +17,8 @@ This table summarizes each version's ledger and deployment evidence. Status term
 | 1.2.4 | rolled back | 2026-11-16 03:56:47Z (inferred trial); 03:57:07Z (inferred return to 1.2.3) | `bdbda2fc` | No tag | [1.2.4](1.2.4.md) | Directory `1.2.4-bdbda2fc`; only `tracker-web` was rebuilt (`a0980ac3…`). The switch is inferred from restart times; no gate evidence or rollback reason was found. |
 | 1.2.5 | superseded | 2026-11-17 08:39:06Z (`1.2.5-af876b9a`) | `af876b9` | On origin; `v1.2.5` → `af876b9` | [1.2.5](1.2.5.md) | 153 tests passed. Input blobs and deployed binaries matched. Superseded by 1.2.6 on 2026-11-18. |
 | 1.2.6 | superseded | 2026-11-18 01:41:00Z (`1.2.6-6f582b7d`) | `6f582b7` | `v1.2.6` → `6f582b7` | [1.2.6](1.2.6.md) | Four gates passed, including 159 tests. Live web, feeds, and HTTPS/UDP protocol checks passed. |
-| 1.2.7 | promoted | 2026-11-18 02:47:59Z (`1.2.7-6030f98e`) | `6030f98e` | `v1.2.7` → `6030f98e` | [1.2.7](1.2.7.md) | 159 tests. Web-only cutover with public asset, feed and protocol checks. The native and Observatory processes continued on 1.2.6. |
+| 1.2.7 | superseded | 2026-11-18 02:47:59Z (`1.2.7-6030f98e`) | `6030f98e` | `v1.2.7` → `6030f98e` | [1.2.7](1.2.7.md) | 159 tests. Web-only cutover with public asset, feed and protocol checks. The native and Observatory processes continued on 1.2.6. |
+| 1.2.8 | promoted | 2026-11-18 06:53:42Z (`1.2.8-ec868f9d`) | `ec868f9d` | `v1.2.8` → `ec868f9d` | [1.2.8](1.2.8.md) | 163 tests. Native hot-path changes with isolated dual-stack and live HTTPS/UDP protocol checks. |
 
 ## Known gaps in the record
 
