@@ -13,6 +13,8 @@ use std::{
     path::{Path, PathBuf},
     time::Duration,
 };
+use tokio::time::Instant;
+use tracker_model::unix_now;
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default)]
@@ -57,8 +59,10 @@ pub async fn run(config: Config, once: bool) -> Result<()> {
     std::fs::create_dir_all(&config.data_dir)?;
     let mut db = store::Store::open(&config.data_dir)?;
     db.publish(config.settings.interval_seconds, &config.settings.own_hosts)?;
+    let mut full_due = Instant::now();
     loop {
-        if network::cycle(&config, &mut db).await.is_err() {
+        let full_cycle = Instant::now() >= full_due;
+        if network::cycle(&config, &mut db, full_cycle).await.is_err() {
             // Request errors can embed complete tracker queries. Detailed
             // outcomes belong in the typed private/public event projections.
             tracing::warn!("observation cycle deferred");
@@ -67,6 +71,11 @@ pub async fn run(config: Config, once: bool) -> Result<()> {
         if once {
             return Ok(());
         }
-        tokio::time::sleep(Duration::from_secs(60)).await;
+        if full_cycle {
+            full_due = Instant::now() + Duration::from_secs(60);
+        }
+        let health_wait = Duration::from_secs(db.health_wake_delay(unix_now())?);
+        let full_wait = full_due.saturating_duration_since(Instant::now());
+        tokio::time::sleep(health_wait.min(full_wait)).await;
     }
 }

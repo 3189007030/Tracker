@@ -876,6 +876,7 @@ main.wrap { min-height: 75vh; padding-top: 30px; padding-bottom: 44px; }
 .pill--failure { background: var(--status-bad); color: var(--bad); }
 .pill--stale, .pill--partial { background: var(--status-warn); color: var(--warn); }
 .pill--unsupported, .pill--unknown { background: var(--surface-soft); color: var(--faint); }
+.pill--scheduled { background: var(--surface-soft); color: var(--muted); }
 
 .country-flag {
   display: inline-block;
@@ -1031,6 +1032,12 @@ main.wrap { min-height: 75vh; padding-top: 30px; padding-bottom: 44px; }
   align-items: center;
   gap: 4px;
 }
+.list-family {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.list-family small { color: var(--muted); font-size: 11px; overflow-wrap: anywhere; }
 
 .row-stat { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .row-stat small { color: var(--muted); font-size: 11px; }

@@ -1229,80 +1229,66 @@ async fn discover(config: &Config, store: &mut Store, gate: &PressureGate) -> Re
 async fn health_task(
     id: String,
     url: Url,
-    families: Vec<bool>,
+    ipv6: bool,
     gate: PressureGate,
 ) -> (
     String,
-    Vec<(Observation, u64)>,
+    Observation,
+    u64,
     u64,
     Option<tracker_model::Infrastructure>,
 ) {
     let host = url.host_str().unwrap_or_default().to_string();
-    let mut results = Vec::new();
-    let mut backoff = 5;
-    let mut infrastructure = None;
-    for family in families {
-        let (obs, defer, host_delay, ip) = if url.scheme() == "udp" {
-            probe_udp(&id, &url, family).await
-        } else {
-            probe_http(&id, &url, family).await
-        };
-        if infrastructure.is_none()
-            && (obs.protocol_reply || obs.http_status.is_some())
-            && let Some(ip) = ip
-            && pressure_allows(&gate).await
-        {
-            infrastructure = Some(crate::infrastructure::lookup(ip).await);
-        }
-        let limited = host_delay > 0;
-        if limited {
-            backoff = host_delay;
-        }
-        results.push((obs, defer));
-        if limited {
-            break;
-        }
-        tokio::time::sleep(Duration::from_secs(1)).await;
-    }
-    (host, results, backoff, infrastructure)
+    let (obs, defer, host_delay, ip) = if url.scheme() == "udp" {
+        probe_udp(&id, &url, ipv6).await
+    } else {
+        probe_http(&id, &url, ipv6).await
+    };
+    let infrastructure = if (obs.protocol_reply || obs.http_status.is_some())
+        && let Some(ip) = ip
+        && pressure_allows(&gate).await
+    {
+        Some(crate::infrastructure::lookup(ip).await)
+    } else {
+        None
+    };
+    (host, obs, defer, host_delay.max(5), infrastructure)
 }
+
+type Health = (String, Url, bool);
 
 async fn health_batch(
     config: &Config,
     store: &mut Store,
-    batch: &[(String, Url, Vec<bool>)],
+    batch: &[Health],
     gate: &PressureGate,
 ) -> Result<()> {
     let mut tasks = tokio::task::JoinSet::new();
-    for (id, url, families) in batch {
+    for (id, url, ipv6) in batch {
         let host = url.host_str().unwrap_or_default();
-        if store.paused(host, unix_now())? {
+        let family = if *ipv6 { "ipv6" } else { "ipv4" };
+        let now = unix_now();
+        if store.paused(host, now)? || !store.announce_allowed(id, family, "health", now)? {
             continue;
         }
-        store.pause(host, deadline(unix_now(), 5))?;
-        for family in families {
-            store.defer_announce(
-                id,
-                if *family { "ipv6" } else { "ipv4" },
-                "health",
-                deadline(unix_now(), config.settings.interval_seconds),
-            )?;
-        }
-        tasks.spawn(health_task(
-            id.clone(),
-            url.clone(),
-            families.clone(),
-            gate.clone(),
-        ));
+        store.pause(host, deadline(now, 5))?;
+        store.defer_announce(
+            id,
+            family,
+            "health",
+            deadline(now, config.settings.interval_seconds),
+        )?;
+        tasks.spawn(health_task(id.clone(), url.clone(), *ipv6, gate.clone()));
     }
     let mut tick = tokio::time::interval(Duration::from_secs(15));
     tick.tick().await;
     let mut settled = 0usize;
     while !tasks.is_empty() {
         tokio::select! {
-            result=tasks.join_next()=>if let Some(Ok((host,events,backoff,infrastructure)))=result {
+            result=tasks.join_next()=>if let Some(Ok((host,event,defer,backoff,infrastructure)))=result {
                 if let Some(infra)=infrastructure {store.save_infrastructure(&host,&infra)?;}
-                for (event,defer) in events {store.defer_announce(&event.endpoint_id,&event.family,"health",deadline(unix_now(),defer.max(config.settings.interval_seconds)))?;store.record(&event)?;}
+                store.defer_announce(&event.endpoint_id,&event.family,"health",deadline(unix_now(),defer.max(config.settings.interval_seconds)))?;
+                store.record(&event)?;
                 store.pause(&host,deadline(unix_now(),backoff))?;settled+=1;
             },
             _=tick.tick()=>{publish(config,store).await?;settled=0;},
@@ -1324,27 +1310,23 @@ fn choose_due_family(prefer_v6: bool, ipv4_due: bool, ipv6_due: bool) -> Option<
         (true, true) => Some(prefer_v6),
     }
 }
-fn health_candidates(store: &Store, now: i64) -> Result<Vec<(String, Url, Vec<bool>)>> {
+fn health_candidates(store: &Store, now: i64) -> Result<Vec<Health>> {
     let mut hosts = std::collections::HashSet::new();
     let mut health = Vec::new();
-    for (id, raw, _) in store.due_targets(now)? {
+    for (id, raw, ipv6) in store.due_targets(now)? {
         let url = Url::parse(&raw)?;
         let host = url.host_str().unwrap_or_default().to_ascii_lowercase();
-        if store.paused(&host, now)? || hosts.contains(&host) {
+        let family = if ipv6 { "ipv6" } else { "ipv4" };
+        if store.paused(&host, now)?
+            || hosts.contains(&host)
+            || !store.announce_allowed(&id, family, "health", now)?
+        {
             continue;
         }
-        let mut families = Vec::new();
-        for family in [false, true] {
-            if store.announce_allowed(&id, if family { "ipv6" } else { "ipv4" }, "health", now)? {
-                families.push(family);
-            }
-        }
-        if !families.is_empty() {
-            hosts.insert(host);
-            health.push((id, url, families));
-            if health.len() >= 256 {
-                break;
-            }
+        hosts.insert(host);
+        health.push((id, url, ipv6));
+        if health.len() >= 256 {
+            break;
         }
     }
     Ok(health)
@@ -1408,7 +1390,7 @@ async fn publish(config: &Config, store: &mut Store) -> Result<()> {
     store.publish(config.settings.interval_seconds, &config.settings.own_hosts)
 }
 
-pub async fn cycle(config: &Config, store: &mut Store) -> Result<()> {
+pub async fn cycle(config: &Config, store: &mut Store, full_cycle: bool) -> Result<()> {
     let gate: PressureGate = std::sync::Arc::new(tokio::sync::RwLock::new(Pressure::Unknown));
     let client = reqwest::Client::builder()
         .no_proxy()
@@ -1427,6 +1409,11 @@ pub async fn cycle(config: &Config, store: &mut Store) -> Result<()> {
     } else {
         None
     };
+    if !full_cycle {
+        // Waking for a health deadline must not accelerate collection or sample announces.
+        let candidates = health_candidates(store, unix_now())?;
+        return health_batch(config, store, &candidates[..candidates.len().min(4)], &gate).await;
+    }
     if tokio::time::timeout(Duration::from_secs(60), discover(config, store, &gate))
         .await
         .is_err()
@@ -2024,6 +2011,44 @@ mod tests {
         store.defer_announce(&id, "ipv6", "health", 200)?;
         assert!(health_candidates(&store, 199)?.is_empty());
         assert_eq!(health_candidates(&store, 200)?.len(), 1);
+        drop(store);
+        std::fs::remove_dir_all(dir)?;
+        Ok(())
+    }
+    #[tokio::test]
+    async fn health_batch_rechecks_family_deadline_and_host_pause() -> Result<()> {
+        let dir =
+            std::env::temp_dir().join(format!("tracker-health-dispatch-{}", rand::random::<u64>()));
+        let mut store = Store::open(&dir)?;
+        store.ingest(
+            &["https://example.org/announce".into()],
+            &Default::default(),
+        )?;
+        let id = store.targets()?[0].0.clone();
+        let url = Url::parse("https://example.org/announce")?;
+        let config = Config {
+            data_dir: dir.clone(),
+            settings: Default::default(),
+        };
+        let gate: PressureGate = std::sync::Arc::new(tokio::sync::RwLock::new(Pressure::Unknown));
+        let now = unix_now();
+        store.defer_announce(&id, "ipv4", "health", deadline(now, 60))?;
+
+        health_batch(
+            &config,
+            &mut store,
+            &[(id.clone(), url.clone(), false)],
+            &gate,
+        )
+        .await?;
+        assert!(store.announce_allowed(&id, "ipv4", "health", deadline(now, 60))?);
+        assert!(store.announce_allowed(&id, "ipv6", "health", now)?);
+        assert!(!store.paused("example.org", now)?);
+
+        store.pause("example.org", deadline(now, 60))?;
+        health_batch(&config, &mut store, &[(id.clone(), url, true)], &gate).await?;
+        assert!(store.announce_allowed(&id, "ipv6", "health", now)?);
+        assert!(store.paused("example.org", now)?);
         drop(store);
         std::fs::remove_dir_all(dir)?;
         Ok(())

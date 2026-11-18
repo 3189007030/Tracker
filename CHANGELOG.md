@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.3.0 — address-family rechecks
+
+- Schedule IPv4 and IPv6 separately and give earlier due checks priority. Wake for upcoming health checks while keeping the ordinary source and sample collection interval.
+- Respect each Tracker's minimum announce interval and shared host backoff. A job reserves only the address family it is about to check.
+- Show waiting and due rechecks separately, with the previous outcome and the earliest allowed time when available. The optional `families[].next_check_at` field gives that timestamp in the public API.
+
+See the [1.3.0 validation ledger](docs/releases/1.3.0.md).
+
 ## 1.2.9 — homepage layout, language and local time
 
 - Give the homepage address and subscription panels equal width on desktop. Show compact subscription rows with direct filename links and copy buttons.

@@ -52,6 +52,10 @@ fn time_element(value: Option<i64>, lang: Lang) -> String {
     let Some(date) = value.and_then(DateTime::<Utc>::from_timestamp_secs) else {
         return lang.pick("未知", "Unknown").to_owned();
     };
+    timestamp_element(date)
+}
+
+fn timestamp_element(date: DateTime<Utc>) -> String {
     format!(
         r#"<time datetime="{}">{}</time>"#,
         date.format("%Y-%m-%dT%H:%M:%SZ"),
@@ -148,7 +152,7 @@ pub(crate) fn shell(title: &str, lang: Lang, body: &str) -> String {
     let code = lang.code();
     let theme_label = lang.pick("切换深浅主题", "Toggle theme");
     format!(
-        r##"<!doctype html><html lang="{code}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark light"><title>{title} · Tracker Observatory</title><link rel="icon" type="image/svg+xml" href="/assets/brand.svg?v=1.0.2"><link rel="icon" href="/favicon.ico?v=1.0.2" sizes="any"><link rel="apple-touch-icon" href="/assets/brand.png?v=1.0.2"><link rel="stylesheet" href="/assets/style.css?v=1.2.9"><script src="/assets/tools.js?v=1.2.9" defer></script></head><body><a class="skip-link" href="#main-content">{skip_link}</a><header class="masthead"><div class="wrap nav-wrap"><a class="brand" href="/?lang={code}"><img class="brand-icon" src="/assets/brand.svg?v=1.0.2" alt=""><span>Tracker <b>Observatory</b></span></a><button class="menu-toggle" type="button" hidden data-menu-toggle aria-expanded="false" aria-controls="site-nav" aria-label="{menu_label}"><span></span><span></span><span></span></button><nav id="site-nav" data-site-nav aria-label="{nav_label}"><a data-nav-key="home" href="/?lang={code}">{nav_home}</a><a data-nav-key="trackers" href="/trackers?lang={code}">{nav_trackers}</a><a data-nav-key="sources" href="/sources?lang={code}">{nav_sources}</a><a data-nav-key="declaration" href="/declaration?lang={code}">{nav_declaration}</a></nav><div class="nav-actions"><div class="language" aria-label="{language_label}" data-language-switcher>{language}</div><button class="theme-toggle" type="button" data-theme-toggle aria-label="{theme_label}" title="{theme_label}"><svg class="theme-icon-dark" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg><svg class="theme-icon-light" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></button><a class="github-link" href="https://github.com/3189007030/Tracker" rel="noopener noreferrer" aria-label="{github_label}" title="{github_label}"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="currentColor"><path d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.11.79-.25.79-.56v-2.19c-3.21.7-3.89-1.36-3.89-1.36-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.97.11-.75.4-1.26.73-1.55-2.56-.29-5.26-1.28-5.26-5.71 0-1.26.45-2.29 1.18-3.1-.12-.29-.51-1.46.11-3.05 0 0 .97-.31 3.16 1.18a10.98 10.98 0 0 1 5.75 0c2.19-1.49 3.15-1.18 3.15-1.18.63 1.59.24 2.76.12 3.05.74.81 1.18 1.84 1.18 3.1 0 4.44-2.7 5.41-5.28 5.7.42.36.78 1.06.78 2.14v3.22c0 .31.21.68.79.56A11.5 11.5 0 0 0 12 .5Z"/></svg></a></div></div></header><main id="main-content" class="wrap">{body}</main><footer class="wrap footer"><span>Tracker Observatory · {version}</span><span>{footnote}</span></footer></body></html>"##,
+        r##"<!doctype html><html lang="{code}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark light"><title>{title} · Tracker Observatory</title><link rel="icon" type="image/svg+xml" href="/assets/brand.svg?v=1.0.2"><link rel="icon" href="/favicon.ico?v=1.0.2" sizes="any"><link rel="apple-touch-icon" href="/assets/brand.png?v=1.0.2"><link rel="stylesheet" href="/assets/style.css?v=1.3.0"><script src="/assets/tools.js?v=1.2.9" defer></script></head><body><a class="skip-link" href="#main-content">{skip_link}</a><header class="masthead"><div class="wrap nav-wrap"><a class="brand" href="/?lang={code}"><img class="brand-icon" src="/assets/brand.svg?v=1.0.2" alt=""><span>Tracker <b>Observatory</b></span></a><button class="menu-toggle" type="button" hidden data-menu-toggle aria-expanded="false" aria-controls="site-nav" aria-label="{menu_label}"><span></span><span></span><span></span></button><nav id="site-nav" data-site-nav aria-label="{nav_label}"><a data-nav-key="home" href="/?lang={code}">{nav_home}</a><a data-nav-key="trackers" href="/trackers?lang={code}">{nav_trackers}</a><a data-nav-key="sources" href="/sources?lang={code}">{nav_sources}</a><a data-nav-key="declaration" href="/declaration?lang={code}">{nav_declaration}</a></nav><div class="nav-actions"><div class="language" aria-label="{language_label}" data-language-switcher>{language}</div><button class="theme-toggle" type="button" data-theme-toggle aria-label="{theme_label}" title="{theme_label}"><svg class="theme-icon-dark" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg><svg class="theme-icon-light" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></button><a class="github-link" href="https://github.com/3189007030/Tracker" rel="noopener noreferrer" aria-label="{github_label}" title="{github_label}"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="currentColor"><path d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.11.79-.25.79-.56v-2.19c-3.21.7-3.89-1.36-3.89-1.36-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.97.11-.75.4-1.26.73-1.55-2.56-.29-5.26-1.28-5.26-5.71 0-1.26.45-2.29 1.18-3.1-.12-.29-.51-1.46.11-3.05 0 0 .97-.31 3.16 1.18a10.98 10.98 0 0 1 5.75 0c2.19-1.49 3.15-1.18 3.15-1.18.63 1.59.24 2.76.12 3.05.74.81 1.18 1.84 1.18 3.1 0 4.44-2.7 5.41-5.28 5.7.42.36.78 1.06.78 2.14v3.22c0 .31.21.68.79.56A11.5 11.5 0 0 0 12 .5Z"/></svg></a></div></div></header><main id="main-content" class="wrap">{body}</main><footer class="wrap footer"><span>Tracker Observatory · {version}</span><span>{footnote}</span></footer></body></html>"##,
         title = esc(title),
         version = esc(VERSION),
         skip_link = lang.pick("跳到主要内容", "Skip to main content"),
@@ -495,7 +499,8 @@ fn state_text(value: &str, lang: Lang) -> &'static str {
         "partial" => lang.pick("部分异常", "Partial"),
         "unsupported" => lang.pick("未发现地址", "No address"),
         "local_unavailable" => lang.pick("本地不可用", "Local unavailable"),
-        "stale" => lang.pick("已过期", "Stale"),
+        "scheduled" => lang.pick("等待复测", "Waiting"),
+        "stale" => lang.pick("待复测", "Recheck due"),
         _ => lang.pick("未知 / 未测", "Unknown / untested"),
     }
 }
@@ -784,13 +789,25 @@ fn measured_reply(item: &Observation) -> bool {
             ))
 }
 
-fn pill(family: &str, status: Option<&FamilyStatus>, lang: Lang) -> String {
-    let state = status.map(|s| s.state.as_str()).unwrap_or("unknown");
+fn family_display_state(status: Option<&FamilyStatus>, now: i64) -> &str {
+    match status {
+        Some(status)
+            if status.state == "stale" && status.next_check_at.is_some_and(|at| at > now) =>
+        {
+            "scheduled"
+        }
+        Some(status) => &status.state,
+        None => "unknown",
+    }
+}
+
+fn pill(family: &str, status: Option<&FamilyStatus>, now: i64, lang: Lang) -> String {
+    let state = family_display_state(status, now);
     let label = format!("{} · {}", family.to_uppercase(), state_text(state, lang));
     let checked = status.and_then(|s| s.checked_at);
     let when = time(checked, lang);
     let title = match status {
-        Some(_) => match state {
+        Some(status) => match state {
             "success" => format!(
                 "{}：{}（{}）。",
                 label,
@@ -812,18 +829,19 @@ fn pill(family: &str, status: Option<&FamilyStatus>, lang: Lang) -> String {
                 ),
                 when
             ),
-            "stale" => format!(
-                "{}：{}（{}）。{}",
+            "stale" | "scheduled" => format!(
+                "{} · {}（{}）。{}",
                 label,
-                lang.pick(
-                    "最新一次结果已超出预期刷新间隔",
-                    "Latest result is older than the expected refresh window"
-                ),
+                family_observed_result(status, lang),
                 when,
-                lang.pick(
-                    "24h 成功率是过去 24 小时的历史统计，与当前新鲜度不是同一指标。",
-                    "The 24h success rate is historical and is not the same as current freshness."
-                )
+                if state == "scheduled" {
+                    lang.pick(
+                        "等待下一次允许探测。",
+                        "Waiting until the next check is allowed.",
+                    )
+                } else {
+                    lang.pick("当前状态待复测。", "A new check is due.")
+                }
             ),
             "unsupported" => format!(
                 "{}：{}。",
@@ -847,10 +865,7 @@ fn pill(family: &str, status: Option<&FamilyStatus>, lang: Lang) -> String {
                 label,
                 lang.pick("尚无有效结果", "No valid result yet"),
                 when,
-                lang.pick(
-                    "未测或结果已失效，不计入成功率。",
-                    "Untested or expired results are excluded from success rates."
-                )
+                lang.pick("未取得有效观测。", "No completed observation is available.")
             ),
         },
         None => format!(
@@ -873,6 +888,43 @@ fn pill(family: &str, status: Option<&FamilyStatus>, lang: Lang) -> String {
         esc(state),
         esc(&title),
         esc(&label)
+    )
+}
+
+fn family_observed_result(status: &FamilyStatus, lang: Lang) -> &'static str {
+    observed_result(
+        "announce",
+        status.protocol_result.as_deref().unwrap_or("unknown"),
+        status.error_category.as_deref(),
+        lang,
+    )
+}
+
+fn earliest_check(status: Option<&FamilyStatus>, now: i64, lang: Lang) -> String {
+    let Some(at) = status
+        .and_then(|value| value.next_check_at)
+        .filter(|at| *at > now)
+        .and_then(DateTime::<Utc>::from_timestamp_secs)
+    else {
+        return String::new();
+    };
+    format!(
+        r#"<small class="family-next-check">{} · {}</small>"#,
+        lang.pick("最早可复测", "Earliest recheck"),
+        timestamp_element(at),
+    )
+}
+
+fn listing_family(family: &str, status: Option<&FamilyStatus>, now: i64, lang: Lang) -> String {
+    let pill = pill(family, status, now, lang);
+    let Some(previous) = status.filter(|value| value.state == "stale") else {
+        return pill;
+    };
+    format!(
+        r#"<span class="list-family">{pill}<small>{} · {}</small>{}</span>"#,
+        lang.pick("上次检测", "Last check"),
+        esc(family_observed_result(previous, lang)),
+        earliest_check(status, now, lang),
     )
 }
 
@@ -937,11 +989,12 @@ fn page_size_select(page: &Page, lang: Lang) -> String {
 
 pub(crate) fn listing_results(page: &Page, query: &str, protocol: &str, lang: Lang) -> String {
     let code = lang.code();
+    let now = tracker_model::unix_now();
     let mut rows = String::new();
     for (offset, endpoint) in page.items.iter().enumerate() {
         let newest = !endpoint.baseline
             && endpoint.first_seen > 0
-            && (0..86_400).contains(&tracker_model::unix_now().saturating_sub(endpoint.first_seen));
+            && (0..86_400).contains(&now.saturating_sub(endpoint.first_seen));
         let new = if newest {
             format!(
                 r#" <span class="new-label" title="{}">{}</span>"#,
@@ -954,14 +1007,16 @@ pub(crate) fn listing_results(page: &Page, query: &str, protocol: &str, lang: La
         } else {
             String::new()
         };
-        let v4 = pill(
+        let v4 = listing_family(
             "ipv4",
             endpoint.families.iter().find(|f| f.family == "ipv4"),
+            now,
             lang,
         );
-        let v6 = pill(
+        let v6 = listing_family(
             "ipv6",
             endpoint.families.iter().find(|f| f.family == "ipv6"),
+            now,
             lang,
         );
         let flag = country_flag(endpoint.infrastructure.country.as_deref(), lang);
@@ -1040,8 +1095,8 @@ pub(crate) fn listing_results(page: &Page, query: &str, protocol: &str, lang: La
     };
     let pagination = pagination(page, total_pages, query, protocol, lang);
     let note = lang.pick(
-        "地址族徽标显示每个地址族最新一次观测：成功、失败、已过期（最新结果超出预期刷新间隔）、未知/未测或未发现地址。24h 成功率只统计已完成的有效观测，未测地址族不计入，所以“已过期 / 未知未测”与 100% 可以同时出现。",
-        "Family pills show the latest check for that family: success, failure, stale (older than the expected refresh window), unknown/untested, or no address. The 24h success rate counts only completed observations and excludes untested families, so a stale or untested family can coexist with 100%.",
+        "等待复测表示尚未到最早允许探测的时间。待复测表示需要新结果确认当前状态。",
+        "A scheduled recheck is waiting for its earliest allowed time. A due recheck needs a new result to confirm the current status.",
     );
     format!(
         r#"<div class="list-meta">{meta}{feed_link}</div><div class="tracker-list">{rows}</div>{pagination}<p class="list-note">{note}</p>"#,
@@ -1167,7 +1222,7 @@ pub(crate) fn listing(page: &Page, query: &str, protocol: &str, lang: Lang) -> S
 }
 
 /// The latest outcome for a family, described in plain language. The pill
-/// already carries the freshness state, so this avoids repeating "已过期" and
+/// already carries the freshness state, so this avoids repeating it and
 /// instead says what actually happened, with a status code where relevant.
 fn latest(f: Option<&FamilyStatus>, protocol: &str, lang: Lang) -> String {
     let Some(f) = f else {
@@ -1196,25 +1251,29 @@ fn latest(f: Option<&FamilyStatus>, protocol: &str, lang: Lang) -> String {
 
 /// A one-sentence explanation of what a family state means for the success
 /// rate shown next to it. Deliberately shown only when it can be confusing.
-fn family_hint(f: Option<&FamilyStatus>, lang: Lang) -> &'static str {
-    match f.map(|value| value.state.as_str()) {
-        None => lang.pick(
+fn family_hint(f: Option<&FamilyStatus>, now: i64, lang: Lang) -> &'static str {
+    match (f, family_display_state(f, now)) {
+        (None, _) => lang.pick(
             "该地址族尚未检测，不计入 24h 成功率。",
             "This family has not been checked and is excluded from the 24h success rate.",
         ),
-        Some("stale") => lang.pick(
-            "“已过期”只表示最新一次结果超出预期刷新间隔；24h 成功率是过去 24 小时的历史统计，仍可能为 100%。",
-            "\"Stale\" only means the latest result is older than the expected refresh window; the 24h success rate is historical and can still be 100%.",
+        (_, "scheduled") => lang.pick(
+            "当前显示上次结果，等待下一次允许探测。",
+            "The previous result is shown while waiting for the next allowed check.",
         ),
-        Some("unknown") => lang.pick(
+        (_, "stale") => lang.pick(
+            "当前状态需要新的检测结果确认。",
+            "A new check is due to confirm the current status.",
+        ),
+        (_, "unknown") => lang.pick(
             "“未知 / 未测”表示尚无有效结果，不计入 24h 成功率。",
             "\"Unknown / untested\" means there is no valid result yet; it is excluded from the 24h success rate.",
         ),
-        Some("unsupported") => lang.pick(
+        (_, "unsupported") => lang.pick(
             "“未发现地址”表示该地址族没有公开解析地址，不计入 24h 成功率。",
             "\"No address\" means no public address resolved for this family; it is excluded from the 24h success rate.",
         ),
-        Some("local_unavailable") => lang.pick(
+        (_, "local_unavailable") => lang.pick(
             "本地网络不可用不是 Tracker 故障；该次观测不计入 24h 成功率。",
             "A local network failure is not tracker downtime; that observation is excluded from the 24h success rate.",
         ),
@@ -1642,25 +1701,26 @@ pub(crate) fn detail(
     );
     let family_card = |name: &str, f: Option<&FamilyStatus>| {
         let target = latest_target_ip(health_observations, name).unwrap_or("-");
-        let hint = family_hint(f, lang);
+        let hint = family_hint(f, now, lang);
         let hint = if hint.is_empty() {
             String::new()
         } else {
             format!(r#"<small class="family-hint">{}</small>"#, esc(hint))
         };
         format!(
-            r#"<div class="family-card">{}<strong>{}</strong><small>{}: {}</small><small>{}: {}</small>{hint}</div>"#,
-            pill(name, f, lang),
+            r#"<div class="family-card">{}<strong>{}</strong><small>{}: {}</small>{}<small>{}: {}</small>{hint}</div>"#,
+            pill(name, f, now, lang),
             latest(f, &endpoint.protocol, lang),
             lang.pick("检测时间", "Checked"),
             time_element(f.and_then(|v| v.checked_at), lang),
+            earliest_check(f, now, lang),
             lang.pick("最近目标 IP", "Latest target IP"),
             esc(target)
         )
     };
     let metric_note = lang.pick(
-        "成功率只统计已完成的有效观测（成功 / 失败）；未测、本地故障和未发现地址不计入。“已过期”只表示最新一次结果超出预期刷新间隔，24h 成功率仍是过去 24 小时的历史统计，因此两者可以同时出现。",
-        "Success rates count completed observations only (accepted / failed). Untested, locally failed and no-address checks are excluded. \"Stale\" only means the latest result is older than the expected refresh window; the 24h success rate is still historical, so both can appear together.",
+        "24h 成功率是过去 24 小时的历史统计，只计入已完成的有效观测。",
+        "The 24h success rate counts only completed observations from the past 24 hours.",
     );
     let body = format!(r#"<section class="page-head detail-head"><a class="back" href="/trackers?lang={code}">← {back}</a><p class="eyebrow">{detail_label}</p><h1>{host}{new}</h1>{url}{colocated}</section><section class="family-grid">{family4}{family6}</section><section class="section-heading"><div><p class="eyebrow">{evidence_label}</p><h2>{evidence_title}</h2><p>{evidence_note}</p></div></section><section class="metric-grid detail-metrics">{metrics}</section><p class="detail-note">{metric_note}</p><section class="panel"><div class="section-heading compact"><div><p class="eyebrow">{network_label}</p><h2>{network_title}</h2><p>{network_note}</p></div></div><dl class="infra-compact">{infrastructure}</dl></section><section class="panel observation-panel"><div class="section-heading compact"><div><p class="eyebrow">{last_day_label}</p><h2>{history}</h2><p>{history_note}</p></div></div><p class="timeline-legend">{timeline_legend}</p><div data-observation-timeline class="observation-timeline" role="img" aria-label="{timeline_label}"></div><noscript>{timeline}</noscript><div class="chart-header"><strong>{latency_chart}</strong></div><div class="canvas-wrap"><canvas data-observation-chart role="img" aria-label="{latency_chart}"></canvas></div><noscript>{graph}</noscript><div class="table-wrap"><table><thead><tr><th>{time_label}</th><th>{family_label}</th><th>{stage}</th><th>{transport}</th><th>{result}</th><th>{reply}</th><th>{latency}</th><th>{target_label}</th><th>{reason}</th></tr></thead><tbody>{rows}</tbody></table></div></section><p class="footnote">{single}</p>"#,
         code=lang.code(), back=lang.pick("列表", "List"), host=esc(&endpoint.host), url=copy_url(lang.pick("Tracker 地址", "Tracker URL"), &endpoint.url, lang),

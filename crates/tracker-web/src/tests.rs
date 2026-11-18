@@ -208,6 +208,7 @@ fn fixture(root: &Path) {
                 state: "failed".into(),
                 checked_at: Some(now - 5),
                 valid_until: Some(now + 60),
+                next_check_at: None,
                 http_status: Some(200),
                 protocol_result: Some("failed".into()),
                 error_category: Some("tracker_rejection".into()),
@@ -775,7 +776,12 @@ async fn udp_never_inherits_http_status_and_expired_family_is_stale() {
     let mut endpoint: Endpoint = serde_json::from_str(&payload).unwrap();
     endpoint.url = "udp://tracker.example.org:6969/announce".into();
     endpoint.protocol = "udp".into();
-    endpoint.families[0].valid_until = Some(tracker_model::unix_now() - 1);
+    let now = tracker_model::unix_now();
+    endpoint.families[0].valid_until = Some(now - 1);
+    endpoint.families[0].next_check_at = Some(now + 7200);
+    endpoint.families[0].error_category = Some("timeout".into());
+    endpoint.families[1].valid_until = endpoint.families[0].valid_until;
+    endpoint.families[1].error_category = Some("family_unavailable".into());
     db.execute(
         "UPDATE endpoints SET url=?1,payload=?2 WHERE id='example_id'",
         params![endpoint.url, serde_json::to_string(&endpoint).unwrap()],
@@ -796,6 +802,7 @@ async fn udp_never_inherits_http_status_and_expired_family_is_stale() {
     let (_, _, detail) = get(&router, "/api/v1/trackers/example_id").await;
     let value: serde_json::Value = serde_json::from_str(&detail).unwrap();
     assert_eq!(value["families"][0]["state"], "stale");
+    assert_eq!(value["families"][0]["next_check_at"], now + 7200);
     assert!(value["families"][0]["http_status"].is_null());
     let (_, _, observations) = get(
         &router,
@@ -819,8 +826,19 @@ async fn udp_never_inherits_http_status_and_expired_family_is_stale() {
     );
     let (_, _, html) = get(&router, "/tracker/example_id").await;
     assert!(!html.contains("HTTP 200"));
-    assert!(html.contains("已过期"));
+    assert!(html.contains("IPV4 · 等待复测"));
+    assert!(html.contains("IPV6 · 待复测"));
+    assert!(!html.contains("观测过期"));
+    assert!(html.contains("最早可复测 · <time datetime="));
     assert!(html.contains("24h 成功率是过去 24 小时的历史统计"));
+    let (_, _, listing) = get(&router, "/trackers?lang=zh").await;
+    assert!(listing.contains("<small>上次检测 · 超时</small>"));
+    assert!(listing.contains("<small>上次检测 · 未发现地址</small>"));
+    let (_, _, listing) = get(&router, "/trackers/partial?lang=en").await;
+    assert!(listing.contains("IPV4 · Waiting"));
+    assert!(listing.contains("IPV6 · Recheck due"));
+    assert!(listing.contains("<small>Last check · Timed out</small>"));
+    assert!(listing.contains("<small>Last check · No address</small>"));
 }
 
 #[tokio::test]
@@ -1015,7 +1033,7 @@ async fn legacy_pages_redirect_and_home_has_copyable_endpoints() {
             .count(),
         6
     );
-    assert!(home.contains("/assets/style.css?v=1.2.9"));
+    assert!(home.contains("/assets/style.css?v=1.3.0"));
     assert!(home.contains("href=\"https://github.com/3189007030/Tracker\""));
     assert!(home.contains("/assets/tools.js?v=1.2.9"));
     assert!(home.contains("/assets/charts.js?v=1.2.9"));

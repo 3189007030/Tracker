@@ -10,6 +10,9 @@ pub struct FamilyStatus {
     pub state: String,
     pub checked_at: Option<i64>,
     pub valid_until: Option<i64>,
+    /// The earliest scheduled time at which this address family may be checked.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub next_check_at: Option<i64>,
     pub http_status: Option<u16>,
     pub protocol_result: Option<String>,
     pub error_category: Option<String>,

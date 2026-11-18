@@ -228,12 +228,47 @@ impl Store {
             .collect::<rusqlite::Result<_>>()?;
         Ok(rows)
     }
-    pub fn due_targets(&self, now: i64) -> Result<Vec<(String, String, Option<i64>)>> {
-        let mut q=self.private.prepare("SELECT e.id,e.url,MAX(o.observed_at) FROM endpoints e LEFT JOIN observations o ON o.endpoint_id=e.id AND json_extract(o.payload,'$.stage')='announce' WHERE (NOT EXISTS (SELECT 1 FROM announce_due d WHERE d.endpoint_id=e.id AND d.family='ipv4' AND d.resource='health' AND d.until>?1) OR NOT EXISTS (SELECT 1 FROM announce_due d WHERE d.endpoint_id=e.id AND d.family='ipv6' AND d.resource='health' AND d.until>?1)) AND NOT EXISTS (SELECT 1 FROM endpoint_alias a WHERE a.alias_id=e.id) GROUP BY e.id ORDER BY MAX(o.observed_at) ASC LIMIT 20000")?;
+    /// One eligible family per endpoint, with the earliest due jobs first.
+    pub fn due_targets(&self, now: i64) -> Result<Vec<(String, String, bool)>> {
+        let mut q = self.private.prepare(
+            "WITH due AS (
+                SELECT e.id, e.url,
+                    CASE WHEN COALESCE(v4.until, 0) <= ?1 THEN COALESCE(v4.until, 0) END AS ipv4,
+                    CASE WHEN COALESCE(v6.until, 0) <= ?1 THEN COALESCE(v6.until, 0) END AS ipv6
+                FROM endpoints e
+                LEFT JOIN announce_due v4 ON v4.endpoint_id=e.id AND v4.family='ipv4' AND v4.resource='health'
+                LEFT JOIN announce_due v6 ON v6.endpoint_id=e.id AND v6.family='ipv6' AND v6.resource='health'
+                WHERE NOT EXISTS (SELECT 1 FROM endpoint_alias a WHERE a.alias_id=e.id)
+            )
+            SELECT id, url, ipv4 IS NULL OR (ipv6 IS NOT NULL AND ipv6 < ipv4)
+            FROM due WHERE ipv4 IS NOT NULL OR ipv6 IS NOT NULL
+            ORDER BY COALESCE(MIN(ipv4, ipv6), ipv4, ipv6), id LIMIT 20000",
+        )?;
         let rows = q
             .query_map([now], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))?
             .collect::<rusqlite::Result<_>>()?;
         Ok(rows)
+    }
+    pub fn health_wake_delay(&self, now: i64) -> Result<u64> {
+        let horizon = now.saturating_add(60);
+        let mut earliest = horizon;
+        let mut check = self.private.prepare_cached(
+            "SELECT MAX(
+                COALESCE((SELECT until FROM announce_due WHERE endpoint_id=?1 AND family=?2 AND resource='health'), 0),
+                COALESCE((SELECT until FROM pauses WHERE host=?3), 0)
+            )",
+        )?;
+        for (endpoint, raw, ipv6) in self.due_targets(horizon)? {
+            let url = Url::parse(&raw)?;
+            let host = url.host_str().unwrap_or_default();
+            let family = if ipv6 { "ipv6" } else { "ipv4" };
+            let allowed: i64 = check.query_row(params![endpoint, family, host], |r| r.get(0))?;
+            earliest = earliest.min(allowed);
+            if earliest <= now.saturating_add(5) {
+                break;
+            }
+        }
+        Ok(earliest.saturating_sub(now).clamp(5, 60) as u64)
     }
     pub fn activity_targets(&self) -> Result<Vec<(String, String)>> {
         let mut q=self.private.prepare("SELECT e.id,e.url FROM endpoints e LEFT JOIN activity_cursor c ON c.endpoint_id=e.id WHERE NOT EXISTS (SELECT 1 FROM endpoint_alias a WHERE a.alias_id=e.id) ORDER BY COALESCE(c.last_attempt,0)/3600, RANDOM() LIMIT 20000")?;
@@ -819,9 +854,13 @@ impl Store {
             )?;
             prune.commit()?;
         }
-        let mut query = self
-            .private
-            .prepare("SELECT id,service_id,url,first_seen,baseline FROM endpoints ORDER BY url")?;
+        let mut query = self.private.prepare(
+            "SELECT e.id,e.service_id,e.url,e.first_seen,e.baseline,v4.until,v6.until
+             FROM endpoints e
+             LEFT JOIN announce_due v4 ON v4.endpoint_id=e.id AND v4.family='ipv4' AND v4.resource='health'
+             LEFT JOIN announce_due v6 ON v6.endpoint_id=e.id AND v6.family='ipv6' AND v6.resource='health'
+             ORDER BY e.url",
+        )?;
         let rows = query
             .query_map([], |r| {
                 Ok((
@@ -830,14 +869,23 @@ impl Store {
                     r.get::<_, String>(2)?,
                     r.get::<_, i64>(3)?,
                     r.get::<_, i64>(4)?,
+                    r.get::<_, Option<i64>>(5)?,
+                    r.get::<_, Option<i64>>(6)?,
                 ))
             })?
             .collect::<rusqlite::Result<Vec<_>>>()?;
         drop(query);
+        let mut query = self
+            .private
+            .prepare("SELECT host,until FROM pauses WHERE until>?1")?;
+        let paused_hosts = query
+            .query_map([now], |r| Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)?)))?
+            .collect::<rusqlite::Result<std::collections::HashMap<_, _>>>()?;
+        drop(query);
         // Public NEW describes the stable service, not a newly added endpoint.
         // Keep the endpoint's own first_seen and baseline in the private table.
         let mut service_discovery = std::collections::HashMap::<&str, (i64, bool)>::new();
-        for (_, service_id, _, first_seen, baseline) in &rows {
+        for (_, service_id, _, first_seen, baseline, ..) in &rows {
             service_discovery
                 .entry(service_id.as_str())
                 .and_modify(|(first, base)| {
@@ -963,10 +1011,21 @@ impl Store {
         let mut all_candidates = Vec::new();
         let mut standard_candidates = Vec::new();
         let mut best_candidates = Vec::new();
-        for (endpoint_id, service_id, url, first_seen, _baseline) in &rows {
+        for (endpoint_id, service_id, url, first_seen, _, next_v4, next_v6) in &rows {
             let (service_first_seen, service_baseline) = service_discovery[service_id.as_str()];
             let alias_of = aliases.get(endpoint_id).cloned();
             let parsed = Url::parse(url)?;
+            let paused_until = paused_hosts
+                .get(parsed.host_str().unwrap_or_default())
+                .copied();
+            let next_check = |family: &str| {
+                let scheduled = match family {
+                    "ipv4" => *next_v4,
+                    "ipv6" => *next_v6,
+                    _ => return None,
+                };
+                scheduled.max(paused_until).filter(|until| *until > now)
+            };
             let colocated = own_hosts
                 .iter()
                 .any(|h| h.eq_ignore_ascii_case(parsed.host_str().unwrap_or_default()));
@@ -983,11 +1042,25 @@ impl Store {
             use rusqlite::OptionalExtension;
             let cached:Option<(String,i64)>=tx.query_row("SELECT e.payload,c.all_eligible FROM publication_cache c JOIN endpoints e ON e.id=c.endpoint_id WHERE c.endpoint_id=?1 AND c.event_revision=?2 AND c.sample_revision=?3 AND c.next_refresh>?4 AND c.service_id=?5 AND c.colocated=?6 AND c.interval_sec=?7",params![endpoint_id,event_revision,sample_revision,now,service_id,colocated as i64,interval as i64],|r|Ok((r.get(0)?,r.get(1)?))).optional()?;
             if let Some((payload, all_eligible)) = cached
-                && let Ok(endpoint) = serde_json::from_str::<Endpoint>(&payload)
+                && let Ok(mut endpoint) = serde_json::from_str::<Endpoint>(&payload)
                 && endpoint.first_seen == service_first_seen
                 && endpoint.baseline == service_baseline
                 && endpoint.alias_of == alias_of
             {
+                // Host backoff and family schedules can change without a new observation.
+                // Keep the cached evidence and update just the public schedule in that case.
+                let mut schedule_changed = false;
+                for family in &mut endpoint.families {
+                    let scheduled = next_check(&family.family);
+                    schedule_changed |= family.next_check_at != scheduled;
+                    family.next_check_at = scheduled;
+                }
+                if schedule_changed {
+                    tx.execute(
+                        "UPDATE endpoints SET payload=?1 WHERE id=?2",
+                        params![serde_json::to_string(&endpoint)?, endpoint_id],
+                    )?;
+                }
                 // Aliases are published for id lookups but never listed as feed
                 // candidates, and a cached payload whose alias status changed
                 // is rebuilt below instead of reused.
@@ -1038,6 +1111,7 @@ impl Store {
                         },
                         checked_at: Some(o.observed_at),
                         valid_until: Some(valid_until),
+                        next_check_at: next_check(family),
                         http_status: o.http_status,
                         protocol_result: Some(o.result.clone()),
                         error_category: o.error_category.clone(),
@@ -1047,6 +1121,7 @@ impl Store {
                     family_status.push(FamilyStatus {
                         family: family.into(),
                         state: "unknown".into(),
+                        next_check_at: next_check(family),
                         ..Default::default()
                     });
                 }
@@ -2050,6 +2125,107 @@ mod tests {
             |r| r.get(0),
         )?;
         Ok(serde_json::from_str(&payload)?)
+    }
+
+    #[test]
+    fn health_queue_prioritizes_only_families_that_are_due() -> Result<()> {
+        let dir =
+            std::env::temp_dir().join(format!("tracker-health-queue-{}", rand::random::<u64>()));
+        let mut store = Store::open(&dir)?;
+        let a = "https://a.example.org/announce";
+        let b = "https://b.example.org/announce";
+        store.ingest(&[a.into(), b.into()], &Default::default())?;
+        let a = target_id(&store, a)?;
+        let b = target_id(&store, b)?;
+        let now = unix_now();
+        announce(&mut store, &a, "accepted", now - 1, "203.0.113.10")?;
+        announce(&mut store, &b, "accepted", now - 20, "203.0.113.11")?;
+        store.defer_announce(&a, "ipv4", "health", now + 10)?;
+        store.defer_announce(&a, "ipv6", "health", now - 120)?;
+        store.defer_announce(&b, "ipv4", "health", now - 5)?;
+        store.defer_announce(&b, "ipv6", "health", now - 3)?;
+        store.defer_announce(&a, "ipv6", "unrelated-sample", now + 7200)?;
+
+        let due = store.due_targets(now)?;
+        assert_eq!(due.len(), 2);
+        assert_eq!((&due[0].0, due[0].2), (&a, true));
+        assert_eq!((&due[1].0, due[1].2), (&b, false));
+        assert_eq!(store.health_wake_delay(now)?, 5);
+
+        store.defer_announce(&a, "ipv6", "health", now + 40)?;
+        store.pause("a.example.org", now + 15)?;
+        store.pause("b.example.org", now + 45)?;
+        assert!(
+            store
+                .due_targets(now)?
+                .iter()
+                .all(|(endpoint, _, _)| endpoint != &a)
+        );
+        assert_eq!(store.health_wake_delay(now)?, 15);
+        let due = store.due_targets(now + 15)?;
+        assert_eq!((&due[1].0, due[1].2), (&a, false));
+        drop(store);
+        std::fs::remove_dir_all(dir)?;
+        Ok(())
+    }
+
+    #[test]
+    fn health_schedule_updates_a_cached_snapshot_without_changing_evidence() -> Result<()> {
+        let dir =
+            std::env::temp_dir().join(format!("tracker-health-public-{}", rand::random::<u64>()));
+        let mut store = Store::open(&dir)?;
+        let https = "https://plan.example.org/announce";
+        let udp = "udp://plan.example.org:6969/announce";
+        store.ingest(&[https.into(), udp.into()], &Default::default())?;
+        let now = unix_now();
+        let endpoint = target_id(&store, https)?;
+        let other = target_id(&store, udp)?;
+        announce(
+            &mut store,
+            &endpoint,
+            "accepted",
+            now - 4500,
+            "203.0.113.12",
+        )?;
+        store.publish(1800, &[])?;
+        let previous = published_endpoint(&store, https)?;
+        let feed = published_feed(&store, "trackers_all.txt")?;
+        let fresh_deadline = previous.families[0].valid_until;
+        assert_eq!(previous.families[0].next_check_at, None);
+        assert_eq!(previous.families[0].state, "unknown");
+        let cached_refresh = |store: &Store| -> Result<i64> {
+            Ok(store.public.query_row(
+                "SELECT next_refresh FROM publication_cache WHERE endpoint_id=?1",
+                [&endpoint],
+                |row| row.get(0),
+            )?)
+        };
+        let refresh = cached_refresh(&store)?;
+        store.defer_announce(&endpoint, "ipv4", "health", now + 600)?;
+        store.defer_announce(&endpoint, "ipv6", "health", now + 1200)?;
+        store.defer_announce(&other, "ipv4", "health", now + 2400)?;
+        store.publish(1800, &[])?;
+        let updated = published_endpoint(&store, https)?;
+        assert_eq!(updated.families[0].next_check_at, Some(now + 600));
+        assert_eq!(updated.families[1].next_check_at, Some(now + 1200));
+        assert_eq!(updated.families[0].valid_until, fresh_deadline);
+        assert_eq!(updated.families[0].state, previous.families[0].state);
+        assert_eq!(updated.evidence.success_rate_24h, Some(1.0));
+        assert_eq!(published_feed(&store, "trackers_all.txt")?, feed);
+        assert_eq!(cached_refresh(&store)?, refresh);
+
+        store.pause("plan.example.org", now + 1800)?;
+        store.publish(1800, &[])?;
+        let updated = published_endpoint(&store, https)?;
+        let sibling = published_endpoint(&store, udp)?;
+        assert_eq!(updated.families[0].next_check_at, Some(now + 1800));
+        assert_eq!(updated.families[1].next_check_at, Some(now + 1800));
+        assert_eq!(sibling.families[0].next_check_at, Some(now + 2400));
+        assert_eq!(sibling.families[1].next_check_at, Some(now + 1800));
+        assert_eq!(cached_refresh(&store)?, refresh);
+        drop(store);
+        std::fs::remove_dir_all(dir)?;
+        Ok(())
     }
 
     #[test]
