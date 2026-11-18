@@ -13,7 +13,8 @@ use std::{
 use tokio::time::{Instant, sleep, timeout};
 use url::Url;
 
-const MAX_POOL: usize = 100;
+pub(crate) const MAX_POOL: usize = 100;
+pub(crate) const GHOST_SAMPLE_COUNT: usize = 16;
 const MAX_REQUESTS: usize = 40;
 const MAX_PAGE: usize = 2 * 1024 * 1024;
 const MAX_TORRENT: usize = 4 * 1024 * 1024;
@@ -862,7 +863,7 @@ async fn official(c: &mut Collector, source: Source, now: i64) -> Result<Vec<Sam
 /// state atomically and honor its own scheduler/pressure controls.
 pub fn ghost_samples(now: i64) -> Vec<SampleRecord> {
     use sha1::{Digest, Sha1};
-    (0..16)
+    (0..GHOST_SAMPLE_COUNT)
         .map(|i| {
             let mut hasher = Sha1::new();
             hasher.update(format!("tracker-observatory:ghost:v1:sample-{}", i).as_bytes());
@@ -881,7 +882,7 @@ pub fn ghost_samples(now: i64) -> Vec<SampleRecord> {
 
 pub fn is_ghost_hash(hash: &[u8; 20]) -> bool {
     use sha1::{Digest, Sha1};
-    (0..16).any(|i| {
+    (0..GHOST_SAMPLE_COUNT).any(|i| {
         let mut hasher = Sha1::new();
         hasher.update(format!("tracker-observatory:ghost:v1:sample-{}", i).as_bytes());
         let expected: [u8; 20] = hasher.finalize().into();

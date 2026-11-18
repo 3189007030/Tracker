@@ -1031,7 +1031,7 @@ async fn pool_reasons_and_staleness_are_shown_independently() {
         .split("</article>")
         .next()
         .unwrap();
-    assert!(software.contains("部分来源延后"));
+    assert!(software.contains("部分就绪"));
     assert!(software.contains("来源返回 HTTP 502"));
     assert!(!software.contains("数据已过期"));
     assert!(body.contains("等待来源"));
@@ -1039,9 +1039,62 @@ async fn pool_reasons_and_staleness_are_shown_independently() {
     assert!(body.contains("更新时间: 未知"));
     let (_, _, english) = get(&router, "/sources?lang=en").await;
     assert!(english.contains("Public resource pool"));
+    assert!(english.contains("fixed, reproducible test identifiers"));
+    assert!(english.contains("do not establish malicious intent"));
     let (_, _, listing) = get(&router, "/trackers").await;
     assert!(listing.contains("href=\"/trackers.txt\""));
     assert!(listing.contains("复制标准订阅地址"));
+}
+
+#[tokio::test]
+async fn partial_pool_without_error_does_not_claim_deferred_source() {
+    let dir = TempDir::new().unwrap();
+    fixture(dir.path());
+    let db = Connection::open(dir.path().join("public.sqlite3")).unwrap();
+    let now = tracker_model::unix_now();
+    let pools = serde_json::json!([
+        {"pool":"forum","count":12,"target":100,"updated_at":now,"last_attempt_at":now,"stale":false,"status":"partial","error_category":null}
+    ]);
+    db.execute(
+        "INSERT INTO documents VALUES ('sample_pools',?1,?2)",
+        params![pools.to_string(), now],
+    )
+    .unwrap();
+    drop(db);
+    let router = app(dir.path().to_path_buf());
+    let (_, _, body) = get(&router, "/sources").await;
+    assert!(body.contains("部分就绪"));
+    assert!(!body.contains("部分来源延后"));
+    assert!(body.contains("不会自动导致 Tracker 下架"));
+}
+
+#[tokio::test]
+async fn family_breakdown_includes_sanitized_failures() {
+    let dir = TempDir::new().unwrap();
+    fixture(dir.path());
+    let router = app(dir.path().to_path_buf());
+    let (_, _, body) = get(&router, "/tracker/example_id").await;
+    assert!(body.contains("IPV4 1/3 · IPV6 1/1"));
+    assert!(body.contains("IPV4 2/3 · IPV6 1/1"));
+}
+
+#[test]
+fn incomplete_coverage_never_rounds_up_to_twenty_four_hours() {
+    let overview = Overview {
+        version: VERSION.to_owned(),
+        generated_at: tracker_model::unix_now(),
+        endpoints: 0,
+        services: 0,
+        standard_count: 0,
+        best_count: 0,
+        all_count: 0,
+        warming: false,
+    };
+    let native = serde_json::json!({"covered_seconds_24h": 86_399});
+    let body = crate::html::home(&overview, Some(&native), Lang::Zh);
+    assert!(body.contains("采样覆盖 23.9 小时，非完整 24 小时"));
+    assert!(!body.contains("系统在线"));
+    assert!(!body.contains("公共快照持续更新"));
 }
 
 #[tokio::test]

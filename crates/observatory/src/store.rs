@@ -161,6 +161,9 @@ impl Store {
             "CREATE TABLE IF NOT EXISTS publication_meta(k TEXT PRIMARY KEY,v INTEGER NOT NULL);",
         )?;
         public.execute_batch("CREATE INDEX IF NOT EXISTS public_observations_age ON observations(observed_at); CREATE TABLE IF NOT EXISTS publication_cache(endpoint_id TEXT PRIMARY KEY,event_revision INTEGER NOT NULL,sample_revision INTEGER NOT NULL,next_refresh INTEGER NOT NULL,service_id TEXT NOT NULL,colocated INTEGER NOT NULL,all_eligible INTEGER NOT NULL,interval_sec INTEGER NOT NULL);")?;
+        // Rebuild alias policy on the first publication after a restart, even
+        // when an earlier process refreshed it less than ten minutes ago.
+        private.execute("DELETE FROM meta WHERE k='alias_checked_at'", [])?;
         Ok(Self { private, public })
     }
     pub fn ingest(
@@ -206,6 +209,10 @@ impl Store {
                 "UPDATE endpoints SET service_id=?1 WHERE id=?2",
                 params![id(&service), id(&url)],
             )?;
+        }
+        if added > 0 {
+            // Newly discovered canonical or legacy endpoints can change aliases.
+            tx.execute("DELETE FROM meta WHERE k='alias_checked_at'", [])?;
         }
         tx.commit()?;
         Ok(added)
@@ -452,6 +459,46 @@ impl Store {
             .collect::<rusqlite::Result<_>>()?;
         Ok(rows)
     }
+    fn retired_own_aliases(
+        &self,
+        own_hosts: &[String],
+    ) -> Result<std::collections::HashMap<String, String>> {
+        use rusqlite::OptionalExtension;
+        let mut result = std::collections::HashMap::new();
+        for (host, retired, canonical) in [
+            (
+                "tracker.augrains.com",
+                "http://announce.augrains.com/announce",
+                "http://tracker.augrains.com/announce",
+            ),
+            (
+                "tracker.augrains.com",
+                "https://announce.augrains.com/announce",
+                "https://tracker.augrains.com/announce",
+            ),
+            (
+                "udp.augrains.com",
+                "udp://announce.augrains.com:6969/announce",
+                "udp://udp.augrains.com:6969/announce",
+            ),
+        ] {
+            if !own_hosts.iter().any(|own| own.eq_ignore_ascii_case(host)) {
+                continue;
+            }
+            let pair: Option<(String, String)> = self
+                .private
+                .query_row(
+                    "SELECT old.id, canonical.id FROM endpoints old JOIN endpoints canonical ON canonical.url=?2 WHERE old.url=?1",
+                    params![retired, canonical],
+                    |r| Ok((r.get(0)?, r.get(1)?)),
+                )
+                .optional()?;
+            if let Some((old, canonical)) = pair {
+                result.insert(old, canonical);
+            }
+        }
+        Ok(result)
+    }
     /// Recompute the duplicate-origin mapping from recent evidence.
     ///
     /// Endpoints are the same origin when the address the probe actually
@@ -631,6 +678,7 @@ impl Store {
             }
         }
         let previous = self.alias_map()?;
+        let retired = self.retired_own_aliases(own_hosts)?;
         let previous_canonicals: std::collections::HashSet<&String> = previous.values().collect();
         let mut mapping = std::collections::HashMap::<String, (String, String)>::new();
         for ((scheme, _, _, _), members) in buckets {
@@ -690,6 +738,17 @@ impl Store {
                     (canonical.id.clone(), alias.target_ip.clone()),
                 );
             }
+        }
+        // Explicit retirement takes precedence over evidence-based aliases.
+        // Redirect any existing duplicate of the retired name directly to the
+        // current entry point so no alias chain can send clients backwards.
+        for (canonical, _) in mapping.values_mut() {
+            if let Some(replacement) = retired.get(canonical) {
+                *canonical = replacement.clone();
+            }
+        }
+        for (alias, canonical) in retired {
+            mapping.insert(alias, (canonical, String::new()));
         }
         let changed = previous.len() != mapping.len()
             || mapping
@@ -841,6 +900,11 @@ impl Store {
             let previous = &previous_pool;
             let mut statuses = Vec::new();
             for (name, forum) in [("software", false), ("forum", true)] {
+                let target = if forum {
+                    crate::pool::GHOST_SAMPLE_COUNT
+                } else {
+                    crate::pool::MAX_POOL
+                };
                 let count = previous
                     .samples
                     .iter()
@@ -867,13 +931,13 @@ impl Store {
                 statuses.push(PoolStatus {
                     pool: name.into(),
                     count,
-                    target: 100,
+                    target,
                     updated_at: at,
                     last_attempt_at: pool_last_attempt,
                     stale,
                     status: if count == 0 {
                         "deferred"
-                    } else if count < 100 || stale || failed {
+                    } else if count < target || stale || failed {
                         "partial"
                     } else {
                         "ready"
@@ -1285,6 +1349,98 @@ impl Store {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn ghost_pool_status_uses_its_actual_target() -> Result<()> {
+        use crate::pool::{PoolKind, PoolUpdate, SampleRecord, Source, ghost_samples};
+
+        fn published_pool(store: &mut Store, pool: &str) -> Result<PoolStatus> {
+            store.publish(1800, &[])?;
+            let raw: String = store.public.query_row(
+                "SELECT payload FROM documents WHERE key='sample_pools'",
+                [],
+                |r| r.get(0),
+            )?;
+            let statuses: Vec<PoolStatus> = serde_json::from_str(&raw)?;
+            Ok(statuses.into_iter().find(|s| s.pool == pool).unwrap())
+        }
+
+        let dir =
+            std::env::temp_dir().join(format!("tracker-ghost-pool-{}", rand::random::<u64>()));
+        let mut store = Store::open(&dir)?;
+        let now = unix_now();
+        let source = |source, status: &str| crate::pool::PoolStatus {
+            source,
+            status: status.into(),
+            retry_at: 0,
+            error_category: (status != "ok").then(|| "source_deferred".into()),
+        };
+        let mut samples = ghost_samples(now);
+        samples.push(SampleRecord {
+            info_hash: [42; 20],
+            pool: PoolKind::Official,
+            source: Source::Debian,
+            name: "Debian".into(),
+            discovered_at: now,
+            geometry: Some((1, 1, 1)),
+        });
+        let sources = || vec![source(Source::Hjd, "ok"), source(Source::Debian, "ok")];
+        store.replace_pool(PoolUpdate {
+            samples: samples.clone(),
+            sources: sources(),
+            collected_at: now,
+        })?;
+        let ghost = published_pool(&mut store, "forum")?;
+        assert_eq!(
+            (ghost.count, ghost.target, ghost.status.as_str()),
+            (16, 16, "ready")
+        );
+        let software = published_pool(&mut store, "software")?;
+        assert_eq!(
+            (software.count, software.target, software.status.as_str()),
+            (1, 100, "partial")
+        );
+
+        let mut incomplete = samples.clone();
+        incomplete.remove(0);
+        store.replace_pool(PoolUpdate {
+            samples: incomplete,
+            sources: sources(),
+            collected_at: now,
+        })?;
+        let ghost = published_pool(&mut store, "forum")?;
+        assert_eq!(
+            (ghost.count, ghost.target, ghost.status.as_str()),
+            (15, 16, "partial")
+        );
+
+        store.replace_pool(PoolUpdate {
+            samples: samples.clone(),
+            sources: sources(),
+            collected_at: now,
+        })?;
+        store.set_value("pool_forum_fresh_at", now - 86401)?;
+        let ghost = published_pool(&mut store, "forum")?;
+        assert!(ghost.stale);
+        assert_eq!(ghost.status, "partial");
+
+        store.replace_pool(PoolUpdate {
+            samples,
+            sources: vec![
+                source(Source::Hjd, "ok"),
+                source(Source::FbyLt1, "deferred"),
+                source(Source::Debian, "ok"),
+            ],
+            collected_at: now,
+        })?;
+        let ghost = published_pool(&mut store, "forum")?;
+        assert!(!ghost.stale);
+        assert_eq!(ghost.status, "partial");
+        assert_eq!(ghost.error_category.as_deref(), Some("source_deferred"));
+        drop(store);
+        std::fs::remove_dir_all(dir)?;
+        Ok(())
+    }
+
     #[test]
     fn pool_freshness_is_distinct_from_partial_source_failure() -> Result<()> {
         use crate::pool::{PoolKind, PoolUpdate, SampleRecord, Source};
@@ -2134,11 +2290,118 @@ mod tests {
         store.publish(1800, &["udp.augrains.com".to_owned()])?;
         // The configured public entry point must not disappear behind a
         // retired name that happens to resolve to the same address.
-        assert!(
-            store.alias_map()?.is_empty(),
-            "own service hosts were aliased: {:?}",
-            store.alias_map()?
+        let aliases = store.alias_map()?;
+        assert_eq!(aliases.get(&retired_id), Some(&official_id));
+        assert!(!aliases.contains_key(&official_id));
+        drop(store);
+        std::fs::remove_dir_all(dir)?;
+        Ok(())
+    }
+
+    #[test]
+    fn retired_own_endpoints_are_aliased_on_first_publication_after_restart() -> Result<()> {
+        let dir =
+            std::env::temp_dir().join(format!("tracker-alias-retired-{}", rand::random::<u64>()));
+        let pairs = [
+            (
+                "http://announce.augrains.com/announce",
+                "http://tracker.augrains.com/announce",
+            ),
+            (
+                "https://announce.augrains.com/announce",
+                "https://tracker.augrains.com/announce",
+            ),
+            (
+                "udp://announce.augrains.com:6969/announce",
+                "udp://udp.augrains.com:6969/announce",
+            ),
+        ];
+        let own = vec![
+            "tracker.augrains.com".to_string(),
+            "udp.augrains.com".to_string(),
+        ];
+        let mut store = Store::open(&dir)?;
+        let mut urls: Vec<String> = pairs
+            .iter()
+            .flat_map(|(old, new)| [old.to_string(), new.to_string()])
+            .collect();
+        let other_host = "https://other.example.org:6969/announce";
+        let other_ip = "https://8.8.8.8:6969/announce";
+        urls.extend([other_host.into(), other_ip.into()]);
+        store.ingest(&urls, &Default::default())?;
+        let now = unix_now();
+        for url in &urls {
+            let endpoint_id = target_id(&store, url)?;
+            announce(&mut store, &endpoint_id, "accepted", now - 10, "8.8.8.8")?;
+        }
+        // Model a previously running version with a recent cached alias refresh.
+        store.publish(1800, &[])?;
+        store.set_value("alias_checked_at", now)?;
+        drop(store);
+
+        let mut store = Store::open(&dir)?;
+        store.publish(1800, &own)?;
+        let aliases = store.alias_map()?;
+        let due = store.due_targets(now)?;
+        let activity = store.activity_targets()?;
+        let all = published_feed(&store, "trackers_all.txt")?;
+        assert_eq!(
+            aliases.get(&published_endpoint(&store, other_ip)?.id),
+            Some(&published_endpoint(&store, other_host)?.id)
         );
+        for (old, new) in pairs {
+            let old_id = published_endpoint(&store, old)?.id;
+            let new_id = published_endpoint(&store, new)?.id;
+            assert_eq!(aliases.get(&old_id), Some(&new_id));
+            assert!(!aliases.contains_key(&new_id));
+            assert_eq!(
+                published_endpoint(&store, old)?.alias_of.as_deref(),
+                Some(new_id.as_str())
+            );
+            assert_eq!(published_endpoint(&store, new)?.alias_of, None);
+            assert!(!due.iter().any(|(id, _, _)| id == &old_id));
+            assert!(!activity.iter().any(|(id, _)| id == &old_id));
+            assert!(due.iter().any(|(id, _, _)| id == &new_id));
+            assert!(!all.lines().any(|url| url == old));
+            let history: i64 = store.private.query_row(
+                "SELECT COUNT(*) FROM observations WHERE endpoint_id=?1",
+                [&old_id],
+                |r| r.get(0),
+            )?;
+            assert_eq!(history, 1);
+        }
+        drop(store);
+        std::fs::remove_dir_all(dir)?;
+        Ok(())
+    }
+
+    #[test]
+    fn retired_alias_requires_configured_owner_and_existing_canonical() -> Result<()> {
+        let dir = std::env::temp_dir().join(format!(
+            "tracker-alias-retired-seed-{}",
+            rand::random::<u64>()
+        ));
+        let mut store = Store::open(&dir)?;
+        let old = "http://announce.augrains.com/announce";
+        let new = "http://tracker.augrains.com/announce";
+        let own = vec!["tracker.augrains.com".to_string()];
+        store.ingest(&[old.into()], &Default::default())?;
+        store.publish(1800, &own)?;
+        assert!(store.alias_map()?.is_empty());
+        assert!(
+            store
+                .due_targets(unix_now())?
+                .iter()
+                .any(|(_, url, _)| url == old)
+        );
+        store.ingest(&[new.into()], &Default::default())?;
+        // Ingest invalidates a recent refresh so the next publication applies it.
+        store.publish(1800, &own)?;
+        let old_id = published_endpoint(&store, old)?.id;
+        let new_id = published_endpoint(&store, new)?.id;
+        assert_eq!(store.alias_map()?.get(&old_id), Some(&new_id));
+        store.refresh_aliases(unix_now(), &[])?;
+        assert!(!store.alias_map()?.contains_key(&old_id));
         drop(store);
         std::fs::remove_dir_all(dir)?;
         Ok(())

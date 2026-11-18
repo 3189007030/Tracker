@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.2.6 — observatory status and retired endpoints
+
+- Show the ghost pool's actual target of 16 samples and explain what its private diagnostics measure. The public resource pool still targets 100 samples.
+- Remove the website's fixed online labels. Report partial 24-hour coverage without rounding it up to a full day, and count completed failures in the IPv4 and IPv6 detail totals.
+- Treat the three retired `announce.augrains.com` URLs as aliases of their corresponding current entry points when those are configured and present. Keep their historical detail URLs resolvable and stop duplicating their probes and feed entries.
+
+See the [1.2.6 validation ledger](docs/releases/1.2.6.md) for build and deployment records.
+
 ## 1.2.5 — number formatting and the ghost-sample record
 
 - Fix English large-number formatting: the `k` tier divided by ten thousand, so 566,542 registered peers rendered as `56.4k`; it now renders `566.5k`. Chinese 万 / 亿 formatting was already correct.

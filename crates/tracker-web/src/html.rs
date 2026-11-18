@@ -142,10 +142,9 @@ pub(crate) fn shell(title: &str, lang: Lang, body: &str) -> String {
         }
     };
     let code = lang.code();
-    let status_label = lang.pick("系统在线", "Operational");
     let theme_label = lang.pick("切换深浅主题", "Toggle theme");
     format!(
-        r##"<!doctype html><html lang="{code}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark light"><title>{title} · Tracker Observatory</title><link rel="icon" type="image/svg+xml" href="/assets/brand.svg?v=1.0.2"><link rel="icon" href="/favicon.ico?v=1.0.2" sizes="any"><link rel="apple-touch-icon" href="/assets/brand.png?v=1.0.2"><link rel="stylesheet" href="/assets/style.css?v=1.2.5"></head><body><a class="skip-link" href="#main-content">{skip_link}</a><header class="masthead"><div class="wrap nav-wrap"><a class="brand" href="/?lang={code}"><img class="brand-icon" src="/assets/brand.svg?v=1.0.2" alt=""><span>Tracker <b>Observatory</b></span></a><button class="menu-toggle" type="button" data-menu-toggle aria-expanded="false" aria-controls="site-nav" aria-label="{menu_label}"><span></span><span></span><span></span></button><nav id="site-nav" data-site-nav aria-label="{nav_label}"><a data-nav-key="home" href="/?lang={code}">{nav_home}</a><a data-nav-key="trackers" href="/trackers?lang={code}">{nav_trackers}</a><a data-nav-key="sources" href="/sources?lang={code}">{nav_sources}</a><a data-nav-key="declaration" href="/declaration?lang={code}">{nav_declaration}</a></nav><div class="nav-actions"><div class="nav-status"><span class="pulse-dot"></span><span>{status_label}</span></div><div class="language" aria-label="Language" data-language-switcher>{language}</div><button class="theme-toggle" type="button" data-theme-toggle aria-label="{theme_label}" title="{theme_label}"><svg class="theme-icon-dark" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg><svg class="theme-icon-light" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></button><a class="github-link" href="https://github.com/3189007030/Tracker" rel="noopener noreferrer" aria-label="{github_label}" title="{github_label}"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="currentColor"><path d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.11.79-.25.79-.56v-2.19c-3.21.7-3.89-1.36-3.89-1.36-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.97.11-.75.4-1.26.73-1.55-2.56-.29-5.26-1.28-5.26-5.71 0-1.26.45-2.29 1.18-3.1-.12-.29-.51-1.46.11-3.05 0 0 .97-.31 3.16 1.18a10.98 10.98 0 0 1 5.75 0c2.19-1.49 3.15-1.18 3.15-1.18.63 1.59.24 2.76.12 3.05.74.81 1.18 1.84 1.18 3.1 0 4.44-2.7 5.41-5.28 5.7.42.36.78 1.06.78 2.14v3.22c0 .31.21.68.79.56A11.5 11.5 0 0 0 12 .5Z"/></svg></a></div></div></header><main id="main-content" class="wrap">{body}</main><footer class="wrap footer"><span>Tracker Observatory · {version}</span><span>{footnote}</span></footer><script src="/assets/tools.js?v=1.2.5" defer></script></body></html>"##,
+        r##"<!doctype html><html lang="{code}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark light"><title>{title} · Tracker Observatory</title><link rel="icon" type="image/svg+xml" href="/assets/brand.svg?v=1.0.2"><link rel="icon" href="/favicon.ico?v=1.0.2" sizes="any"><link rel="apple-touch-icon" href="/assets/brand.png?v=1.0.2"><link rel="stylesheet" href="/assets/style.css?v=1.2.5"></head><body><a class="skip-link" href="#main-content">{skip_link}</a><header class="masthead"><div class="wrap nav-wrap"><a class="brand" href="/?lang={code}"><img class="brand-icon" src="/assets/brand.svg?v=1.0.2" alt=""><span>Tracker <b>Observatory</b></span></a><button class="menu-toggle" type="button" data-menu-toggle aria-expanded="false" aria-controls="site-nav" aria-label="{menu_label}"><span></span><span></span><span></span></button><nav id="site-nav" data-site-nav aria-label="{nav_label}"><a data-nav-key="home" href="/?lang={code}">{nav_home}</a><a data-nav-key="trackers" href="/trackers?lang={code}">{nav_trackers}</a><a data-nav-key="sources" href="/sources?lang={code}">{nav_sources}</a><a data-nav-key="declaration" href="/declaration?lang={code}">{nav_declaration}</a></nav><div class="nav-actions"><div class="language" aria-label="Language" data-language-switcher>{language}</div><button class="theme-toggle" type="button" data-theme-toggle aria-label="{theme_label}" title="{theme_label}"><svg class="theme-icon-dark" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg><svg class="theme-icon-light" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></button><a class="github-link" href="https://github.com/3189007030/Tracker" rel="noopener noreferrer" aria-label="{github_label}" title="{github_label}"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="currentColor"><path d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.11.79-.25.79-.56v-2.19c-3.21.7-3.89-1.36-3.89-1.36-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.97.11-.75.4-1.26.73-1.55-2.56-.29-5.26-1.28-5.26-5.71 0-1.26.45-2.29 1.18-3.1-.12-.29-.51-1.46.11-3.05 0 0 .97-.31 3.16 1.18a10.98 10.98 0 0 1 5.75 0c2.19-1.49 3.15-1.18 3.15-1.18.63 1.59.24 2.76.12 3.05.74.81 1.18 1.84 1.18 3.1 0 4.44-2.7 5.41-5.28 5.7.42.36.78 1.06.78 2.14v3.22c0 .31.21.68.79.56A11.5 11.5 0 0 0 12 .5Z"/></svg></a></div></div></header><main id="main-content" class="wrap">{body}</main><footer class="wrap footer"><span>Tracker Observatory · {version}</span><span>{footnote}</span></footer><script src="/assets/tools.js?v=1.2.5" defer></script></body></html>"##,
         title = esc(title),
         version = esc(VERSION),
         skip_link = lang.pick("跳到主要内容", "Skip to main content"),
@@ -314,7 +313,8 @@ pub(crate) fn home(overview: &Overview, native: Option<&serde_json::Value>, lang
 
     let mut coverage_note = String::new();
     if let Some(seconds) = covered_24h.filter(|value| *value < 86_400.0) {
-        let hours = format!("{:.1}", seconds / 3600.0);
+        // Truncate instead of rounding so a partial window never displays 24.0 h.
+        let hours = format!("{:.1}", (seconds / 360.0).floor() / 10.0);
         let zh = format!("采样覆盖 {hours} 小时，非完整 24 小时。");
         let en = format!("Sampling covers {hours} h, not a full 24 hours.");
         coverage_note = format!(
@@ -411,14 +411,14 @@ pub(crate) fn home(overview: &Overview, native: Option<&serde_json::Value>, lang
     }
     let trends = charts(lang);
     let intro = format!(
-        r##"<section class="hero home-hero"><div class="hero-copy"><p class="eyebrow">TRACKER OBSERVATORY</p><h1>{}</h1><p class="lead">{}</p><div class="actions"><a class="button" href="/trackers?lang={}">{}</a><a class="button secondary" href="#native-trackers">{}</a></div></div><div class="hero-signal"><span class="signal-dot"></span><div><strong>{}</strong><small>{}</small></div><span class="signal-grid" aria-hidden="true"></span></div></section>"##,
+        r##"<section class="hero home-hero"><div class="hero-copy"><p class="eyebrow">TRACKER OBSERVATORY</p><h1>{}</h1><p class="lead">{}</p><div class="actions"><a class="button" href="/trackers?lang={}">{}</a><a class="button secondary" href="#native-trackers">{}</a></div></div><div class="hero-signal"><div><strong>{}</strong><small>{}</small></div><span class="signal-grid" aria-hidden="true"></span></div></section>"##,
         lang.pick("用证据看见 Tracker 网络", "See the tracker network through evidence"),
         lang.pick("公开端点、地址族健康度和 24 小时观测，集中在一个可扫描的工作台。", "Public endpoints, address-family health and 24-hour observations in one focused workspace."),
         lang.code(),
         lang.pick("浏览 Tracker 列表", "Browse trackers"),
         lang.pick("复制接入地址", "Get connection URLs"),
-        lang.pick("观测台在线", "Observatory online"),
-        lang.pick("公共快照持续更新", "Public snapshot updating")
+        lang.pick("公开观测快照", "Public observations"),
+        lang.pick("基于单一网络位置", "From one network location")
     );
     let body = format!(r#"{intro}{kpi_strip}<div class="home-address-grid"><section id="native-trackers" class="panel prose"><h2>{}</h2><p>{}</p><div class="copy-list">{addresses}</div><p>{}</p></section><section class="panel prose"><h2>{}</h2><p>{}</p><div class="subscriptions">{feeds}</div></section></div>{trends}<p class="footnote">{scope}</p>"#,
         lang.pick("本站 Tracker 地址", "Native tracker addresses"), lang.pick("在 BT 客户端的种子 Tracker 列表中，每行添加一个地址并保存。", "Add each address on a separate line in your torrent's tracker list, then save."), lang.pick("这是 BT 协议入口，浏览器不提供通告参数；UDP 不是网页。", "These are BT protocol endpoints. Browsers do not supply announce parameters; UDP is not a web page."),
@@ -1194,9 +1194,9 @@ fn family_observation_note(
                 && item.stage == "announce"
                 && item.observed_at >= now.saturating_sub(86_400)
                 && if replies {
-                    item.result == "accepted" || item.result == "failed" || item.protocol_reply
+                    matches!(item.result.as_str(), "accepted" | "failure") || item.protocol_reply
                 } else {
-                    item.result == "accepted" || item.result == "failed"
+                    matches!(item.result.as_str(), "accepted" | "failure")
                 }
         })
         .collect();
@@ -1644,15 +1644,12 @@ pub(crate) fn simple(
         for pool in pools {
             let label = match pool.pool.as_str() {
                 "software" => lang.pick("公共资源样本池", "Public resource pool"),
-                "forum" => lang.pick(
-                    "幽灵样本池（投毒检测）",
-                    "Ghost sample pool (poison detection)",
-                ),
+                "forum" => lang.pick("幽灵样本池（诊断）", "Ghost sample pool (diagnostics)"),
                 _ => continue,
             };
             let status = match pool.status.as_str() {
                 "ready" => lang.pick("正常", "Ready"),
-                "partial" => lang.pick("部分来源延后", "Some sources deferred"),
+                "partial" => lang.pick("部分就绪", "Partially ready"),
                 "deferred" => lang.pick("等待来源", "Waiting for sources"),
                 _ => lang.pick("未知", "Unknown"),
             };
@@ -1700,7 +1697,7 @@ pub(crate) fn simple(
         }
         let body = format!(r#"<section class="metric-grid">{pool_rows}</section><section class="panel prose"><h2>{}</h2>{sources}<p>{}</p><p>{}</p></section>"#,
             lang.pick("Tracker 候选来源", "Tracker candidate sources"),
-            lang.pick("公共资源样本优先来自官方发行渠道；幽灵样本池用于持续向各 Tracker 探测未公开的随机种子，自动识别伪造做种者与恶意注入 Peer 的投毒 Tracker。", "Public resource samples prioritize official distribution sources; ghost samples probe trackers with unpublished random hashes to automatically detect fake seeders and peer-injecting trackers."),
+            lang.pick("公共资源样本优先来自官方发行渠道。幽灵样本使用固定、可复现的测试标识进行私有诊断，异常响应不能单独证明恶意，也不会自动导致 Tracker 下架。", "Public resource samples prioritize official distribution sources. Ghost samples use fixed, reproducible test identifiers for private diagnostics; unusual responses alone do not establish malicious intent or automatically remove a tracker."),
             lang.pick("每个地址族独立实测；限流、本地故障和缺测保持区分。握手与位图抽样不请求文件分块。", "Address families are checked independently; rate limits, local failures and missing data remain distinct. Handshakes and bitmap sampling do not request file pieces."));
         return shell(lang.pick("来源", "Sources"), lang, &body);
     }
