@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use std::sync::Arc;
 use std::thread;
@@ -44,6 +45,27 @@ fn peers_survive_ten_and_thirty_minutes_and_cross_address_families() {
     let reply = engine.announce(&a, 1800).unwrap();
     assert!(reply.peers.contains(&SocketAddr::new(b.ip, b.port)));
     assert_eq!((reply.interval, reply.min_interval), (1800, 300));
+}
+
+#[test]
+fn two_peer_reply_and_stopped_nonmember_keep_the_same_budget() {
+    let engine = engine();
+    let a = request(1, v4(1), 1001, 0);
+    let b = request(1, v6(2), 1002, 1);
+    let mut c = request(1, v4(3), 1003, 0);
+    let a_addr = SocketAddr::new(a.ip, a.port);
+    let b_addr = SocketAddr::new(b.ip, b.port);
+    engine.announce(&a, 100).unwrap();
+    assert_eq!(engine.announce(&b, 100).unwrap().peers, [a_addr]);
+    assert_eq!(engine.announce(&a, 100).unwrap().peers, [b_addr]);
+    engine.announce(&c, 100).unwrap();
+
+    c.event = AnnounceEvent::Stopped;
+    let stopped = engine.announce(&c, 101).unwrap();
+    assert_eq!((stopped.complete, stopped.incomplete), (1, 1));
+    assert_eq!(stopped.peers.len(), 1);
+    assert!([a_addr, b_addr].contains(&stopped.peers[0]));
+    assert_eq!(engine.announce(&a, 101).unwrap().peers, [b_addr]);
 }
 
 #[test]
@@ -263,6 +285,10 @@ fn hot_swarm_sampling_is_bounded_and_timer_refresh_is_not_duplicated() {
     }
     let reply = engine.announce(&a, 1000).unwrap();
     assert!(reply.peers.len() <= 50);
+    assert_eq!(
+        reply.peers.iter().collect::<HashSet<_>>().len(),
+        reply.peers.len()
+    );
     assert!(!reply.peers.contains(&SocketAddr::new(a.ip, a.port)));
     engine.maintenance(3600, 500);
     assert_eq!(engine.stats().peers, 1);

@@ -1,6 +1,9 @@
 use crate::{AnnounceEvent, AnnounceRequest, AnnounceResponse, InfoHash, ScrapeEntry};
 use anyhow::{Result, bail, ensure};
-use std::net::{IpAddr, SocketAddr};
+use std::{
+    borrow::Cow,
+    net::{IpAddr, SocketAddr},
+};
 
 const MAX_QUERY_BYTES: usize = 8192;
 const MAX_PARAMS: usize = 128;
@@ -16,7 +19,10 @@ fn unhex(c: u8) -> Option<u8> {
     }
 }
 
-fn decode_part(raw: &[u8]) -> Result<Vec<u8>> {
+fn decode_part(raw: &[u8]) -> Result<Cow<'_, [u8]>> {
+    if !raw.iter().any(|byte| matches!(*byte, b'%' | b'+')) {
+        return Ok(Cow::Borrowed(raw));
+    }
     let mut out = Vec::with_capacity(raw.len());
     let mut i = 0;
     while i < raw.len() {
@@ -40,10 +46,12 @@ fn decode_part(raw: &[u8]) -> Result<Vec<u8>> {
             }
         }
     }
-    Ok(out)
+    Ok(Cow::Owned(out))
 }
 
-fn query(raw: &[u8]) -> Result<Vec<(Vec<u8>, Vec<u8>)>> {
+type QueryParam<'a> = (Cow<'a, [u8]>, Cow<'a, [u8]>);
+
+fn query(raw: &[u8]) -> Result<Vec<QueryParam<'_>>> {
     ensure!(raw.len() <= MAX_QUERY_BYTES, "query too large");
     let mut params = Vec::new();
     for pair in raw.split(|b| *b == b'&') {
@@ -62,17 +70,17 @@ fn query(raw: &[u8]) -> Result<Vec<(Vec<u8>, Vec<u8>)>> {
     Ok(params)
 }
 
-fn one<'a>(params: &'a [(Vec<u8>, Vec<u8>)], key: &[u8]) -> Result<Option<&'a [u8]>> {
+fn one<'a>(params: &'a [QueryParam<'_>], key: &[u8]) -> Result<Option<&'a [u8]>> {
     let mut matches = params
         .iter()
-        .filter(|(k, _)| k == key)
-        .map(|(_, v)| v.as_slice());
+        .filter(|(k, _)| k.as_ref() == key)
+        .map(|(_, v)| v.as_ref());
     let first = matches.next();
     ensure!(matches.next().is_none(), "duplicate parameter");
     Ok(first)
 }
 
-fn required<'a>(p: &'a [(Vec<u8>, Vec<u8>)], key: &[u8]) -> Result<&'a [u8]> {
+fn required<'a>(p: &'a [QueryParam<'_>], key: &[u8]) -> Result<&'a [u8]> {
     one(p, key)?.ok_or_else(|| anyhow::anyhow!("missing required parameter"))
 }
 
@@ -127,7 +135,7 @@ pub fn parse_http_announce(raw: &[u8], ip: IpAddr) -> Result<AnnounceRequest> {
 pub fn parse_http_scrape(raw: &[u8]) -> Result<Vec<InfoHash>> {
     let p = query(raw)?;
     let mut hashes = Vec::new();
-    for (_, value) in p.iter().filter(|(k, _)| k == b"info_hash") {
+    for (_, value) in p.iter().filter(|(k, _)| k.as_ref() == b"info_hash") {
         ensure!(hashes.len() < MAX_SCRAPE_HASHES, "too many scrape hashes");
         hashes.push(hash(value)?);
     }

@@ -32,13 +32,22 @@ fn request(index: usize, wanted: usize) -> AnnounceRequest {
     }
 }
 fn main() {
-    let operations = std::env::args()
-        .nth(1)
+    let mut args = std::env::args().skip(1);
+    let operations = args
+        .next()
         .and_then(|v| v.parse::<usize>().ok())
         .unwrap_or(50_000)
         .clamp(1, 500_000);
-    for peers in [3usize, 64, 512] {
-        for wanted in [0usize, 50] {
+    let peer_filter = args.next().map(|v| v.parse::<usize>().expect("peer count"));
+    let wanted_filter = args.next().map(|v| v.parse::<usize>().expect("numwant"));
+    for peers in [1usize, 2, 3, 4, 5, 8, 64, 512]
+        .into_iter()
+        .filter(|n| peer_filter.is_none_or(|peers| *n == peers))
+    {
+        for wanted in [0usize, 50]
+            .into_iter()
+            .filter(|n| wanted_filter.is_none_or(|wanted| *n == wanted))
+        {
             for fixed in [true, false] {
                 let engine = SwarmEngine::new(EngineConfig {
                     allow_private_ips: true,
@@ -47,7 +56,7 @@ fn main() {
                 for n in 0..peers {
                     engine.announce(&request(n, 0), 100).expect("prefill");
                 }
-                let probe = request(1, wanted);
+                let probe = request(usize::from(peers > 1), wanted);
                 let start = Instant::now();
                 let mut returned = 0usize;
                 for index in 0..operations {

@@ -49,6 +49,50 @@ fn http_rejects_ambiguous_bad_and_oversized_inputs() {
 }
 
 #[test]
+fn http_query_accepts_equivalent_escaped_and_unescaped_parts() {
+    let ip = IpAddr::V4(Ipv4Addr::new(8, 8, 8, 8));
+    let plain = b"info_hash=12345678901234567890&peer_id=ABCDEFGHIJKLMNOPQRST&port=6881&uploaded=2&downloaded=3&left=4&event=started&numwant=0";
+    let escaped = b"in%66o_hash=1234567890123456789%30&peer%5fid=ABCDEFGHIJKLMNOPQRS%54&port=%36%38%38%31&uploaded=2&downloaded=3&left=4&event=started&numwant=0";
+    assert_eq!(
+        parse_http_announce(plain, ip).unwrap(),
+        parse_http_announce(escaped, ip).unwrap()
+    );
+
+    let expected = *b"1234567890123456789 ";
+    let scrape = b"info_hash=1234567890123456789+&info%5fhash=1234567890123456789%20";
+    assert_eq!(parse_http_scrape(scrape).unwrap(), vec![expected, expected]);
+}
+
+#[test]
+fn http_query_keeps_parameter_limits_and_decoding_error_order() {
+    let ip = IpAddr::V4(Ipv4Addr::new(8, 8, 8, 8));
+    let base = "info_hash=12345678901234567890&peer_id=ABCDEFGHIJKLMNOPQRST&port=6881&uploaded=2&downloaded=3&left=4";
+    let exactly_limit = format!("{base}{}", "&extra=ok".repeat(122));
+    assert!(parse_http_announce(exactly_limit.as_bytes(), ip).is_ok());
+    let over_limit = format!("{exactly_limit}&extra=ok");
+    assert_eq!(
+        parse_http_announce(over_limit.as_bytes(), ip)
+            .unwrap_err()
+            .to_string(),
+        "too many query parameters"
+    );
+    let malformed_after_duplicate = format!("{base}&port=9&other=%");
+    assert_eq!(
+        parse_http_announce(malformed_after_duplicate.as_bytes(), ip)
+            .unwrap_err()
+            .to_string(),
+        "truncated percent encoding"
+    );
+    let encoded_duplicate = format!("{base}&%70ort=9");
+    assert_eq!(
+        parse_http_announce(encoded_duplicate.as_bytes(), ip)
+            .unwrap_err()
+            .to_string(),
+        "duplicate parameter"
+    );
+}
+
+#[test]
 fn numwant_zero_default_and_ceiling_are_preserved() {
     let req = request();
     let raw = encode_http_announce_query(&req);

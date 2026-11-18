@@ -22,6 +22,10 @@ const MAX_RESPONSE_PEERS: usize = 100;
 const PEER_BYTES: usize = 512;
 const SWARM_BYTES: usize = 640;
 const INLINE_EXPIRY_BUDGET: usize = 128;
+// Keep a gap between promotion and demotion so a four/five peer swarm can churn
+// without rebuilding its endpoint index each time.
+const ENDPOINT_INDEX_PROMOTE_AT: usize = 5;
+const ENDPOINT_INDEX_DEMOTE_AT: usize = 3;
 
 #[derive(Clone, Debug)]
 pub struct EngineConfig {
@@ -144,19 +148,55 @@ struct Peer {
     swarm_timer_pos: usize,
 }
 
-#[derive(Default)]
-struct Swarm {
-    ids: Vec<usize>,
+struct EndpointIndex {
     endpoints: HashMap<SocketAddr, usize>,
     // HashMap::capacity() can fall after removals because of tombstones even
     // while its old allocation remains. Preserve the observed allocation
     // high-water until a rebuild actually replaces the old table.
-    endpoint_capacity_high_water: usize,
+    capacity_high_water: usize,
+}
+
+impl EndpointIndex {
+    fn from_ids(ids: &[usize], peers: &[Option<Peer>]) -> Self {
+        let mut endpoints = HashMap::with_capacity(ids.len());
+        for &id in ids {
+            let peer = peers[id].as_ref().expect("live peer");
+            endpoints.insert(peer.endpoint, id);
+        }
+        Self {
+            capacity_high_water: endpoints.capacity(),
+            endpoints,
+        }
+    }
+
+    fn insert(&mut self, endpoint: SocketAddr, id: usize) {
+        self.endpoints.insert(endpoint, id);
+        self.capacity_high_water = self.capacity_high_water.max(self.endpoints.capacity());
+    }
+}
+
+#[derive(Default)]
+struct Swarm {
+    ids: Vec<usize>,
+    endpoint_index: Option<EndpointIndex>,
     timers: BTreeMap<u64, Vec<usize>>,
     v4: usize,
     v6: usize,
     seeders: u32,
     completed: u32,
+}
+
+impl Swarm {
+    fn existing_id(&self, peers: &[Option<Peer>], endpoint: &SocketAddr) -> Option<usize> {
+        match &self.endpoint_index {
+            Some(index) => index.endpoints.get(endpoint).copied(),
+            None => self
+                .ids
+                .iter()
+                .copied()
+                .find(|&id| peers[id].as_ref().expect("live peer").endpoint == *endpoint),
+        }
+    }
 }
 
 #[derive(Default)]
@@ -211,7 +251,10 @@ impl Shard {
         }
         let threshold = len.saturating_mul(4);
         let compact_ids = swarm.ids.capacity() > threshold;
-        let compact_endpoints = swarm.endpoint_capacity_high_water > threshold;
+        let compact_endpoints = swarm
+            .endpoint_index
+            .as_ref()
+            .is_some_and(|index| index.capacity_high_water > threshold);
         if !compact_ids && !compact_endpoints {
             return;
         }
@@ -220,21 +263,13 @@ impl Shard {
         // of the old capacity. Both old and new buffers coexist temporarily;
         // accounting is deliberately left conservative until the shard empties.
         let ids = compact_ids.then(|| swarm.ids.to_vec());
-        let endpoints = compact_endpoints.then(|| {
-            let mut compact = HashMap::with_capacity(len);
-            for id in &swarm.ids {
-                let peer = self.peers[*id].as_ref().expect("live peer");
-                compact.insert(peer.endpoint, *id);
-            }
-            compact
-        });
+        let endpoints = compact_endpoints.then(|| EndpointIndex::from_ids(&swarm.ids, &self.peers));
         let swarm = self.swarms.get_mut(hash).expect("live swarm");
         if let Some(ids) = ids {
             swarm.ids = ids;
         }
         if let Some(endpoints) = endpoints {
-            swarm.endpoint_capacity_high_water = endpoints.capacity();
-            swarm.endpoints = endpoints;
+            swarm.endpoint_index = Some(endpoints);
         }
     }
 
@@ -333,8 +368,14 @@ impl Shard {
         let peer = self.peers[id].take().expect("live peer");
         let (moved, empty, size) = {
             let swarm = self.swarms.get_mut(&peer.hash).expect("live swarm");
-            swarm.endpoints.remove(&peer.endpoint);
             swarm.ids.swap_remove(peer.swarm_pos);
+            if let Some(index) = &mut swarm.endpoint_index {
+                if swarm.ids.len() <= ENDPOINT_INDEX_DEMOTE_AT {
+                    swarm.endpoint_index = None;
+                } else {
+                    index.endpoints.remove(&peer.endpoint);
+                }
+            }
             if peer.endpoint.is_ipv4() {
                 swarm.v4 -= 1;
             } else {
@@ -402,7 +443,7 @@ impl Shard {
     }
 
     fn existing_id(&self, hash: &InfoHash, endpoint: &SocketAddr) -> Option<usize> {
-        self.swarms.get(hash)?.endpoints.get(endpoint).copied()
+        self.swarms.get(hash)?.existing_id(&self.peers, endpoint)
     }
 
     fn expire_swarm(
@@ -669,12 +710,14 @@ impl SwarmEngine {
                 wheel_pos: 0,
                 swarm_timer_pos: 0,
             });
-            let swarm = shard.swarms.get_mut(&req.info_hash).expect("live swarm");
+            let Shard { swarms, peers, .. } = &mut *shard;
+            let swarm = swarms.get_mut(&req.info_hash).expect("live swarm");
             swarm.ids.push(id);
-            swarm.endpoints.insert(endpoint, id);
-            swarm.endpoint_capacity_high_water = swarm
-                .endpoint_capacity_high_water
-                .max(swarm.endpoints.capacity());
+            if let Some(index) = &mut swarm.endpoint_index {
+                index.insert(endpoint, id);
+            } else if swarm.ids.len() >= ENDPOINT_INDEX_PROMOTE_AT {
+                swarm.endpoint_index = Some(EndpointIndex::from_ids(&swarm.ids, peers));
+            }
             if endpoint.is_ipv4() {
                 swarm.v4 += 1;
             } else {
@@ -730,12 +773,29 @@ impl SwarmEngine {
             return result;
         }
         let self_endpoint = SocketAddr::new(req.ip, req.port);
+        if let [first, second] = swarm.ids.as_slice() {
+            let first = shard.peers[*first].as_ref().expect("live peer");
+            let second = shard.peers[*second].as_ref().expect("live peer");
+            let other = if first.endpoint == self_endpoint {
+                Some(second)
+            } else if second.endpoint == self_endpoint {
+                Some(first)
+            } else {
+                None
+            };
+            if let Some(other) = other {
+                if other.deadline > now {
+                    result.peers.push(other.endpoint);
+                }
+                return result;
+            }
+        }
         let mut rng = rand::rng();
         // Bounded sampling avoids scanning arbitrarily large hot swarms. Small
         // swarms are scanned fully to guarantee their only candidate is found.
         let mut v4 = Vec::with_capacity(wanted);
         let mut v6 = Vec::with_capacity(wanted);
-        let self_present = swarm.endpoints.contains_key(&self_endpoint);
+        let self_present = swarm.existing_id(&shard.peers, &self_endpoint).is_some();
         let v4_target = swarm
             .v4
             .saturating_sub(usize::from(self_present && self_endpoint.is_ipv4()))
@@ -789,12 +849,10 @@ impl SwarmEngine {
         } else {
             let mut selected = HashSet::with_capacity(wanted.saturating_mul(2));
             for _ in 0..wanted.saturating_mul(16).max(32) {
-                let peer = shard.peers[swarm.ids[rng.random_range(0..swarm.ids.len())]]
-                    .as_ref()
-                    .expect("live peer");
-                if peer.endpoint == self_endpoint
-                    || peer.deadline <= now
-                    || selected.contains(&peer.endpoint)
+                // Each endpoint has one slab ID in this swarm while the shard is locked.
+                let id = swarm.ids[rng.random_range(0..swarm.ids.len())];
+                let peer = shard.peers[id].as_ref().expect("live peer");
+                if peer.endpoint == self_endpoint || peer.deadline <= now || selected.contains(&id)
                 {
                     continue;
                 }
@@ -811,7 +869,7 @@ impl SwarmEngine {
                     continue;
                 }
                 bucket.push(peer.endpoint);
-                selected.insert(peer.endpoint);
+                selected.insert(id);
                 if v4.len() == v4_target && v6.len() == v6_target {
                     break;
                 }
@@ -1161,6 +1219,74 @@ mod tests {
     }
 
     #[test]
+    fn small_swarm_endpoint_index_promotes_and_demotes_without_losing_peers() {
+        let engine = SwarmEngine::new(EngineConfig {
+            allow_private_ips: true,
+            max_peers_per_swarm: 5,
+            ..EngineConfig::default()
+        });
+        let hash = [51; 20];
+        let peers: [AnnounceRequest; 5] = std::array::from_fn(|n| {
+            let mut request = request_for(hash, 10_000 + n as u16, n == 0);
+            if !n.is_multiple_of(2) {
+                request.ip = "fd00::1".parse().unwrap();
+            }
+            request
+        });
+        let check = |count: usize, indexed: bool| {
+            let shard = lock(&engine.shards[engine.shard(&hash)]);
+            let swarm = &shard.swarms[&hash];
+            assert_eq!(swarm.ids.len(), count);
+            assert_eq!(swarm.endpoint_index.is_some(), indexed);
+            for (n, peer) in peers.iter().enumerate() {
+                let endpoint = SocketAddr::new(peer.ip, peer.port);
+                let expected = swarm
+                    .ids
+                    .iter()
+                    .copied()
+                    .find(|&id| shard.peers[id].as_ref().unwrap().endpoint == endpoint);
+                assert_eq!(expected.is_some(), n < count);
+                assert_eq!(shard.existing_id(&hash, &endpoint), expected);
+            }
+            if let Some(index) = &swarm.endpoint_index {
+                assert_eq!(index.endpoints.len(), count);
+            }
+            assert_timer_positions(&shard);
+        };
+
+        for peer in &peers[..4] {
+            engine.announce(peer, 100).unwrap();
+        }
+        check(4, false);
+        engine.announce(&peers[4], 100).unwrap();
+        check(5, true);
+        assert_eq!(
+            engine.announce(&request_for(hash, 20_000, false), 101),
+            Err(EngineError::SwarmPeerCapacity)
+        );
+        for (n, peer) in peers.iter().enumerate().skip(3).rev() {
+            let mut stopped = peer.clone();
+            stopped.event = AnnounceEvent::Stopped;
+            engine.announce(&stopped, 101).unwrap();
+            check(n, n == 4);
+        }
+
+        let mut refresh = peers[0].clone();
+        refresh.numwant = 50;
+        assert_eq!(engine.announce(&refresh, 102).unwrap().peers.len(), 2);
+        engine.announce(&peers[3], 102).unwrap();
+        check(4, false);
+        engine.announce(&peers[4], 102).unwrap();
+        check(5, true);
+        engine.maintenance(6_000, 256);
+        let stats = engine.stats();
+        assert_eq!(
+            (stats.peers, stats.swarms, stats.estimated_bytes),
+            (0, 0, 0)
+        );
+    }
+
+    #[test]
     fn sequential_swarm_churn_releases_per_swarm_high_water() {
         const SWARMS: usize = 8;
         const PEERS_PER_SWARM: usize = 256;
@@ -1193,10 +1319,8 @@ mod tests {
             let shard = lock(&engine.shards[target]);
             let swarm = shard.swarms.get(hash).expect("anchor retained");
             assert_eq!(swarm.ids.len(), 1);
-            assert_eq!(swarm.endpoints.len(), 1);
             assert!(swarm.ids.capacity() <= 4);
-            assert!(swarm.endpoint_capacity_high_water <= 4);
-            assert!(swarm.endpoints.capacity() <= 4);
+            assert!(swarm.endpoint_index.is_none());
         }
 
         let stats = engine.stats();
@@ -1229,10 +1353,8 @@ mod tests {
         assert_eq!(engine.stats().peers, PEERS_PER_SWARM + SWARMS - 1);
         for hash in &hashes {
             let shard = lock(&engine.shards[target]);
-            assert!(shard.swarms[hash].endpoints.contains_key(&SocketAddr::new(
-                IpAddr::V4(Ipv4Addr::new(10, 0, 0, 1)),
-                10_000
-            )));
+            let endpoint = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(10, 0, 0, 1)), 10_000);
+            assert!(shard.existing_id(hash, &endpoint).is_some());
         }
     }
 
@@ -1280,15 +1402,16 @@ mod tests {
         {
             let shard = lock(&engine.shards[engine.shard(&hash)]);
             let swarm = &shard.swarms[&hash];
+            let index = swarm.endpoint_index.as_ref().expect("indexed swarm");
             assert_eq!(swarm.ids.len(), WORKERS);
-            assert_eq!(swarm.endpoints.len(), WORKERS);
+            assert_eq!(index.endpoints.len(), WORKERS);
             assert_eq!(swarm.timers.len(), WORKERS);
             assert!(swarm.ids.capacity() <= WORKERS * 4);
-            assert!(swarm.endpoint_capacity_high_water <= WORKERS * 4);
+            assert!(index.capacity_high_water <= WORKERS * 4);
             for (position, id) in swarm.ids.iter().enumerate() {
                 let peer = shard.peers[*id].as_ref().unwrap();
                 assert_eq!(peer.swarm_pos, position);
-                assert_eq!(swarm.endpoints.get(&peer.endpoint), Some(id));
+                assert_eq!(index.endpoints.get(&peer.endpoint), Some(id));
                 assert_eq!(swarm.timers[&peer.deadline][peer.swarm_timer_pos], *id);
                 assert_eq!(shard.wheel[&peer.deadline][peer.wheel_pos], *id);
             }

@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.2.8 — native Tracker efficiency
+
+- Borrow unescaped HTTP query parameters and keep the existing validation and percent-decoding rules.
+- Return the other live endpoint directly for a registered requester in a two-peer swarm. Deduplicate large-swarm samples by peer slot while preserving the reply budget and selection policy.
+- Look up endpoints directly in small swarms. Build the hash index at five peers and release it at three. Capacity limits and expiry rules retain their existing values.
+
+See the [1.2.8 validation ledger](docs/releases/1.2.8.md) and the [isolated performance comparisons](docs/capacity/tracker-hotpath-2026-11-18.md).
+
 ## 1.2.7 — Tracker Observatory interface
 
 - Refresh the homepage, tracker list, details, and source pages with coordinated light and dark palettes and a clearer layout for live metrics and historical evidence.
