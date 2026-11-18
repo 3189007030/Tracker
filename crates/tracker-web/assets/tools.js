@@ -44,6 +44,7 @@ if (themeToggle) {
 const menuToggle = document.querySelector("[data-menu-toggle]");
 const siteNav = document.querySelector("[data-site-nav]");
 if (menuToggle && siteNav) {
+    menuToggle.hidden = false;
     const closeMenu = () => {
         siteNav.classList.remove("is-open");
         menuToggle.setAttribute("aria-expanded", "false");
@@ -56,7 +57,10 @@ if (menuToggle && siteNav) {
         if (event.target.closest("a")) closeMenu();
     });
     document.addEventListener("keydown", (event) => {
-        if (event.key === "Escape") closeMenu();
+        if (event.key === "Escape" && menuToggle.getAttribute("aria-expanded") === "true") {
+            closeMenu();
+            menuToggle.focus();
+        }
     });
 }
 

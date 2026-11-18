@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.2.7 — Tracker Observatory interface
+
+- Refresh the homepage, tracker list, details, and source pages with coordinated light and dark palettes and a clearer layout for live metrics and historical evidence.
+- Improve narrow-screen navigation, give the homepage metrics a two-column layout on phones, and keep wide tables scrollable inside their sections.
+- Show the public snapshot timestamp and endpoint and service totals in the homepage summary. Update the stylesheet and menu script cache keys to `?v=1.2.7`.
+
+See the [1.2.7 validation ledger](docs/releases/1.2.7.md) for build and deployment records.
+
 ## 1.2.6 — observatory status and retired endpoints
 
 - Show the ghost pool's actual target of 16 samples and explain what its private diagnostics measure. The public resource pool still targets 100 samples.

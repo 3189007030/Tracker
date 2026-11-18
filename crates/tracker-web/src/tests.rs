@@ -880,9 +880,9 @@ async fn legacy_pages_redirect_and_home_has_copyable_endpoints() {
     }
     assert!(!home.contains("announce.augrains.com"));
     assert!(home.contains("id=\"native-trackers\""));
-    assert!(home.contains("/assets/style.css?v=1.2.5"));
+    assert!(home.contains("/assets/style.css?v=1.2.7"));
     assert!(home.contains("href=\"https://github.com/3189007030/Tracker\""));
-    assert!(home.contains("/assets/tools.js?v=1.2.5"));
+    assert!(home.contains("/assets/tools.js?v=1.2.7"));
     assert!(home.contains("/assets/charts.js?v=1.2.5"));
     assert!(home.contains("/assets/chart.umd.js?v=4.6.1"));
     assert!(!home.contains("/api/v1/experiments"));
@@ -1095,6 +1095,16 @@ fn incomplete_coverage_never_rounds_up_to_twenty_four_hours() {
     assert!(body.contains("采样覆盖 23.9 小时，非完整 24 小时"));
     assert!(!body.contains("系统在线"));
     assert!(!body.contains("公共快照持续更新"));
+    let missing = Overview {
+        generated_at: 0,
+        endpoints: 42,
+        services: 17,
+        ..overview
+    };
+    let body = crate::html::home(&missing, None, Lang::Zh);
+    assert!(body.contains(r#"class="snapshot-time">—"#));
+    assert!(body.contains("<dt>公开端点</dt><dd>—</dd>"));
+    assert!(body.contains("<dt>独立服务</dt><dd>—</dd>"));
 }
 
 #[tokio::test]

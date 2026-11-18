@@ -180,7 +180,7 @@ dependencies = [
 
 [[package]]
 name = "bt-protocol"
-version = "1.2.6"
+version = "1.2.7"
 dependencies = [
  "anyhow",
  "hmac",
@@ -1041,7 +1041,7 @@ dependencies = [
 
 [[package]]
 name = "observatory"
-version = "1.2.6"
+version = "1.2.7"
 dependencies = [
  "anyhow",
  "bt-protocol",
@@ -1644,7 +1644,7 @@ checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
 
 [[package]]
 name = "swarm-engine"
-version = "1.2.6"
+version = "1.2.7"
 dependencies = [
  "bt-protocol",
  "rand 0.9.5",
@@ -1973,7 +1973,7 @@ dependencies = [
 
 [[package]]
 name = "tracker-loadgen"
-version = "1.2.6"
+version = "1.2.7"
 dependencies = [
  "anyhow",
  "bt-protocol",
@@ -1994,7 +1994,7 @@ dependencies = [
 
 [[package]]
 name = "tracker-model"
-version = "1.2.6"
+version = "1.2.7"
 dependencies = [
  "serde",
  "serde_json",
@@ -2002,7 +2002,7 @@ dependencies = [
 
 [[package]]
 name = "tracker-server"
-version = "1.2.6"
+version = "1.2.7"
 dependencies = [
  "anyhow",
  "axum",
@@ -2022,7 +2022,7 @@ dependencies = [
 
 [[package]]
 name = "tracker-web"
-version = "1.2.6"
+version = "1.2.7"
 dependencies = [
  "anyhow",
  "axum",
