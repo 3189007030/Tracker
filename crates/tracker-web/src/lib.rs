@@ -6,7 +6,7 @@ mod store;
 use std::{collections::HashMap, convert::Infallible, path::PathBuf, sync::Arc};
 
 use axum::{
-    Json, Router,
+    Extension, Json, Router,
     body::Body,
     extract::{Path, Query, Request, State},
     http::{HeaderMap, HeaderValue, StatusCode, header},
@@ -35,7 +35,7 @@ pub fn app(data_dir: PathBuf) -> Router {
         store: PublicStore::new(data_dir),
         feed_permits: Arc::new(Semaphore::new(1)),
     };
-    Router::new()
+    let pages = Router::new()
         .route("/", get(home))
         .route("/trackers", get(trackers_page))
         .route("/trackers/partial", get(trackers_partial))
@@ -45,6 +45,9 @@ pub fn app(data_dir: PathBuf) -> Router {
         .route("/tools", get(tools))
         .route("/status", get(status_redirect))
         .route("/declaration", get(declaration))
+        .fallback(not_found)
+        .layer(middleware::from_fn(browser_language));
+    let resources = Router::new()
         .route("/healthz", get(health))
         .route("/readyz", get(ready))
         .route("/assets/style.css", get(style))
@@ -61,10 +64,41 @@ pub fn app(data_dir: PathBuf) -> Router {
         .route("/api/v1/trackers/{id}", get(api_detail))
         .route("/api/v1/trackers/{id}/observations", get(api_observations))
         .route("/api/v1/stats/history", get(api_history))
-        .route("/{filename}", get(feed).head(feed_head))
-        .fallback(not_found)
+        .route("/{filename}", get(feed).head(feed_head));
+    pages
+        .merge(resources)
         .layer(middleware::from_fn(security_headers))
         .with_state(state)
+}
+
+async fn browser_language(mut request: Request, next: Next) -> Response {
+    let explicit = request.uri().query().and_then(|query| {
+        let (_, value) = url::form_urlencoded::parse(query.as_bytes())
+            .filter(|(name, _)| name == "lang")
+            .last()?;
+        match value.as_ref() {
+            "zh" => Some(Lang::Zh),
+            "en" => Some(Lang::En),
+            _ => None,
+        }
+    });
+    let lang = explicit.unwrap_or_else(|| preferred_language(request.headers()));
+    request.extensions_mut().insert(lang);
+    let mut response = next.run(request).await;
+    let headers = response.headers_mut();
+    headers.insert(
+        header::CONTENT_LANGUAGE,
+        HeaderValue::from_static(lang.code()),
+    );
+    if explicit.is_none() {
+        // Unqualified page URLs are also served through a shared CDN.
+        headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
+        headers.append(header::VARY, HeaderValue::from_static("Accept-Language"));
+        if response.status() == StatusCode::MOVED_PERMANENTLY {
+            *response.status_mut() = StatusCode::FOUND;
+        }
+    }
+    response
 }
 
 async fn security_headers(request: Request, next: Next) -> Response {
@@ -95,8 +129,41 @@ async fn read<T: Send + 'static>(
 
 type Params = HashMap<String, String>;
 
-fn language(params: &Params) -> Lang {
-    Lang::from_param(params.get("lang").map(String::as_str))
+fn preferred_language(headers: &HeaderMap) -> Lang {
+    let mut best: Option<(f32, bool)> = None;
+    for value in headers.get_all(header::ACCEPT_LANGUAGE).iter() {
+        let Ok(value) = value.to_str() else { continue };
+        for range in value.split(',') {
+            let (tag, weight) = range.split_once(';').unwrap_or((range, "q=1"));
+            let mut subtags = tag.trim().split('-');
+            let primary = subtags.next().unwrap_or_default();
+            if primary.is_empty()
+                || !primary.bytes().all(|byte| byte.is_ascii_alphabetic())
+                || subtags.any(|tag| {
+                    tag.is_empty() || !tag.bytes().all(|byte| byte.is_ascii_alphanumeric())
+                })
+            {
+                continue;
+            }
+            let Some((key, quality)) = weight.split_once('=') else {
+                continue;
+            };
+            if !key.trim().eq_ignore_ascii_case("q") {
+                continue;
+            }
+            let Ok(quality) = quality.trim().parse::<f32>() else {
+                continue;
+            };
+            if quality > 0.0 && quality <= 1.0 && best.is_none_or(|(q, _)| quality > q) {
+                best = Some((quality, primary.eq_ignore_ascii_case("zh")));
+            }
+        }
+    }
+    if best.is_some_and(|(_, chinese)| chinese) {
+        Lang::Zh
+    } else {
+        Lang::En
+    }
 }
 
 fn filters(params: &Params) -> Result<Filters, &'static str> {
@@ -150,8 +217,7 @@ fn unavailable() -> Response {
     )
 }
 
-async fn home(State(site): State<Site>, Query(params): Query<Params>) -> Response {
-    let lang = language(&params);
+async fn home(State(site): State<Site>, Extension(lang): Extension<Lang>) -> Response {
     match read(move || {
         let overview = site.store.overview()?;
         let native = site.store.native_summary(unix_now()).unwrap_or(None);
@@ -168,8 +234,11 @@ async fn home(State(site): State<Site>, Query(params): Query<Params>) -> Respons
     }
 }
 
-async fn trackers_page(State(site): State<Site>, Query(params): Query<Params>) -> Response {
-    let lang = language(&params);
+async fn trackers_page(
+    State(site): State<Site>,
+    Query(params): Query<Params>,
+    Extension(lang): Extension<Lang>,
+) -> Response {
     let filters = match filters(&params) {
         Ok(value) => value,
         Err(_) => return (StatusCode::BAD_REQUEST, "invalid filters").into_response(),
@@ -189,8 +258,11 @@ async fn trackers_page(State(site): State<Site>, Query(params): Query<Params>) -
 /// Server-rendered results region used by the list page's progressive
 /// enhancement. It is the same markup the full page embeds, so a search or
 /// page change never needs a full navigation when JavaScript is available.
-async fn trackers_partial(State(site): State<Site>, Query(params): Query<Params>) -> Response {
-    let lang = language(&params);
+async fn trackers_partial(
+    State(site): State<Site>,
+    Query(params): Query<Params>,
+    Extension(lang): Extension<Lang>,
+) -> Response {
     let filters = match filters(&params) {
         Ok(value) => value,
         Err(_) => return (StatusCode::BAD_REQUEST, "invalid filters").into_response(),
@@ -210,9 +282,8 @@ async fn trackers_partial(State(site): State<Site>, Query(params): Query<Params>
 async fn tracker_detail(
     State(site): State<Site>,
     Path(id): Path<String>,
-    Query(params): Query<Params>,
+    Extension(lang): Extension<Lang>,
 ) -> Response {
-    let lang = language(&params);
     if !store::valid_id(&id) {
         return not_found_page(lang);
     }
@@ -264,19 +335,14 @@ async fn tracker_detail(
     }
 }
 
-async fn methodology(State(site): State<Site>, Query(params): Query<Params>) -> Response {
-    let _ = site;
+async fn methodology(Extension(lang): Extension<Lang>) -> Response {
     (
         StatusCode::MOVED_PERMANENTLY,
-        [(
-            header::LOCATION,
-            format!("/sources?lang={}", language(&params).code()),
-        )],
+        [(header::LOCATION, format!("/sources?lang={}", lang.code()))],
     )
         .into_response()
 }
-async fn sources(State(site): State<Site>, Query(params): Query<Params>) -> Response {
-    let lang = language(&params);
+async fn sources(State(site): State<Site>, Extension(lang): Extension<Lang>) -> Response {
     match read(move || {
         Ok((
             site.store.overview()?,
@@ -293,35 +359,31 @@ async fn sources(State(site): State<Site>, Query(params): Query<Params>) -> Resp
         Err(_) => unavailable_page(lang),
     }
 }
-async fn tools(State(site): State<Site>, Query(params): Query<Params>) -> Response {
-    let _ = site;
+async fn tools(Extension(lang): Extension<Lang>) -> Response {
     (
         StatusCode::MOVED_PERMANENTLY,
         [(
             header::LOCATION,
-            format!("/?lang={}#native-trackers", language(&params).code()),
+            format!("/?lang={}#native-trackers", lang.code()),
         )],
     )
         .into_response()
 }
-async fn status_redirect(Query(params): Query<Params>) -> Response {
+async fn status_redirect(Extension(lang): Extension<Lang>) -> Response {
     (
         StatusCode::MOVED_PERMANENTLY,
-        [(
-            header::LOCATION,
-            format!("/?lang={}", language(&params).code()),
-        )],
+        [(header::LOCATION, format!("/?lang={}", lang.code()))],
     )
         .into_response()
 }
 
-async fn declaration(Query(params): Query<Params>) -> Response {
+async fn declaration(Extension(lang): Extension<Lang>) -> Response {
     (
         [(
             header::CACHE_CONTROL,
             "public, max-age=3600, s-maxage=86400",
         )],
-        Html(html::declaration(language(&params))),
+        Html(html::declaration(lang)),
     )
         .into_response()
 }
@@ -786,8 +848,8 @@ fn unavailable_page(lang: Lang) -> Response {
         .into_response()
 }
 
-async fn not_found() -> Response {
-    not_found_page(Lang::Zh)
+async fn not_found(Extension(lang): Extension<Lang>) -> Response {
+    not_found_page(lang)
 }
 
 #[cfg(test)]

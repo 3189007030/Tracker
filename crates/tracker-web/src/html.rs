@@ -11,13 +11,6 @@ pub(crate) enum Lang {
 }
 
 impl Lang {
-    pub fn from_param(value: Option<&str>) -> Self {
-        if value == Some("en") {
-            Self::En
-        } else {
-            Self::Zh
-        }
-    }
     pub fn code(self) -> &'static str {
         match self {
             Self::Zh => "zh",
@@ -48,11 +41,22 @@ pub(crate) fn esc(value: &str) -> String {
     out
 }
 
-pub(crate) fn time(value: Option<i64>, lang: Lang) -> String {
+fn time(value: Option<i64>, lang: Lang) -> String {
     value
         .and_then(DateTime::<Utc>::from_timestamp_secs)
         .map(|d| d.format("%Y-%m-%d %H:%M UTC").to_string())
         .unwrap_or_else(|| lang.pick("未知", "Unknown").to_owned())
+}
+
+fn time_element(value: Option<i64>, lang: Lang) -> String {
+    let Some(date) = value.and_then(DateTime::<Utc>::from_timestamp_secs) else {
+        return lang.pick("未知", "Unknown").to_owned();
+    };
+    format!(
+        r#"<time datetime="{}">{}</time>"#,
+        date.format("%Y-%m-%dT%H:%M:%SZ"),
+        date.format("%Y-%m-%d %H:%M UTC")
+    )
 }
 
 /// Read one numeric field from the published native summary.
@@ -144,10 +148,11 @@ pub(crate) fn shell(title: &str, lang: Lang, body: &str) -> String {
     let code = lang.code();
     let theme_label = lang.pick("切换深浅主题", "Toggle theme");
     format!(
-        r##"<!doctype html><html lang="{code}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark light"><title>{title} · Tracker Observatory</title><link rel="icon" type="image/svg+xml" href="/assets/brand.svg?v=1.0.2"><link rel="icon" href="/favicon.ico?v=1.0.2" sizes="any"><link rel="apple-touch-icon" href="/assets/brand.png?v=1.0.2"><link rel="stylesheet" href="/assets/style.css?v=1.2.7"></head><body><a class="skip-link" href="#main-content">{skip_link}</a><header class="masthead"><div class="wrap nav-wrap"><a class="brand" href="/?lang={code}"><img class="brand-icon" src="/assets/brand.svg?v=1.0.2" alt=""><span>Tracker <b>Observatory</b></span></a><button class="menu-toggle" type="button" hidden data-menu-toggle aria-expanded="false" aria-controls="site-nav" aria-label="{menu_label}"><span></span><span></span><span></span></button><nav id="site-nav" data-site-nav aria-label="{nav_label}"><a data-nav-key="home" href="/?lang={code}">{nav_home}</a><a data-nav-key="trackers" href="/trackers?lang={code}">{nav_trackers}</a><a data-nav-key="sources" href="/sources?lang={code}">{nav_sources}</a><a data-nav-key="declaration" href="/declaration?lang={code}">{nav_declaration}</a></nav><div class="nav-actions"><div class="language" aria-label="Language" data-language-switcher>{language}</div><button class="theme-toggle" type="button" data-theme-toggle aria-label="{theme_label}" title="{theme_label}"><svg class="theme-icon-dark" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg><svg class="theme-icon-light" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></button><a class="github-link" href="https://github.com/3189007030/Tracker" rel="noopener noreferrer" aria-label="{github_label}" title="{github_label}"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="currentColor"><path d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.11.79-.25.79-.56v-2.19c-3.21.7-3.89-1.36-3.89-1.36-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.97.11-.75.4-1.26.73-1.55-2.56-.29-5.26-1.28-5.26-5.71 0-1.26.45-2.29 1.18-3.1-.12-.29-.51-1.46.11-3.05 0 0 .97-.31 3.16 1.18a10.98 10.98 0 0 1 5.75 0c2.19-1.49 3.15-1.18 3.15-1.18.63 1.59.24 2.76.12 3.05.74.81 1.18 1.84 1.18 3.1 0 4.44-2.7 5.41-5.28 5.7.42.36.78 1.06.78 2.14v3.22c0 .31.21.68.79.56A11.5 11.5 0 0 0 12 .5Z"/></svg></a></div></div></header><main id="main-content" class="wrap">{body}</main><footer class="wrap footer"><span>Tracker Observatory · {version}</span><span>{footnote}</span></footer><script src="/assets/tools.js?v=1.2.7" defer></script></body></html>"##,
+        r##"<!doctype html><html lang="{code}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark light"><title>{title} · Tracker Observatory</title><link rel="icon" type="image/svg+xml" href="/assets/brand.svg?v=1.0.2"><link rel="icon" href="/favicon.ico?v=1.0.2" sizes="any"><link rel="apple-touch-icon" href="/assets/brand.png?v=1.0.2"><link rel="stylesheet" href="/assets/style.css?v=1.2.9"><script src="/assets/tools.js?v=1.2.9" defer></script></head><body><a class="skip-link" href="#main-content">{skip_link}</a><header class="masthead"><div class="wrap nav-wrap"><a class="brand" href="/?lang={code}"><img class="brand-icon" src="/assets/brand.svg?v=1.0.2" alt=""><span>Tracker <b>Observatory</b></span></a><button class="menu-toggle" type="button" hidden data-menu-toggle aria-expanded="false" aria-controls="site-nav" aria-label="{menu_label}"><span></span><span></span><span></span></button><nav id="site-nav" data-site-nav aria-label="{nav_label}"><a data-nav-key="home" href="/?lang={code}">{nav_home}</a><a data-nav-key="trackers" href="/trackers?lang={code}">{nav_trackers}</a><a data-nav-key="sources" href="/sources?lang={code}">{nav_sources}</a><a data-nav-key="declaration" href="/declaration?lang={code}">{nav_declaration}</a></nav><div class="nav-actions"><div class="language" aria-label="{language_label}" data-language-switcher>{language}</div><button class="theme-toggle" type="button" data-theme-toggle aria-label="{theme_label}" title="{theme_label}"><svg class="theme-icon-dark" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg><svg class="theme-icon-light" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></button><a class="github-link" href="https://github.com/3189007030/Tracker" rel="noopener noreferrer" aria-label="{github_label}" title="{github_label}"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="currentColor"><path d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.11.79-.25.79-.56v-2.19c-3.21.7-3.89-1.36-3.89-1.36-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.97.11-.75.4-1.26.73-1.55-2.56-.29-5.26-1.28-5.26-5.71 0-1.26.45-2.29 1.18-3.1-.12-.29-.51-1.46.11-3.05 0 0 .97-.31 3.16 1.18a10.98 10.98 0 0 1 5.75 0c2.19-1.49 3.15-1.18 3.15-1.18.63 1.59.24 2.76.12 3.05.74.81 1.18 1.84 1.18 3.1 0 4.44-2.7 5.41-5.28 5.7.42.36.78 1.06.78 2.14v3.22c0 .31.21.68.79.56A11.5 11.5 0 0 0 12 .5Z"/></svg></a></div></div></header><main id="main-content" class="wrap">{body}</main><footer class="wrap footer"><span>Tracker Observatory · {version}</span><span>{footnote}</span></footer></body></html>"##,
         title = esc(title),
         version = esc(VERSION),
         skip_link = lang.pick("跳到主要内容", "Skip to main content"),
+        language_label = lang.pick("页面语言", "Page language"),
         menu_label = lang.pick("打开导航菜单", "Open navigation menu"),
         nav_label = lang.pick("主导航", "Main navigation"),
         github_label = lang.pick("GitHub 代码仓库", "GitHub repository"),
@@ -167,10 +172,17 @@ fn stat(label: &str, value: &str, note: &str) -> String {
     )
 }
 
+fn copy_button(name: &str) -> String {
+    let name = esc(name);
+    format!(
+        r#"<button class="copy-icon" type="button" data-copy-button hidden aria-label="{name}" title="{name}"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M8 7V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2h-3M5 7h9a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></button>"#,
+    )
+}
+
 fn copy_url(label: &str, url: &str, lang: Lang) -> String {
     let name = format!("{}: {}", lang.pick("复制", "Copy"), label);
     format!(
-        r#"<div class="copy-row compact-copy" data-copy-row data-copy-ok="{}" data-copy-fail="{}"><span class="copy-label">{}</span><div class="copy-controls"><input type="text" value="{}" aria-label="{}" readonly spellcheck="false"><button class="copy-icon" type="button" data-copy-button hidden aria-label="{}" title="{}"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M8 7V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2h-3M5 7h9a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></button></div><small class="copy-status" role="status" aria-live="polite"></small></div>"#,
+        r#"<div class="copy-row compact-copy" data-copy-row data-copy-ok="{}" data-copy-fail="{}"><span class="copy-label">{}</span><div class="copy-controls"><input type="text" value="{}" aria-label="{}" readonly spellcheck="false">{}</div><small class="copy-status" role="status" aria-live="polite"></small></div>"#,
         lang.pick("已复制。", "Copied."),
         lang.pick(
             "无法自动复制，请选中地址后手动复制。",
@@ -179,8 +191,7 @@ fn copy_url(label: &str, url: &str, lang: Lang) -> String {
         esc(label),
         esc(url),
         esc(label),
-        esc(&name),
-        esc(&name)
+        copy_button(&name)
     )
 }
 
@@ -208,15 +219,14 @@ fn copy_endpoint_url(url: &str, lang: Lang) -> String {
 fn copy_feed_link(lang: Lang) -> String {
     let name = lang.pick("复制标准订阅地址", "Copy standard subscription URL");
     format!(
-        r#"<span class="copy-feed" data-copy-row data-copy-ok="{}" data-copy-fail="{}"><a href="/trackers.txt">trackers.txt ↗</a><input type="text" value="https://tracker.augrains.com/trackers.txt" aria-label="{}" readonly hidden><button class="copy-icon" type="button" data-copy-button hidden aria-label="{}" title="{}"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M8 7V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2h-3M5 7h9a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></button><small class="copy-status" role="status" aria-live="polite"></small></span>"#,
+        r#"<span class="copy-feed" data-copy-row data-copy-ok="{}" data-copy-fail="{}"><a href="/trackers.txt">trackers.txt ↗</a><input type="text" value="https://tracker.augrains.com/trackers.txt" aria-label="{}" readonly hidden>{}<small class="copy-status" role="status" aria-live="polite"></small></span>"#,
         lang.pick("已复制。", "Copied."),
         lang.pick(
             "无法自动复制，请选中地址后手动复制。",
             "Could not copy automatically. Select the address and copy it manually."
         ),
         esc(name),
-        esc(name),
-        esc(name)
+        copy_button(name)
     )
 }
 
@@ -242,18 +252,23 @@ fn charts(lang: Lang) -> String {
         panels.push_str(&format!(r#"<article class="panel chart-panel"><h3>{}</h3><div class="canvas-wrap"><canvas data-history-chart="{}" aria-label="{}" role="img"></canvas></div></article>"#, esc(label), esc(key), esc(label)));
     }
     format!(
-        r#"<section class="trends-heading"><div class="trends-title-row"><h2>{}</h2><p class="trends-unit">{}</p></div><div class="trends-sub-row"><p>{}</p><label>{} <select data-history-window aria-label="{}"><option value="24h">24h</option><option value="7d">7d</option><option value="30d">30d</option></select></label></div></section><div class="history-grid" data-history-root data-lang="{}">{}</div><p class="footnote" data-history-rate-note></p><p class="footnote">{}</p><script src="/assets/chart.umd.js?v=4.6.1" defer></script><script src="/assets/charts.js?v=1.2.5" defer></script>"#,
+        r#"<section class="trends-heading"><div class="trends-title-row"><h2>{}</h2><p class="trends-unit">{} <span data-local-time-label="{}">{}</span></p></div><div class="trends-sub-row"><p>{}</p><label>{} <select data-history-window aria-label="{}"><option value="24h">{}</option><option value="7d">{}</option><option value="30d">{}</option></select></label></div></section><div class="history-grid" data-history-root data-lang="{}">{}</div><p class="footnote" data-history-rate-note></p><p class="footnote">{}</p><script src="/assets/chart.umd.js?v=4.6.1" defer></script><script src="/assets/charts.js?v=1.2.9" defer></script>"#,
         title,
         lang.pick(
-            "纵轴：用户与种子为数量，速率为每秒；横轴为 UTC 时间。",
-            "Y axis: peers and swarms are counts, rates are per second. X axis: UTC time."
+            "纵轴为用户数、种子数或每秒速率。",
+            "Y axis: peers, swarms or rates per second."
         ),
+        lang.pick("横轴为本地时间。", "X axis: local time."),
+        lang.pick("横轴为 UTC 时间。", "X axis: UTC time."),
         lang.pick(
             "按实际采样显示，缺测和重启后的间断不会补零。",
             "Recorded samples only; gaps and process restarts are not filled with zero."
         ),
         lang.pick("时间范围", "Window"),
         lang.pick("选择统计时间范围", "Select statistics window"),
+        lang.pick("24 小时", "24 hours"),
+        lang.pick("7 天", "7 days"),
+        lang.pick("30 天", "30 days"),
         lang.code(),
         panels,
         lang.pick(
@@ -386,7 +401,10 @@ pub(crate) fn home(overview: &Overview, native: Option<&serde_json::Value>, lang
         "trackers_http",
         "trackers_https",
     ] {
-        let path = format!("/{name}.txt");
+        let filename = format!("{name}.txt");
+        let path = format!("/{filename}");
+        let url = format!("https://tracker.augrains.com{path}");
+        let button = format!("{} {filename}", lang.pick("复制", "Copy"));
         let empty_note = match feed_count(name) {
             Some(0) => format!(
                 r#"<p class="feed-empty">{}</p>"#,
@@ -398,21 +416,24 @@ pub(crate) fn home(overview: &Overview, native: Option<&serde_json::Value>, lang
             _ => String::new(),
         };
         feeds.push_str(&format!(
-            r#"<div class="subscription-row"><a href="{}">{}.txt ↗</a>{}{}</div>"#,
-            esc(&path),
-            esc(name),
-            copy_url(
-                lang.pick("订阅地址", "Subscription URL"),
-                &format!("https://tracker.augrains.com{path}"),
-                lang
+            r#"<div class="subscription-row" data-copy-row data-copy-ok="{}" data-copy-fail="{}"><a href="{}" title="{}">{}</a>{}<input type="text" value="{}" aria-label="{}" readonly spellcheck="false" hidden><small class="copy-status" role="status" aria-live="polite"></small>{empty_note}</div>"#,
+            lang.pick("已复制。", "Copied."),
+            lang.pick(
+                "无法自动复制，请选中地址后手动复制。",
+                "Could not copy automatically. Select the address and copy it manually."
             ),
-            empty_note
+            esc(&path),
+            esc(&url),
+            esc(&filename),
+            copy_button(&button),
+            esc(&url),
+            lang.pick("订阅地址", "Subscription URL")
         ));
     }
     let trends = charts(lang);
     let has_snapshot = overview.generated_at > 0;
     let snapshot_time = if has_snapshot {
-        time(Some(overview.generated_at), lang)
+        time_element(Some(overview.generated_at), lang)
     } else {
         "—".to_owned()
     };
@@ -437,7 +458,7 @@ pub(crate) fn home(overview: &Overview, native: Option<&serde_json::Value>, lang
         lang.pick("浏览 Tracker 列表", "Browse trackers"),
         lang.pick("复制接入地址", "Get connection URLs"),
         lang.pick("公开观测快照", "Public observation snapshot"),
-        esc(&snapshot_time),
+        snapshot_time,
         lang.pick("公开端点", "Endpoints"),
         snapshot_endpoints,
         lang.pick("独立服务", "Services"),
@@ -841,8 +862,14 @@ fn pill(family: &str, status: Option<&FamilyStatus>, lang: Lang) -> String {
             )
         ),
     };
+    let title_time = match checked {
+        Some(timestamp) if state != "unsupported" && title.contains(" UTC") => {
+            format!(r#" data-title-timestamp="{timestamp}" data-title-utc="{when}""#)
+        }
+        _ => String::new(),
+    };
     format!(
-        r#"<span class="pill pill--{}" title="{}">{}</span>"#,
+        r#"<span class="pill pill--{}" title="{}"{title_time}>{}</span>"#,
         esc(state),
         esc(&title),
         esc(&label)
@@ -917,11 +944,12 @@ pub(crate) fn listing_results(page: &Page, query: &str, protocol: &str, lang: La
             && (0..86_400).contains(&tracker_model::unix_now().saturating_sub(endpoint.first_seen));
         let new = if newest {
             format!(
-                r#" <span class="new-label" title="{}">NEW</span>"#,
+                r#" <span class="new-label" title="{}">{}</span>"#,
                 lang.pick(
                     "本站近24小时新发现",
                     "First discovered here within 24 hours"
-                )
+                ),
+                lang.pick("新增", "New")
             )
         } else {
             String::new()
@@ -1120,7 +1148,7 @@ pub(crate) fn listing(page: &Page, query: &str, protocol: &str, lang: Lang) -> S
     let selected = |name: &str| if protocol == name { " selected" } else { "" };
     let results = listing_results(page, query, protocol, lang);
     let body = format!(
-        r#"<header class="page-head listing-head"><h1>{heading}</h1></header><form class="filters card" method="get" action="/trackers" data-tracker-filters><input type="hidden" name="lang" value="{code}"><label class="filter-field filter-search">{search}<div class="search-input-wrap"><svg class="search-icon" viewBox="0 0 20 20" width="16" height="16" aria-hidden="true" fill="currentColor"><path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM2 9a7 7 0 1 1 12.452 4.391l3.328 3.329a.75.75 0 1 1-1.06 1.06l-3.329-3.328A7 7 0 0 1 2 9Z" clip-rule="evenodd"/></svg><input name="q" value="{query}" maxlength="128" placeholder="{placeholder}" autocomplete="off" spellcheck="false" enterkeyhint="search"><button type="button" class="search-clear" data-search-clear aria-label="{clear_label}" hidden title="{clear_label}">×</button></div></label><label class="filter-field filter-proto">{proto}<select name="protocol" data-tracker-filter><option value="">{all}</option><option value="udp"{udp}>UDP</option><option value="http"{http}>HTTP</option><option value="https"{https}>HTTPS</option></select></label><label class="filter-field filter-limit">{size}<select name="limit" data-tracker-filter>{sizes}</select></label><button class="button filter-submit" type="submit">{filter}</button><span class="filter-status" role="status" aria-live="polite"></span></form><div class="tracker-results" id="tracker-results" data-tracker-results aria-live="polite">{results}</div><script src="/assets/list.js?v=1.2.5" defer></script>"#,
+        r#"<header class="page-head listing-head"><h1>{heading}</h1></header><form class="filters card" method="get" action="/trackers" data-tracker-filters><input type="hidden" name="lang" value="{code}"><label class="filter-field filter-search">{search}<div class="search-input-wrap"><svg class="search-icon" viewBox="0 0 20 20" width="16" height="16" aria-hidden="true" fill="currentColor"><path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM2 9a7 7 0 1 1 12.452 4.391l3.328 3.329a.75.75 0 1 1-1.06 1.06l-3.329-3.328A7 7 0 0 1 2 9Z" clip-rule="evenodd"/></svg><input name="q" value="{query}" maxlength="128" placeholder="{placeholder}" autocomplete="off" spellcheck="false" enterkeyhint="search"><button type="button" class="search-clear" data-search-clear aria-label="{clear_label}" hidden title="{clear_label}">×</button></div></label><label class="filter-field filter-proto">{proto}<select name="protocol" data-tracker-filter><option value="">{all}</option><option value="udp"{udp}>UDP</option><option value="http"{http}>HTTP</option><option value="https"{https}>HTTPS</option></select></label><label class="filter-field filter-limit">{size}<select name="limit" data-tracker-filter>{sizes}</select></label><button class="button filter-submit" type="submit">{filter}</button><span class="filter-status" role="status" aria-live="polite"></span></form><div class="tracker-results" id="tracker-results" data-tracker-results aria-live="polite">{results}</div><script src="/assets/list.js?v=1.2.9" defer></script>"#,
         heading = lang.pick("Tracker 列表", "Tracker directory"),
         search = lang.pick("搜索", "Search"),
         query = esc(query),
@@ -1469,7 +1497,7 @@ pub(crate) fn detail(
         let reason = reason_cell(o, lang);
         let target = o.target_ip.as_deref().unwrap_or("-");
         rows.push_str(&format!(r#"<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>"#,
-            esc(&time(Some(o.observed_at), lang)), esc(&o.family.to_uppercase()), esc(stage_text(&o.stage, lang)), esc(&transport), esc(observed_result(&o.stage, &o.result, o.error_category.as_deref(), lang)), reply, esc(&millis(if measured_reply(o) { o.latency_ms } else { None }, lang)), esc(target), esc(&reason)));
+            time_element(Some(o.observed_at), lang), esc(&o.family.to_uppercase()), esc(stage_text(&o.stage, lang)), esc(&transport), esc(observed_result(&o.stage, &o.result, o.error_category.as_deref(), lang)), reply, esc(&millis(if measured_reply(o) { o.latency_ms } else { None }, lang)), esc(target), esc(&reason)));
     }
     if rows.is_empty() {
         rows = format!(
@@ -1543,7 +1571,10 @@ pub(crate) fn detail(
         && endpoint.first_seen > 0
         && (0..86_400).contains(&now.saturating_sub(endpoint.first_seen));
     let new = if newest {
-        " <span class=\"new-label\">NEW</span>"
+        lang.pick(
+            " <span class=\"new-label\">新增</span>",
+            " <span class=\"new-label\">New</span>",
+        )
     } else {
         ""
     };
@@ -1594,10 +1625,6 @@ pub(crate) fn detail(
                 .unwrap_or(unknown)
                 .to_owned(),
         ),
-        (
-            lang.pick("缓存更新时间", "Cache updated"),
-            time(infra.updated_at.filter(|v| *v > 0), lang),
-        ),
     ]
     .into_iter()
     .map(|(label, value)| {
@@ -1608,6 +1635,11 @@ pub(crate) fn detail(
         )
     })
     .collect::<String>();
+    let infrastructure = format!(
+        r#"{infrastructure}<div><dt>{}</dt><dd>{}</dd></div>"#,
+        lang.pick("缓存更新时间", "Cache updated"),
+        time_element(infra.updated_at.filter(|v| *v > 0), lang),
+    );
     let family_card = |name: &str, f: Option<&FamilyStatus>| {
         let target = latest_target_ip(health_observations, name).unwrap_or("-");
         let hint = family_hint(f, lang);
@@ -1621,7 +1653,7 @@ pub(crate) fn detail(
             pill(name, f, lang),
             latest(f, &endpoint.protocol, lang),
             lang.pick("检测时间", "Checked"),
-            esc(&time(f.and_then(|v| v.checked_at), lang)),
+            time_element(f.and_then(|v| v.checked_at), lang),
             lang.pick("最近目标 IP", "Latest target IP"),
             esc(target)
         )
@@ -1630,18 +1662,19 @@ pub(crate) fn detail(
         "成功率只统计已完成的有效观测（成功 / 失败）；未测、本地故障和未发现地址不计入。“已过期”只表示最新一次结果超出预期刷新间隔，24h 成功率仍是过去 24 小时的历史统计，因此两者可以同时出现。",
         "Success rates count completed observations only (accepted / failed). Untested, locally failed and no-address checks are excluded. \"Stale\" only means the latest result is older than the expected refresh window; the 24h success rate is still historical, so both can appear together.",
     );
-    let body = format!(r#"<section class="page-head detail-head"><a class="back" href="/trackers?lang={code}">← {back}</a><p class="eyebrow">TRACKER DETAIL</p><h1>{host}{new}</h1>{url}{colocated}</section><section class="family-grid">{family4}{family6}</section><section class="section-heading"><div><p class="eyebrow">EVIDENCE</p><h2>{evidence_title}</h2><p>{evidence_note}</p></div></section><section class="metric-grid detail-metrics">{metrics}</section><p class="detail-note">{metric_note}</p><section class="panel"><div class="section-heading compact"><div><p class="eyebrow">NETWORK</p><h2>{network_title}</h2><p>{network_note}</p></div></div><dl class="infra-compact">{infrastructure}</dl></section><section class="panel observation-panel"><div class="section-heading compact"><div><p class="eyebrow">LAST 24 HOURS</p><h2>{history}</h2><p>{history_note}</p></div></div><p class="timeline-legend">{timeline_legend}</p><div data-observation-timeline class="observation-timeline" role="img" aria-label="24-hour timeline"></div><noscript>{timeline}</noscript><div class="chart-header"><strong>{latency_chart}</strong></div><div class="canvas-wrap"><canvas data-observation-chart role="img" aria-label="24-hour response latency"></canvas></div><noscript>{graph}</noscript><div class="table-wrap"><table><thead><tr><th>{time_label}</th><th>{family_label}</th><th>{stage}</th><th>{transport}</th><th>{result}</th><th>{reply}</th><th>{latency}</th><th>{target_label}</th><th>{reason}</th></tr></thead><tbody>{rows}</tbody></table></div></section><p class="footnote">{single}</p>"#,
+    let body = format!(r#"<section class="page-head detail-head"><a class="back" href="/trackers?lang={code}">← {back}</a><p class="eyebrow">{detail_label}</p><h1>{host}{new}</h1>{url}{colocated}</section><section class="family-grid">{family4}{family6}</section><section class="section-heading"><div><p class="eyebrow">{evidence_label}</p><h2>{evidence_title}</h2><p>{evidence_note}</p></div></section><section class="metric-grid detail-metrics">{metrics}</section><p class="detail-note">{metric_note}</p><section class="panel"><div class="section-heading compact"><div><p class="eyebrow">{network_label}</p><h2>{network_title}</h2><p>{network_note}</p></div></div><dl class="infra-compact">{infrastructure}</dl></section><section class="panel observation-panel"><div class="section-heading compact"><div><p class="eyebrow">{last_day_label}</p><h2>{history}</h2><p>{history_note}</p></div></div><p class="timeline-legend">{timeline_legend}</p><div data-observation-timeline class="observation-timeline" role="img" aria-label="{timeline_label}"></div><noscript>{timeline}</noscript><div class="chart-header"><strong>{latency_chart}</strong></div><div class="canvas-wrap"><canvas data-observation-chart role="img" aria-label="{latency_chart}"></canvas></div><noscript>{graph}</noscript><div class="table-wrap"><table><thead><tr><th>{time_label}</th><th>{family_label}</th><th>{stage}</th><th>{transport}</th><th>{result}</th><th>{reply}</th><th>{latency}</th><th>{target_label}</th><th>{reason}</th></tr></thead><tbody>{rows}</tbody></table></div></section><p class="footnote">{single}</p>"#,
         code=lang.code(), back=lang.pick("列表", "List"), host=esc(&endpoint.host), url=copy_url(lang.pick("Tracker 地址", "Tracker URL"), &endpoint.url, lang),
         family4=family_card("ipv4",v4), family6=family_card("ipv6",v6),
+        detail_label=lang.pick("Tracker 详情", "Tracker detail"), evidence_label=lang.pick("证据", "Evidence"), network_label=lang.pick("网络", "Network"), last_day_label=lang.pick("过去 24 小时", "Last 24 hours"), timeline_label=lang.pick("24 小时观测时间线", "24-hour observation timeline"),
         evidence_title=lang.pick("观测证据", "Observed evidence"), evidence_note=lang.pick("握手仅验证采样节点；位图是节点声明，不证明文件可下载。", "Handshakes verify sampled peers; bitmaps are claims, not proof of downloadable content."),
         metric_note=esc(metric_note),
         network_title=lang.pick("网络归属", "Network information"), network_note=lang.pick("归属信息来自公开网络数据，不能精确定位机房。", "Network ownership comes from public data and does not pinpoint a datacenter."),
         history=lang.pick("24 小时探测记录", "24-hour observations"), history_note=lang.pick("事件表仅显示健康通告。目标 IP 是本次请求实际解析并连接的地址，可用于判断 DNS 是否变化；图和连线不代表持续可用。", "The event table shows health announces only. The target IP is the resolved address actually contacted by this request, which exposes stale DNS changes; charts and lines do not prove continuous availability."),
         timeline_legend=lang.pick("绿：成功　红：失败　黄：限流/拒绝　灰：未知或本地不可用。IPv4 与 IPv6 两行各自代表独立探测，时间可能相近。", "Green: success · Red: failure · Amber: rate limit/rejection · Grey: unknown/local unavailable. IPv4 and IPv6 are separate checks and can occur close together."),
         latency_chart=lang.pick("实测响应延迟 (ms)", "Observed response latency (ms)"),
-        time_label=lang.pick("时间 (UTC)", "Time (UTC)"), family_label=lang.pick("地址族", "Family"), stage=lang.pick("阶段", "Stage"), transport=lang.pick("传输", "Transport"), result=lang.pick("观测结果", "Observation result"), reply=lang.pick("有效 Tracker 回复", "Valid tracker reply"), latency=lang.pick("阶段延迟", "Stage latency"), target_label=lang.pick("目标 IP", "Target IP"), reason=lang.pick("原因", "Reason"),
+        time_label=lang.pick("时间", "Time"), family_label=lang.pick("地址族", "Family"), stage=lang.pick("阶段", "Stage"), transport=lang.pick("传输", "Transport"), result=lang.pick("观测结果", "Observation result"), reply=lang.pick("有效 Tracker 回复", "Valid tracker reply"), latency=lang.pick("阶段延迟", "Stage latency"), target_label=lang.pick("目标 IP", "Target IP"), reason=lang.pick("原因", "Reason"),
         single=lang.pick("观测来自单一网络位置；缺测和探针本地故障不等于 Tracker 离线。", "Measurements come from one network; missing data and local probe failures are not tracker downtime."));
-    let scripts = r#"<script src="/assets/chart.umd.js?v=4.6.1" defer></script><script src="/assets/charts.js?v=1.2.5" defer></script>"#;
+    let scripts = r#"<script src="/assets/chart.umd.js?v=4.6.1" defer></script><script src="/assets/charts.js?v=1.2.9" defer></script>"#;
     shell(
         &endpoint.host,
         lang,
@@ -1700,7 +1733,7 @@ pub(crate) fn simple(
             let reason = reason
                 .map(|value| format!(" · {}", esc(value)))
                 .unwrap_or_default();
-            pool_rows.push_str(&format!(r#"<article class="metric"><span>{}</span><strong>{} / {}</strong><small>{}{}{} · {}: {} · {}: {}</small></article>"#, esc(label), pool.count, pool.target, esc(status), stale, reason, lang.pick("更新时间", "Updated"), esc(&time((pool.updated_at>0).then_some(pool.updated_at),lang)), lang.pick("最近尝试", "Last attempt"), esc(&time((pool.last_attempt_at>0).then_some(pool.last_attempt_at),lang))));
+            pool_rows.push_str(&format!(r#"<article class="metric"><span>{}</span><strong>{} / {}</strong><small>{}{}{} · {}: {} · {}: {}</small></article>"#, esc(label), pool.count, pool.target, esc(status), stale, reason, lang.pick("更新时间", "Updated"), time_element((pool.updated_at>0).then_some(pool.updated_at),lang), lang.pick("最近尝试", "Last attempt"), time_element((pool.last_attempt_at>0).then_some(pool.last_attempt_at),lang)));
         }
         if pool_rows.is_empty() {
             pool_rows = format!(

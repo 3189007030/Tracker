@@ -19,9 +19,21 @@ use crate::{
 };
 
 async fn get(router: &Router, uri: &str) -> (StatusCode, axum::http::HeaderMap, String) {
+    get_with_language(router, uri, Some("zh-CN,zh;q=0.9")).await
+}
+
+async fn get_with_language(
+    router: &Router,
+    uri: &str,
+    language: Option<&str>,
+) -> (StatusCode, axum::http::HeaderMap, String) {
+    let mut request = Request::builder().uri(uri);
+    if let Some(language) = language {
+        request = request.header(header::ACCEPT_LANGUAGE, language);
+    }
     let response = router
         .clone()
-        .oneshot(Request::builder().uri(uri).body(Body::empty()).unwrap())
+        .oneshot(request.body(Body::empty()).unwrap())
         .await
         .unwrap();
     let (parts, body) = response.into_parts();
@@ -31,6 +43,107 @@ async fn get(router: &Router, uri: &str) -> (StatusCode, axum::http::HeaderMap, 
         parts.headers,
         String::from_utf8(body.to_vec()).unwrap(),
     )
+}
+
+#[tokio::test]
+async fn browser_language_is_negotiated_without_shared_cache_leakage() {
+    let dir = TempDir::new().unwrap();
+    fixture(dir.path());
+    let router = app(dir.path().to_path_buf());
+    for (accept, expected) in [
+        (Some("zh-CN, en;q=0.9"), "zh"),
+        (Some("zh-TW;q=0.4, fr;q=0.9"), "en"),
+        (Some("en;q=0, zh-Hant;q=0.8"), "zh"),
+        (Some("zh;q=0, de;q=0.5"), "en"),
+        (Some("zh;q=garbage, en;q=0.1"), "en"),
+        (None, "en"),
+    ] {
+        let (status, headers, body) = get_with_language(&router, "/", accept).await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(headers[header::CONTENT_LANGUAGE], expected);
+        assert_eq!(headers[header::CACHE_CONTROL], "no-store");
+        assert!(
+            headers
+                .get_all(header::VARY)
+                .iter()
+                .any(|v| v == "Accept-Language")
+        );
+        assert!(body.contains(&format!("<html lang=\"{expected}\"")));
+    }
+    let (_, headers, body) = get_with_language(&router, "/?lang=zh", Some("en")).await;
+    assert_eq!(headers[header::CONTENT_LANGUAGE], "zh");
+    assert!(
+        headers[header::CACHE_CONTROL]
+            .to_str()
+            .unwrap()
+            .contains("public")
+    );
+    assert!(body.contains("<html lang=\"zh\""));
+    let (_, headers, _) = get_with_language(&router, "/?lang=invalid", Some("en")).await;
+    assert_eq!(headers[header::CONTENT_LANGUAGE], "en");
+    assert_eq!(headers[header::CACHE_CONTROL], "no-store");
+    for path in [
+        "/trackers?protocol=udp",
+        "/trackers/partial?q=x",
+        "/sources",
+        "/declaration",
+        "/tracker/missing",
+        "/missing/deeper",
+    ] {
+        let (_, headers, _) = get_with_language(&router, path, Some("zh")).await;
+        assert_eq!(headers[header::CONTENT_LANGUAGE], "zh", "{path}");
+        assert_eq!(headers[header::CACHE_CONTROL], "no-store", "{path}");
+    }
+    let (status, headers, _) = get_with_language(&router, "/tools", Some("zh")).await;
+    assert_eq!(status, StatusCode::FOUND);
+    assert_eq!(headers[header::LOCATION], "/?lang=zh#native-trackers");
+    assert_eq!(headers[header::CACHE_CONTROL], "no-store");
+    for path in ["/api/v1/overview", "/trackers.txt"] {
+        let (_, en_headers, en_body) = get_with_language(&router, path, Some("en")).await;
+        let (_, zh_headers, zh_body) = get_with_language(&router, path, Some("zh")).await;
+        assert_eq!(en_body, zh_body);
+        assert_eq!(
+            en_headers.get(header::CACHE_CONTROL),
+            zh_headers.get(header::CACHE_CONTROL)
+        );
+        assert!(en_headers.get(header::CONTENT_LANGUAGE).is_none());
+    }
+}
+
+#[tokio::test]
+async fn timestamps_render_with_machine_values_and_utc_fallbacks() {
+    let dir = TempDir::new().unwrap();
+    fixture(dir.path());
+    let db = Connection::open(dir.path().join("public.sqlite3")).unwrap();
+    let timestamp = 1_793_522_600_i64;
+    let overview = Overview {
+        generated_at: timestamp,
+        ..Default::default()
+    };
+    db.execute(
+        "UPDATE documents SET payload=?1 WHERE key='overview'",
+        [serde_json::to_string(&overview).unwrap()],
+    )
+    .unwrap();
+    let router = app(dir.path().to_path_buf());
+    let (_, _, home) = get(&router, "/?lang=en").await;
+    let utc = chrono::DateTime::from_timestamp_secs(timestamp).unwrap();
+    assert!(home.contains(&format!(
+        "<time datetime=\"{}\">{}</time>",
+        utc.format("%Y-%m-%dT%H:%M:%SZ"),
+        utc.format("%Y-%m-%d %H:%M UTC")
+    )));
+    assert!(
+        home.contains("data-local-time-label=\"X axis: local time.\">X axis: UTC time.</span>")
+    );
+    assert!(home.find("/assets/tools.js?").unwrap() < home.find("/assets/charts.js?").unwrap());
+
+    let (_, _, detail) = get(&router, "/tracker/example_id?lang=en").await;
+    assert!(detail.contains("data-title-timestamp="));
+    assert!(detail.contains("data-title-utc="));
+    assert!(detail.contains("<th>Time</th>"));
+    assert!(detail.matches("<time datetime=").count() >= 3);
+    assert!(detail.contains(" UTC</time>"));
 }
 
 fn add_endpoint(db: &Connection, endpoint: &Endpoint) {
@@ -262,7 +375,7 @@ async fn details_explain_protocol_rejection_and_plot_only_observed_events() {
     assert!(body.contains("timeline-point neutral"));
     assert!(body.contains("timeline-point failure"));
     assert!(body.contains("未发现地址"));
-    assert!(body.contains("NEW"));
+    assert!(body.contains("新增"));
     assert!(body.contains("AS64500"));
     assert!(body.contains("&lt;script&gt;provider&lt;/script&gt;"));
     assert!(!body.contains("<script>provider</script>"));
@@ -880,10 +993,32 @@ async fn legacy_pages_redirect_and_home_has_copyable_endpoints() {
     }
     assert!(!home.contains("announce.augrains.com"));
     assert!(home.contains("id=\"native-trackers\""));
-    assert!(home.contains("/assets/style.css?v=1.2.7"));
+    for filename in [
+        "trackers.txt",
+        "trackers_best.txt",
+        "trackers_all.txt",
+        "trackers_udp.txt",
+        "trackers_http.txt",
+        "trackers_https.txt",
+    ] {
+        let url = format!("https://tracker.augrains.com/{filename}");
+        assert!(home.contains(&format!(
+            "<a href=\"/{filename}\" title=\"{url}\">{filename}</a>"
+        )));
+        assert!(home.contains(&format!("aria-label=\"Copy {filename}\"")));
+        assert!(home.contains(&format!(
+            "value=\"{url}\" aria-label=\"Subscription URL\" readonly spellcheck=\"false\" hidden"
+        )));
+    }
+    assert_eq!(
+        home.matches("class=\"subscription-row\" data-copy-row")
+            .count(),
+        6
+    );
+    assert!(home.contains("/assets/style.css?v=1.2.9"));
     assert!(home.contains("href=\"https://github.com/3189007030/Tracker\""));
-    assert!(home.contains("/assets/tools.js?v=1.2.7"));
-    assert!(home.contains("/assets/charts.js?v=1.2.5"));
+    assert!(home.contains("/assets/tools.js?v=1.2.9"));
+    assert!(home.contains("/assets/charts.js?v=1.2.9"));
     assert!(home.contains("/assets/chart.umd.js?v=4.6.1"));
     assert!(!home.contains("/api/v1/experiments"));
     assert!(!home.contains("href=\"/tools"));
@@ -1144,7 +1279,7 @@ async fn list_page_uses_live_search_and_accessible_pagination() {
     for needle in [
         "data-tracker-filters",
         "data-tracker-results",
-        "/assets/list.js?v=1.2.5",
+        "/assets/list.js?v=1.2.9",
         "data-page-jump",
         "name=\"limit\"",
         "第 1 / 2",

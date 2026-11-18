@@ -3,6 +3,22 @@
 (() => {
     const zh = document.documentElement.lang !== "en";
     const text = (cn, en) => zh ? cn : en;
+    const formatTime = (seconds, precision) => {
+        if (!Number.isFinite(seconds)) return "";
+        try {
+            const local = window.trackerTime?.format(seconds, precision);
+            if (local) return local;
+            // Preserve an explicitly labelled UTC fallback if the shared
+            // formatter is unavailable; never imply an unconverted local time.
+            const date = new Date(seconds * 1000);
+            if (!Number.isFinite(date.getTime())) return "";
+            const iso = date.toISOString();
+            const label = precision === "tick" ? iso.slice(5, 16) : iso.slice(0, precision === "second" ? 19 : 16);
+            return `${label.replace("T", " ")} UTC`;
+        } catch (_) {
+            return "";
+        }
+    };
     const request = async (url) => {
         const response = await fetch(url, {headers: {Accept: "application/json"}});
         if (!response.ok) throw new Error("unavailable");
@@ -49,7 +65,12 @@
                 borderColor: colors.tooltipBorder,
                 borderWidth: 1,
                 padding: 10,
-                cornerRadius: 8
+                cornerRadius: 8,
+                callbacks: {
+                    title(items) {
+                        return formatTime(items[0]?.parsed?.x, "minute");
+                    }
+                }
             }
         },
         scales: {
@@ -60,8 +81,7 @@
                     color: colors.muted,
                     maxTicksLimit: 6,
                     callback(value) {
-                        const d = new Date(value * 1000);
-                        return Number.isFinite(d.getTime()) ? d.toISOString().slice(5, 16).replace("T", " ") : "";
+                        return formatTime(value, "tick");
                     }
                 }
             },
@@ -220,7 +240,7 @@
                     }} : undefined;
                     const makeOptions = (colors) => {
                         const value = optionsForWindow(colors, windowSeconds);
-                        if (callbacks) value.plugins.tooltip = {...value.plugins.tooltip, callbacks};
+                        if (callbacks) value.plugins.tooltip.callbacks = {...value.plugins.tooltip.callbacks, ...callbacks};
                         return value;
                     };
                     rendered.push(registerChart(new Chart(canvas, {type:"line", data:{datasets:sets}, options:makeOptions(palette)}), makeOptions));
@@ -292,8 +312,8 @@
                 const px = x(item.observed_at), currentState = state(item);
                 if (previous && item.observed_at > previous.at && item.observed_at - previous.at <= 7200 && previous.state !== "unknown" && currentState !== "unknown") svgNode("line", {class:"timeline-segment",x1:previous.x,y1:y,x2:px,y2:y}, svg);
                 const dot = svgNode("circle", {class:`timeline-point ${currentState}`,cx:px,cy:y,r:4}, svg);
-                const when = new Date(item.observed_at * 1000).toISOString().replace("T", " ").replace(".000Z", " UTC");
-                svgNode("title", {}, dot).textContent = `${when} · ${displayFamily(family)} · ${stateLabel(item)}`;
+                const when = formatTime(item.observed_at, "second");
+                svgNode("title", {}, dot).textContent = [when, displayFamily(family), stateLabel(item)].filter(Boolean).join(" · ");
                 previous = {at:item.observed_at, x:px, state:currentState};
             }
         });

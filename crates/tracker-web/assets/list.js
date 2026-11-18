@@ -72,6 +72,7 @@
             const fragment = await response.text();
             if (ticket !== requested) return;
             results.innerHTML = fragment;
+            window.trackerTime?.update(results);
             revealCopyButtons();
             const query = params.toString();
             const url = `/trackers${query ? `?${query}` : ""}`;

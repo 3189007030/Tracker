@@ -16,7 +16,7 @@ location = /announce {
     if ($tracker_browser_announce) {
         add_header Cache-Control "no-store" always;
         add_header Vary Accept always;
-        return 302 "https://tracker.augrains.com/?lang=$tracker_browser_lang#native-trackers";
+        return 302 "https://tracker.augrains.com/#native-trackers";
     }
     proxy_cache off;
     proxy_pass http://tracker_core;

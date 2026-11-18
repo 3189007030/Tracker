@@ -21,12 +21,55 @@
 
 document.querySelectorAll("[data-copy-button]").forEach((button) => { button.hidden = false; });
 
+window.trackerTime = (() => {
+    const locale = document.documentElement.lang;
+    const clock = { hour: "2-digit", minute: "2-digit", hourCycle: "h23" };
+    const date = { year: "numeric", month: "2-digit", day: "2-digit" };
+    let formats;
+    try {
+        const minute = { ...date, ...clock, timeZoneName: "shortOffset" };
+        formats = {
+            minute: new Intl.DateTimeFormat(locale, minute),
+            second: new Intl.DateTimeFormat(locale, { ...minute, second: "2-digit" }),
+            tick: new Intl.DateTimeFormat(locale, { ...clock, month: "2-digit", day: "2-digit" }),
+        };
+    } catch (_) {
+        // Keep the labelled UTC values if date localization is unavailable.
+    }
+
+    const format = (seconds, precision = "minute") => {
+        if (!formats || !Number.isFinite(seconds)) return "";
+        const date = new Date(seconds * 1000);
+        return Number.isFinite(date.getTime()) ? formats[precision].format(date) : "";
+    };
+    const update = (root) => {
+        if (!formats) return;
+        root.querySelectorAll("time[datetime]").forEach((element) => {
+            const label = format(Date.parse(element.dateTime) / 1000);
+            if (label) element.textContent = label;
+        });
+        root.querySelectorAll("[data-title-timestamp]").forEach((element) => {
+            const label = format(Number(element.dataset.titleTimestamp));
+            if (label) element.title = element.title.replace(element.dataset.titleUtc, label);
+        });
+        root.querySelectorAll("[data-local-time-label]").forEach((element) => {
+            element.textContent = element.dataset.localTimeLabel;
+        });
+    };
+    update(document);
+    return { format, update };
+})();
+
 const languageSwitcher = document.querySelector("[data-language-switcher]");
 if (languageSwitcher) {
     languageSwitcher.querySelectorAll("a[lang]").forEach((link) => {
-        const url = new URL(window.location.href);
-        url.searchParams.set("lang", link.getAttribute("lang"));
-        link.href = `${url.pathname}?${url.searchParams.toString()}${url.hash}`;
+        const updateLink = () => {
+            const url = new URL(window.location.href);
+            url.searchParams.set("lang", link.getAttribute("lang"));
+            link.href = `${url.pathname}?${url.searchParams.toString()}${url.hash}`;
+        };
+        updateLink();
+        link.addEventListener("click", updateLink);
     });
 }
 

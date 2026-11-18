@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.2.9 — homepage layout, language and local time
+
+- Give the homepage address and subscription panels equal width on desktop. Show compact subscription rows with direct filename links and copy buttons.
+- Use the browser's preferred language for page requests without an explicit language. The language control preserves the current filters and fragment, and the browser-only announce redirect uses the same language selection as the homepage.
+- Show snapshot, observation and source times in the browser's time zone, including chart labels and tooltips. Render labelled UTC times when client-side formatting is unavailable.
+
+See the [1.2.9 validation ledger](docs/releases/1.2.9.md).
+
 ## 1.2.8 — native Tracker efficiency
 
 - Borrow unescaped HTTP query parameters and keep the existing validation and percent-decoding rules.

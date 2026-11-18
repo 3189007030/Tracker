@@ -22,7 +22,7 @@ The baseline process memory caps are deployment settings, not capacity evidence.
 
 ## Services and ingress
 
-Install the tracker-server, observatory and tracker-web systemd units, run `systemctl daemon-reload`, and enable the units. Restart only services whose binaries changed. Verify `/healthz` and `/readyz` for the native and web listeners before exposing the release.
+Install the tracker-server, observatory and tracker-web systemd units, run `systemctl daemon-reload`, and enable the units. Restart only the services needed to activate the release. Verify `/healthz` and `/readyz` for the native and web listeners before exposing the release.
 
 Use `deploy/nginx.conf`, `deploy/ingress.conf`, `deploy/tracker-browser.conf` and `deploy/tracker-locations.inc` as the reviewed Nginx templates. The canonical public hosts are `tracker.augrains.com` for HTTP/HTTPS announce, scrape and the website, and `udp.augrains.com` for direct UDP. Keep announce, scrape, health, readiness and metrics uncached. Never expose the loopback Rust listener or trust an arbitrary forwarded-address header.
 
@@ -30,9 +30,15 @@ Cloudflare-proxied ingress must trust `CF-Connecting-IP` only from the current C
 
 Before every firewall or Nginx change, keep a timed rollback and verify an independent SSH session. Do not apply a template without adapting SSH access, certificates, interfaces and private source settings to the actual host.
 
+The browser-only `/announce` redirect points to `/#native-trackers` so the Web service can select the page language. When promoting that ingress change, validate the effective configuration with `nginx -t` and reload Nginx gracefully. Check that the redirect preserves its fragment and that a real BitTorrent announce still reaches the native listener. At the public edge, check that unqualified page URLs return `Cache-Control: no-store` and `Vary: Accept-Language` and render each requested language.
+
 ## Data and restart behavior
 
-`private.sqlite3` contains measurement evidence and must never be published. The public website reads only the sanitized public projection. Native registry state is volatile: restarting the tracker-server clears peer registrations and counters, after which normal announces rebuild state. Observatory and website restarts do not require a registry restart.
+`private.sqlite3` contains measurement evidence and must never be published. The public website reads only the sanitized public projection. Restarting `tracker-server` clears its in-memory peer registrations and counters. Normal announces rebuild the registry.
+
+For a Web-only promotion, restart only `tracker-web`. Keep the native Tracker and Observatory running so peer registrations and data collection continue. Record the running versions and executable hashes separately from `current`. Services still running from the previous release will use the new directory when they next restart.
+
+Tracker pages and subscription feeds share the single Web listener on port 8080. A restart can briefly interrupt uncached requests. When a release requires continuous Web serving, first validate a second read-only Web instance on a separate loopback port using the same public snapshot. Check readiness, page rendering and all feeds there before switching the Nginx upstream, then let existing connections drain before stopping the old instance. Follow the Nginx validation and rollback procedure above for that cutover.
 
 Check the native `/healthz`, `/readyz` and `/stats.json`, and the website `/readyz`, through the intended ingress host. Confirm systemd restart/OOM counters, snapshot freshness, probe progress and real cross-transport discovery. A fresh public snapshot may still be warming strict lists.
 
