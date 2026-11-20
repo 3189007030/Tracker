@@ -596,16 +596,6 @@ fn observed_result(stage: &str, value: &str, error: Option<&str>, lang: Lang) ->
     }
 }
 
-fn stage_text(stage: &str, lang: Lang) -> &'static str {
-    match stage {
-        "announce" => lang.pick("健康通告", "Health announce"),
-        "sample_announce" => lang.pick("样本通告", "Sample announce"),
-        "handshake" => lang.pick("节点握手", "Peer handshake"),
-        "bitmap" => lang.pick("位图观测", "Bitmap observation"),
-        _ => lang.pick("未知", "Unknown"),
-    }
-}
-
 /// A localized, human-readable failure reason. `None`/empty means there is
 /// nothing more specific to say than the observation result itself.
 /// HTTP status codes are kept where they are the actual diagnostic.

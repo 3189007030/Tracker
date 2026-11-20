@@ -454,6 +454,7 @@ impl PublicStore {
         })
     }
 
+    #[cfg(test)]
     pub fn detail_log(
         &self,
         id: &str,
