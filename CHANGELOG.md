@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.3.1 — search and observation diagnostics
+
+- Search public IPv4/IPv6 addresses by normalized URL host or the most recent announced target for each address family. Results explain shared IP matches and do not imply that endpoints are duplicates. Internal match metadata is not added to the public list JSON.
+- Clear a pending list search with Escape while keeping the selected protocol and page size.
+- Replace the capped detail log with a 50-row paginated health-announce log, a 24-hour or 7-day window, collapsed no-address-family entries, and timeline links that open the matching page and highlight the row.
+- Explain that target IP is the contacted Tracker address. The current public projection does not retain HTTP response bodies or returned peer lists, so those reply details cannot be reconstructed. Keep the public observations API schema unchanged.
+- Remove the redundant stage column and the table-header sticky behavior that made the detail heading appear to sink while scrolling.
+
+See the [1.3.1 validation ledger](docs/releases/1.3.1.md).
+
 ## 1.3.0 — address-family rechecks
 
 - Schedule IPv4 and IPv6 separately and give earlier due checks priority. Wake for upcoming health checks while keeping the ordinary source and sample collection interval.

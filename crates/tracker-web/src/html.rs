@@ -2,7 +2,7 @@
 use chrono::{DateTime, Utc};
 use tracker_model::{Endpoint, FamilyStatus, Observation, Overview, PoolStatus, VERSION};
 
-use crate::store::Page;
+use crate::store::{DetailLog, LogEntry, Page};
 
 #[derive(Clone, Copy)]
 pub(crate) enum Lang {
@@ -152,7 +152,7 @@ pub(crate) fn shell(title: &str, lang: Lang, body: &str) -> String {
     let code = lang.code();
     let theme_label = lang.pick("切换深浅主题", "Toggle theme");
     format!(
-        r##"<!doctype html><html lang="{code}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark light"><title>{title} · Tracker Observatory</title><link rel="icon" type="image/svg+xml" href="/assets/brand.svg?v=1.0.2"><link rel="icon" href="/favicon.ico?v=1.0.2" sizes="any"><link rel="apple-touch-icon" href="/assets/brand.png?v=1.0.2"><link rel="stylesheet" href="/assets/style.css?v=1.3.0"><script src="/assets/tools.js?v=1.2.9" defer></script></head><body><a class="skip-link" href="#main-content">{skip_link}</a><header class="masthead"><div class="wrap nav-wrap"><a class="brand" href="/?lang={code}"><img class="brand-icon" src="/assets/brand.svg?v=1.0.2" alt=""><span>Tracker <b>Observatory</b></span></a><button class="menu-toggle" type="button" hidden data-menu-toggle aria-expanded="false" aria-controls="site-nav" aria-label="{menu_label}"><span></span><span></span><span></span></button><nav id="site-nav" data-site-nav aria-label="{nav_label}"><a data-nav-key="home" href="/?lang={code}">{nav_home}</a><a data-nav-key="trackers" href="/trackers?lang={code}">{nav_trackers}</a><a data-nav-key="sources" href="/sources?lang={code}">{nav_sources}</a><a data-nav-key="declaration" href="/declaration?lang={code}">{nav_declaration}</a></nav><div class="nav-actions"><div class="language" aria-label="{language_label}" data-language-switcher>{language}</div><button class="theme-toggle" type="button" data-theme-toggle aria-label="{theme_label}" title="{theme_label}"><svg class="theme-icon-dark" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg><svg class="theme-icon-light" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></button><a class="github-link" href="https://github.com/3189007030/Tracker" rel="noopener noreferrer" aria-label="{github_label}" title="{github_label}"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="currentColor"><path d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.11.79-.25.79-.56v-2.19c-3.21.7-3.89-1.36-3.89-1.36-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.97.11-.75.4-1.26.73-1.55-2.56-.29-5.26-1.28-5.26-5.71 0-1.26.45-2.29 1.18-3.1-.12-.29-.51-1.46.11-3.05 0 0 .97-.31 3.16 1.18a10.98 10.98 0 0 1 5.75 0c2.19-1.49 3.15-1.18 3.15-1.18.63 1.59.24 2.76.12 3.05.74.81 1.18 1.84 1.18 3.1 0 4.44-2.7 5.41-5.28 5.7.42.36.78 1.06.78 2.14v3.22c0 .31.21.68.79.56A11.5 11.5 0 0 0 12 .5Z"/></svg></a></div></div></header><main id="main-content" class="wrap">{body}</main><footer class="wrap footer"><span>Tracker Observatory · {version}</span><span>{footnote}</span></footer></body></html>"##,
+        r##"<!doctype html><html lang="{code}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark light"><title>{title} · Tracker Observatory</title><link rel="icon" type="image/svg+xml" href="/assets/brand.svg?v=1.0.2"><link rel="icon" href="/favicon.ico?v=1.0.2" sizes="any"><link rel="apple-touch-icon" href="/assets/brand.png?v=1.0.2"><link rel="stylesheet" href="/assets/style.css?v=1.3.1"><script src="/assets/tools.js?v=1.2.9" defer></script></head><body><a class="skip-link" href="#main-content">{skip_link}</a><header class="masthead"><div class="wrap nav-wrap"><a class="brand" href="/?lang={code}"><img class="brand-icon" src="/assets/brand.svg?v=1.0.2" alt=""><span>Tracker <b>Observatory</b></span></a><button class="menu-toggle" type="button" hidden data-menu-toggle aria-expanded="false" aria-controls="site-nav" aria-label="{menu_label}"><span></span><span></span><span></span></button><nav id="site-nav" data-site-nav aria-label="{nav_label}"><a data-nav-key="home" href="/?lang={code}">{nav_home}</a><a data-nav-key="trackers" href="/trackers?lang={code}">{nav_trackers}</a><a data-nav-key="sources" href="/sources?lang={code}">{nav_sources}</a><a data-nav-key="declaration" href="/declaration?lang={code}">{nav_declaration}</a></nav><div class="nav-actions"><div class="language" aria-label="{language_label}" data-language-switcher>{language}</div><button class="theme-toggle" type="button" data-theme-toggle aria-label="{theme_label}" title="{theme_label}"><svg class="theme-icon-dark" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg><svg class="theme-icon-light" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></button><a class="github-link" href="https://github.com/3189007030/Tracker" rel="noopener noreferrer" aria-label="{github_label}" title="{github_label}"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="currentColor"><path d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.11.79-.25.79-.56v-2.19c-3.21.7-3.89-1.36-3.89-1.36-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.97.11-.75.4-1.26.73-1.55-2.56-.29-5.26-1.28-5.26-5.71 0-1.26.45-2.29 1.18-3.1.63 1.59.24 2.76.12 3.05.74.81 1.18 1.84 1.18 3.1 0 4.44-2.7 5.41-5.28 5.7.42.36.78 1.06.78 2.14v3.22c0 .31.21.68.79.56A11.5 11.5 0 0 0 12 .5Z"/></svg></a></div></div></header><main id="main-content" class="wrap">{body}</main><footer class="wrap footer"><span>Tracker Observatory · {version}</span><span>{footnote}</span></footer></body></html>"##,
         title = esc(title),
         version = esc(VERSION),
         skip_link = lang.pick("跳到主要内容", "Skip to main content"),
@@ -256,7 +256,7 @@ fn charts(lang: Lang) -> String {
         panels.push_str(&format!(r#"<article class="panel chart-panel"><h3>{}</h3><div class="canvas-wrap"><canvas data-history-chart="{}" aria-label="{}" role="img"></canvas></div></article>"#, esc(label), esc(key), esc(label)));
     }
     format!(
-        r#"<section class="trends-heading"><div class="trends-title-row"><h2>{}</h2><p class="trends-unit">{} <span data-local-time-label="{}">{}</span></p></div><div class="trends-sub-row"><p>{}</p><label>{} <select data-history-window aria-label="{}"><option value="24h">{}</option><option value="7d">{}</option><option value="30d">{}</option></select></label></div></section><div class="history-grid" data-history-root data-lang="{}">{}</div><p class="footnote" data-history-rate-note></p><p class="footnote">{}</p><script src="/assets/chart.umd.js?v=4.6.1" defer></script><script src="/assets/charts.js?v=1.2.9" defer></script>"#,
+        r#"<section class="trends-heading"><div class="trends-title-row"><h2>{}</h2><p class="trends-unit">{} <span data-local-time-label="{}">{}</span></p></div><div class="trends-sub-row"><p>{}</p><label>{} <select data-history-window aria-label="{}"><option value="24h">{}</option><option value="7d">{}</option><option value="30d">{}</option></select></label></div></section><div class="history-grid" data-history-root data-lang="{}">{}</div><p class="footnote" data-history-rate-note></p><p class="footnote">{}</p><script src="/assets/chart.umd.js?v=4.6.1" defer></script><script src="/assets/charts.js?v=1.3.1" defer></script>"#,
         title,
         lang.pick(
             "纵轴为用户数、种子数或每秒速率。",
@@ -1020,6 +1020,27 @@ pub(crate) fn listing_results(page: &Page, query: &str, protocol: &str, lang: La
             lang,
         );
         let flag = country_flag(endpoint.infrastructure.country.as_deref(), lang);
+        let target_ip_note = if page.ip_match_ids.contains(&endpoint.id)
+            || page.url_ip_match_ids.contains(&endpoint.id)
+        {
+            page.matched_ip
+                .as_deref()
+                .map(|ip| {
+                    let source = if page.ip_match_ids.contains(&endpoint.id) {
+                        lang.pick("最近目标 IP", "Latest target IP")
+                    } else {
+                        lang.pick("IP 地址别名", "IP URL alias")
+                    };
+                    format!(
+                        r#"<small class="row-note target-ip-match">{}: <code>{}</code></small>"#,
+                        source,
+                        esc(ip)
+                    )
+                })
+                .unwrap_or_default()
+        } else {
+            String::new()
+        };
         let rank = page
             .page
             .saturating_sub(1)
@@ -1048,10 +1069,11 @@ pub(crate) fn listing_results(page: &Page, query: &str, protocol: &str, lang: La
             String::new()
         };
         rows.push_str(&format!(
-            r#"<article class="tracker-row"><span class="tracker-rank">{rank}</span><div class="tracker-name">{flag} <a href="/tracker/{}?lang={code}">{}</a>{new}<div class="url">{}</div></div><div class="stack-pills">{v4}{v6}</div><div class="row-stat row-success" title="{}"><small>{}</small><strong>{}</strong>{rate_note}</div><div class="row-stat row-latency" title="{}"><small>{}</small><strong>{}</strong></div></article>"#,
+            r#"<article class="tracker-row"><span class="tracker-rank">{rank}</span><div class="tracker-name">{flag} <a href="/tracker/{}?lang={code}">{}</a>{new}<div class="url">{}</div>{target_ip_note}</div><div class="stack-pills">{v4}{v6}</div><div class="row-stat row-success" title="{}"><small>{}</small><strong>{}</strong>{rate_note}</div><div class="row-stat row-latency" title="{}"><small>{}</small><strong>{}</strong></div></article>"#,
             esc(&endpoint.id),
             esc(&endpoint.host),
             copy_endpoint_url(&endpoint.url, lang),
+            target_ip_note,
             esc(&rate_title),
             lang.pick("24h 成功率", "24h success"),
             esc(&pct(endpoint.evidence.success_rate_24h, lang)),
@@ -1098,8 +1120,17 @@ pub(crate) fn listing_results(page: &Page, query: &str, protocol: &str, lang: La
         "等待复测表示尚未到最早允许探测的时间。待复测表示需要新结果确认当前状态。",
         "A scheduled recheck is waiting for its earliest allowed time. A due recheck needs a new result to confirm the current status.",
     );
+    let ip_note = page.matched_ip.as_deref().map(|ip| {
+        format!(
+            r#"<p class="list-note ip-search-note">{} <code>{}</code>: {} {}</p>"#,
+            lang.pick("目标 IP", "Target IP"),
+            esc(ip),
+            compact_number(page.shared_ip_count as f64, lang),
+            lang.pick("个端点的 URL 主机或近 7 天目标地址匹配此 IP；共用 IP 不代表端点相同。", "endpoints match this IP as a URL host or recent target within 7 days; a shared IP does not mean the endpoints are duplicates.")
+        )
+    }).unwrap_or_default();
     format!(
-        r#"<div class="list-meta">{meta}{feed_link}</div><div class="tracker-list">{rows}</div>{pagination}<p class="list-note">{note}</p>"#,
+        r#"<div class="list-meta">{meta}{feed_link}</div>{ip_note}<div class="tracker-list">{rows}</div>{pagination}<p class="list-note">{note}</p>"#,
         feed_link = copy_feed_link(lang),
         note = esc(note)
     )
@@ -1203,7 +1234,7 @@ pub(crate) fn listing(page: &Page, query: &str, protocol: &str, lang: Lang) -> S
     let selected = |name: &str| if protocol == name { " selected" } else { "" };
     let results = listing_results(page, query, protocol, lang);
     let body = format!(
-        r#"<header class="page-head listing-head"><h1>{heading}</h1></header><form class="filters card" method="get" action="/trackers" data-tracker-filters><input type="hidden" name="lang" value="{code}"><label class="filter-field filter-search">{search}<div class="search-input-wrap"><svg class="search-icon" viewBox="0 0 20 20" width="16" height="16" aria-hidden="true" fill="currentColor"><path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM2 9a7 7 0 1 1 12.452 4.391l3.328 3.329a.75.75 0 1 1-1.06 1.06l-3.329-3.328A7 7 0 0 1 2 9Z" clip-rule="evenodd"/></svg><input name="q" value="{query}" maxlength="128" placeholder="{placeholder}" autocomplete="off" spellcheck="false" enterkeyhint="search"><button type="button" class="search-clear" data-search-clear aria-label="{clear_label}" hidden title="{clear_label}">×</button></div></label><label class="filter-field filter-proto">{proto}<select name="protocol" data-tracker-filter><option value="">{all}</option><option value="udp"{udp}>UDP</option><option value="http"{http}>HTTP</option><option value="https"{https}>HTTPS</option></select></label><label class="filter-field filter-limit">{size}<select name="limit" data-tracker-filter>{sizes}</select></label><button class="button filter-submit" type="submit">{filter}</button><span class="filter-status" role="status" aria-live="polite"></span></form><div class="tracker-results" id="tracker-results" data-tracker-results aria-live="polite">{results}</div><script src="/assets/list.js?v=1.2.9" defer></script>"#,
+        r#"<header class="page-head listing-head"><h1>{heading}</h1></header><form class="filters card" method="get" action="/trackers" data-tracker-filters><input type="hidden" name="lang" value="{code}"><label class="filter-field filter-search">{search}<div class="search-input-wrap"><svg class="search-icon" viewBox="0 0 20 20" width="16" height="16" aria-hidden="true" fill="currentColor"><path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM2 9a7 7 0 1 1 12.452 4.391l3.328 3.329a.75.75 0 1 1-1.06 1.06l-3.329-3.328A7 7 0 0 1 2 9Z" clip-rule="evenodd"/></svg><input name="q" value="{query}" maxlength="128" placeholder="{placeholder}" autocomplete="off" spellcheck="false" enterkeyhint="search"><button type="button" class="search-clear" data-search-clear aria-label="{clear_label}" hidden title="{clear_label}">×</button></div></label><label class="filter-field filter-proto">{proto}<select name="protocol" data-tracker-filter><option value="">{all}</option><option value="udp"{udp}>UDP</option><option value="http"{http}>HTTP</option><option value="https"{https}>HTTPS</option></select></label><label class="filter-field filter-limit">{size}<select name="limit" data-tracker-filter>{sizes}</select></label><button class="button filter-submit" type="submit">{filter}</button><span class="filter-status" role="status" aria-live="polite"></span></form><div class="tracker-results" id="tracker-results" data-tracker-results aria-live="polite">{results}</div><script src="/assets/list.js?v=1.3.1" defer></script>"#,
         heading = lang.pick("Tracker 列表", "Tracker directory"),
         search = lang.pick("搜索", "Search"),
         query = esc(query),
@@ -1437,7 +1468,40 @@ fn supported_families(endpoint: &Endpoint, observations: &[Observation]) -> Vec<
         .collect()
 }
 
-fn timeline(observations: &[Observation], families: &[&str], now: i64, lang: Lang) -> String {
+fn detail_url(
+    id: &str,
+    lang: Lang,
+    window: &str,
+    page: usize,
+    include_no_address: bool,
+    focus: Option<i64>,
+) -> String {
+    let mut query = url::form_urlencoded::Serializer::new(String::new());
+    query.append_pair("lang", lang.code());
+    query.append_pair("window", window);
+    if page > 1 {
+        query.append_pair("page", &page.to_string());
+    }
+    if include_no_address {
+        query.append_pair("include_no_address", "1");
+    }
+    if let Some(focus) = focus {
+        query.append_pair("focus", &focus.to_string());
+    }
+    let fragment = focus
+        .map(|value| format!("#observation-{value}"))
+        .unwrap_or_default();
+    format!("/tracker/{}?{}{fragment}", esc(id), query.finish())
+}
+
+fn timeline(
+    entries: &[LogEntry],
+    families: &[&str],
+    endpoint_id: &str,
+    window: &str,
+    now: i64,
+    lang: Lang,
+) -> String {
     if families.is_empty() {
         return format!(
             r#"<div class="empty chart-empty">{}</div>"#,
@@ -1454,11 +1518,13 @@ fn timeline(observations: &[Observation], families: &[&str], now: i64, lang: Lan
         let y = 20 + index * 30;
         let display = if *family == "ipv4" { "IPv4" } else { "IPv6" };
         content.push_str(&format!(r#"<text x="0" y="{}">{display}</text>"#, y + 4));
-        let mut items: Vec<_> = observations
+        let mut items: Vec<_> = entries
             .iter()
-            .filter(|o| o.stage == "announce" && o.family == *family)
+            .filter(|entry| {
+                entry.observation.stage == "announce" && entry.observation.family == *family
+            })
             .collect();
-        items.sort_by_key(|o| o.observed_at);
+        items.sort_by_key(|entry| entry.observation.observed_at);
         if items.is_empty() {
             content.push_str(&format!(
                 r#"<text class="timeline-untested" x="60" y="{}">{}</text>"#,
@@ -1466,18 +1532,20 @@ fn timeline(observations: &[Observation], families: &[&str], now: i64, lang: Lan
                 lang.pick("未测", "Not yet checked")
             ));
         }
-        let mut previous: Option<&Observation> = None;
-        for item in items {
+        let mut previous: Option<&LogEntry> = None;
+        for entry in items {
+            let item = &entry.observation;
             let x = 52.0 + ((item.observed_at - start).clamp(0, 86_400) as f64 / 86_400.0) * 675.0;
             let state = observation_state(item);
             if let Some(old) = previous.filter(|old| {
-                item.observed_at > old.observed_at
-                    && item.observed_at - old.observed_at <= 7200
-                    && observation_state(old) != "unknown"
+                item.observed_at > old.observation.observed_at
+                    && item.observed_at - old.observation.observed_at <= 7200
+                    && observation_state(&old.observation) != "unknown"
                     && state != "unknown"
             }) {
-                let old_x =
-                    52.0 + ((old.observed_at - start).clamp(0, 86_400) as f64 / 86_400.0) * 675.0;
+                let old_x = 52.0
+                    + ((old.observation.observed_at - start).clamp(0, 86_400) as f64 / 86_400.0)
+                        * 675.0;
                 content.push_str(&format!(r#"<line class="timeline-segment" x1="{old_x:.2}" y1="{y}" x2="{x:.2}" y2="{y}"/>"#));
             }
             let when = DateTime::<Utc>::from_timestamp_secs(item.observed_at)
@@ -1500,12 +1568,13 @@ fn timeline(observations: &[Observation], families: &[&str], now: i64, lang: Lan
                 ),
                 target
             );
-            content.push_str(&format!(r#"<circle class="timeline-point {state}" cx="{x:.2}" cy="{y}" r="4"><title>{}</title></circle>"#, esc(&title)));
-            previous = Some(item);
+            let href = detail_url(endpoint_id, lang, window, 1, false, Some(entry.id));
+            content.push_str(&format!(r#"<a class="timeline-link" href="{}" aria-label="{}"><circle class="timeline-point {state}" cx="{x:.2}" cy="{y}" r="4"><title>{}</title></circle></a>"#, esc(&href), esc(&title), esc(&title)));
+            previous = Some(entry);
         }
     }
     format!(
-        r#"<svg class="timeline" viewBox="0 0 760 {}" role="img" aria-label="{}"><line class="timeline-axis" x1="52" y1="{axis_y}" x2="727" y2="{axis_y}"/><text x="52" y="{}">−24 h</text><text x="700" y="{}">{}</text>{content}</svg>"#,
+        r#"<svg class="timeline" viewBox="0 0 760 {}" role="group" aria-label="{}"><line class="timeline-axis" x1="52" y1="{axis_y}" x2="727" y2="{axis_y}"/><text x="52" y="{}">−24 h</text><text x="700" y="{}">{}</text>{content}</svg>"#,
         axis_y + 20,
         lang.pick(
             "过去24小时逐次通告观测",
@@ -1517,21 +1586,133 @@ fn timeline(observations: &[Observation], families: &[&str], now: i64, lang: Lan
     )
 }
 
+fn detail_log_controls(endpoint_id: &str, log: &DetailLog, lang: Lang) -> String {
+    let windows = [
+        ("24h", lang.pick("24 小时", "24 hours")),
+        ("7d", lang.pick("7 天", "7 days")),
+    ]
+        .into_iter()
+        .map(|(window, label)| {
+            let current = if log.window == window {
+                r#" aria-current="page""#
+            } else {
+                ""
+            };
+            format!(
+                r#"<a class="window-option" href="{}"{current}>{label}</a>"#,
+                esc(&detail_url(
+                    endpoint_id,
+                    lang,
+                    window,
+                    1,
+                    log.include_no_address,
+                    None
+                ))
+            )
+        })
+        .collect::<String>();
+    let range_start = if log.total == 0 {
+        0
+    } else {
+        (log.page as u64 - 1).saturating_mul(50) + 1
+    };
+    let range_end = range_start
+        .saturating_add(log.items.len() as u64)
+        .saturating_sub(1);
+    let range = format!(
+        "{} {}–{} / {}",
+        lang.pick("记录", "Entries"),
+        range_start,
+        range_end,
+        log.total
+    );
+    let no_address_toggle = if log.hidden_no_address == 0 {
+        String::new()
+    } else if log.include_no_address {
+        format!(
+            r#"<a class="no-address-toggle" href="{}">{} ({})</a>"#,
+            esc(&detail_url(endpoint_id, lang, &log.window, 1, false, None)),
+            lang.pick("隐藏无地址记录", "Hide no-address entries"),
+            log.hidden_no_address
+        )
+    } else {
+        format!(
+            r#"<a class="no-address-toggle" href="{}">{} ({})</a>"#,
+            esc(&detail_url(endpoint_id, lang, &log.window, 1, true, None)),
+            lang.pick("显示无地址记录", "Show no-address entries"),
+            log.hidden_no_address
+        )
+    };
+    let previous = if log.page > 1 {
+        format!(
+            r#"<a class="page-control" rel="prev" href="{}">← {}</a>"#,
+            esc(&detail_url(
+                endpoint_id,
+                lang,
+                &log.window,
+                log.page - 1,
+                log.include_no_address,
+                None
+            )),
+            lang.pick("上一页", "Previous")
+        )
+    } else {
+        format!(
+            r#"<span class="page-control" aria-disabled="true">← {}</span>"#,
+            lang.pick("上一页", "Previous")
+        )
+    };
+    let next = if (log.page as u64) < log.pages {
+        format!(
+            r#"<a class="page-control" rel="next" href="{}">{} →</a>"#,
+            esc(&detail_url(
+                endpoint_id,
+                lang,
+                &log.window,
+                log.page + 1,
+                log.include_no_address,
+                None
+            )),
+            lang.pick("下一页", "Next")
+        )
+    } else {
+        format!(
+            r#"<span class="page-control" aria-disabled="true">{} →</span>"#,
+            lang.pick("下一页", "Next")
+        )
+    };
+    let page = format!(
+        "{} {} / {}",
+        lang.pick("第", "Page"),
+        log.page,
+        log.pages
+    );
+    format!(
+        r#"<div class="detail-log-tools"><nav class="window-options" aria-label="{}">{windows}</nav><span class="log-range">{range}</span>{no_address_toggle}</div><nav class="detail-pagination" aria-label="{}">{previous}<span>{page}</span>{next}</nav>"#,
+        lang.pick("日志时间范围", "Log time range"),
+        lang.pick("日志分页", "Log pagination")
+    )
+}
+
 pub(crate) fn detail(
     endpoint: &Endpoint,
-    health_observations: &[Observation],
+    log: &DetailLog,
     now: i64,
     lang: Lang,
 ) -> String {
+    let health_observations: Vec<_> = log
+        .timeline
+        .iter()
+        .map(|entry| entry.observation.clone())
+        .collect();
     let v4 = endpoint.families.iter().find(|f| f.family == "ipv4");
     let v6 = endpoint.families.iter().find(|f| f.family == "ipv6");
-    let families = supported_families(endpoint, health_observations);
+    let families = supported_families(endpoint, &health_observations);
     let current_families = supported_families(endpoint, &[]).join(",");
     let mut rows = String::new();
-    for o in health_observations.iter().take(100) {
-        let transport = if o.stage == "handshake" {
-            "TCP".to_owned()
-        } else if endpoint.protocol != "udp" {
+    for entry in &log.items {
+        let o = &entry.observation;
+        let transport = if endpoint.protocol != "udp" {
             o.http_status
                 .map(|x| format!("HTTP {x}"))
                 .unwrap_or_else(|| "-".to_owned())
@@ -1555,28 +1736,33 @@ pub(crate) fn detail(
             };
         let reason = reason_cell(o, lang);
         let target = o.target_ip.as_deref().unwrap_or("-");
-        rows.push_str(&format!(r#"<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>"#,
-            time_element(Some(o.observed_at), lang), esc(&o.family.to_uppercase()), esc(stage_text(&o.stage, lang)), esc(&transport), esc(observed_result(&o.stage, &o.result, o.error_category.as_deref(), lang)), reply, esc(&millis(if measured_reply(o) { o.latency_ms } else { None }, lang)), esc(target), esc(&reason)));
+        let focus_class = if log.focus_id == Some(entry.id) {
+            " class=\"observation-focus\""
+        } else {
+            ""
+        };
+        rows.push_str(&format!(r#"<tr id="observation-{}" tabindex="-1"{focus_class}><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>"#,
+            entry.id, time_element(Some(o.observed_at), lang), esc(&o.family.to_uppercase()), esc(&transport), esc(observed_result(&o.stage, &o.result, o.error_category.as_deref(), lang)), reply, esc(&millis(if measured_reply(o) { o.latency_ms } else { None }, lang)), esc(target), esc(&reason)));
     }
     if rows.is_empty() {
         rows = format!(
-            r#"<tr><td colspan="9">{}</td></tr>"#,
+            r#"<tr><td colspan="8">{}</td></tr>"#,
             lang.pick("暂无记录。", "No observations yet.")
         );
     }
     let evidence = &endpoint.evidence;
     let success_note = format!(
         "{} · {} · {} {} / {}",
-        family_observation_note(health_observations, now, "ipv4", lang, false),
-        family_observation_note(health_observations, now, "ipv6", lang, false),
+        family_observation_note(&health_observations, now, "ipv4", lang, false),
+        family_observation_note(&health_observations, now, "ipv6", lang, false),
         lang.pick("合计", "Total"),
         evidence.successes_24h,
         evidence.checks_24h
     );
     let reply_note = format!(
         "{} · {} · {} {} / {}",
-        family_observation_note(health_observations, now, "ipv4", lang, true),
-        family_observation_note(health_observations, now, "ipv6", lang, true),
+        family_observation_note(&health_observations, now, "ipv4", lang, true),
+        family_observation_note(&health_observations, now, "ipv6", lang, true),
         lang.pick("合计", "Total"),
         evidence.replies_24h,
         evidence.reply_checks_24h
@@ -1651,9 +1837,22 @@ pub(crate) fn detail(
             )
         )
     } else {
-        chart(health_observations, now, lang)
+        chart(&health_observations, now, lang)
     };
-    let timeline = timeline(health_observations, &families, now, lang);
+    let timeline = timeline(
+        &log.timeline,
+        &families,
+        &endpoint.id,
+        &log.window,
+        now,
+        lang,
+    );
+    let mut observation_data =
+        serde_json::to_string(&log.timeline).unwrap_or_else(|_| "[]".to_owned());
+    observation_data = observation_data
+        .replace('&', "\\u0026")
+        .replace('<', "\\u003c")
+        .replace('>', "\\u003e");
     let unknown = lang.pick("未知", "Unknown");
     let infra = &endpoint.infrastructure;
     let infrastructure = [
@@ -1700,7 +1899,7 @@ pub(crate) fn detail(
         time_element(infra.updated_at.filter(|v| *v > 0), lang),
     );
     let family_card = |name: &str, f: Option<&FamilyStatus>| {
-        let target = latest_target_ip(health_observations, name).unwrap_or("-");
+        let target = latest_target_ip(&health_observations, name).unwrap_or("-");
         let hint = family_hint(f, now, lang);
         let hint = if hint.is_empty() {
             String::new()
@@ -1722,26 +1921,32 @@ pub(crate) fn detail(
         "24h 成功率是过去 24 小时的历史统计，只计入已完成的有效观测。",
         "The 24h success rate counts only completed observations from the past 24 hours.",
     );
-    let body = format!(r#"<section class="page-head detail-head"><a class="back" href="/trackers?lang={code}">← {back}</a><p class="eyebrow">{detail_label}</p><h1>{host}{new}</h1>{url}{colocated}</section><section class="family-grid">{family4}{family6}</section><section class="section-heading"><div><p class="eyebrow">{evidence_label}</p><h2>{evidence_title}</h2><p>{evidence_note}</p></div></section><section class="metric-grid detail-metrics">{metrics}</section><p class="detail-note">{metric_note}</p><section class="panel"><div class="section-heading compact"><div><p class="eyebrow">{network_label}</p><h2>{network_title}</h2><p>{network_note}</p></div></div><dl class="infra-compact">{infrastructure}</dl></section><section class="panel observation-panel"><div class="section-heading compact"><div><p class="eyebrow">{last_day_label}</p><h2>{history}</h2><p>{history_note}</p></div></div><p class="timeline-legend">{timeline_legend}</p><div data-observation-timeline class="observation-timeline" role="img" aria-label="{timeline_label}"></div><noscript>{timeline}</noscript><div class="chart-header"><strong>{latency_chart}</strong></div><div class="canvas-wrap"><canvas data-observation-chart role="img" aria-label="{latency_chart}"></canvas></div><noscript>{graph}</noscript><div class="table-wrap"><table><thead><tr><th>{time_label}</th><th>{family_label}</th><th>{stage}</th><th>{transport}</th><th>{result}</th><th>{reply}</th><th>{latency}</th><th>{target_label}</th><th>{reason}</th></tr></thead><tbody>{rows}</tbody></table></div></section><p class="footnote">{single}</p>"#,
+    let controls = detail_log_controls(&endpoint.id, log, lang);
+    let body = format!(
+        r#"<section class="page-head detail-head"><a class="back" href="/trackers?lang={code}">← {back}</a><p class="eyebrow">{detail_label}</p><h1>{host}{new}</h1>{url}{colocated}</section><section class="family-grid">{family4}{family6}</section><section class="section-heading"><div><p class="eyebrow">{evidence_label}</p><h2>{evidence_title}</h2><p>{evidence_note}</p></div></section><section class="metric-grid detail-metrics">{metrics}</section><p class="detail-note">{metric_note}</p><section class="panel"><div class="section-heading compact"><div><p class="eyebrow">{network_label}</p><h2>{network_title}</h2><p>{network_note}</p></div></div><dl class="infra-compact">{infrastructure}</dl></section><section class="panel observation-panel" id="observation-log"><div class="section-heading compact"><div><p class="eyebrow">{last_day_label}</p><h2>{history}</h2><p>{history_note}</p></div></div>{controls}<p class="log-transparency">{log_transparency}</p><p class="timeline-legend">{timeline_legend}</p><div data-observation-timeline class="observation-timeline" aria-label="{timeline_label}">{timeline}</div><script type="application/json" data-detail-observations>{observation_data}</script><div class="chart-header"><strong>{latency_chart}</strong></div><div class="canvas-wrap"><canvas data-observation-chart role="img" aria-label="{latency_chart}"></canvas></div><noscript>{graph}</noscript><div class="table-wrap"><table><thead><tr><th>{time_label}</th><th>{family_label}</th><th>{transport}</th><th>{result}</th><th>{reply}</th><th>{latency}</th><th>{target_label}</th><th>{reason}</th></tr></thead><tbody>{rows}</tbody></table></div></section><p class="footnote">{single}</p>"#,
         code=lang.code(), back=lang.pick("列表", "List"), host=esc(&endpoint.host), url=copy_url(lang.pick("Tracker 地址", "Tracker URL"), &endpoint.url, lang),
         family4=family_card("ipv4",v4), family6=family_card("ipv6",v6),
-        detail_label=lang.pick("Tracker 详情", "Tracker detail"), evidence_label=lang.pick("证据", "Evidence"), network_label=lang.pick("网络", "Network"), last_day_label=lang.pick("过去 24 小时", "Last 24 hours"), timeline_label=lang.pick("24 小时观测时间线", "24-hour observation timeline"),
+        detail_label=lang.pick("Tracker 详情", "Tracker detail"), evidence_label=lang.pick("证据", "Evidence"), network_label=lang.pick("网络", "Network"), last_day_label=lang.pick("时间线", "Timeline"), timeline_label=lang.pick("24 小时观测时间线", "24-hour observation timeline"),
         evidence_title=lang.pick("观测证据", "Observed evidence"), evidence_note=lang.pick("握手仅验证采样节点；位图是节点声明，不证明文件可下载。", "Handshakes verify sampled peers; bitmaps are claims, not proof of downloadable content."),
         metric_note=esc(metric_note),
         network_title=lang.pick("网络归属", "Network information"), network_note=lang.pick("归属信息来自公开网络数据，不能精确定位机房。", "Network ownership comes from public data and does not pinpoint a datacenter."),
-        history=lang.pick("24 小时探测记录", "24-hour observations"), history_note=lang.pick("事件表仅显示健康通告。目标 IP 是本次请求实际解析并连接的地址，可用于判断 DNS 是否变化；图和连线不代表持续可用。", "The event table shows health announces only. The target IP is the resolved address actually contacted by this request, which exposes stale DNS changes; charts and lines do not prove continuous availability."),
+        history=lang.pick("探测日志", "Probe log"), history_note=lang.pick("每行是一条 Tracker 健康通告检测。可按时间范围翻页；无可用地址族的记录默认收起。", "Each row is one Tracker health announce check. Browse by time range; entries for unavailable address families are collapsed by default."),
+        log_transparency=lang.pick("目标 IP 是探针实际连接的 Tracker 地址，不是回复中公布的 peer IP。当前公开快照只保存 HTTP 状态和协议回复有效性，不保存 HTTP 正文或返回的 peer 地址列表；因此无法从此日志还原空 peers 或额外地址。", "Target IP is the Tracker address contacted by the probe, not a peer IP advertised in its reply. The public snapshot stores HTTP status and protocol-reply validity, but not response bodies or returned peer lists, so empty peer lists and extra addresses cannot be reconstructed here."),
         timeline_legend=lang.pick("绿：成功　红：失败　黄：限流/拒绝　灰：未知或本地不可用。IPv4 与 IPv6 两行各自代表独立探测，时间可能相近。", "Green: success · Red: failure · Amber: rate limit/rejection · Grey: unknown/local unavailable. IPv4 and IPv6 are separate checks and can occur close together."),
         latency_chart=lang.pick("实测响应延迟 (ms)", "Observed response latency (ms)"),
-        time_label=lang.pick("时间", "Time"), family_label=lang.pick("地址族", "Family"), stage=lang.pick("阶段", "Stage"), transport=lang.pick("传输", "Transport"), result=lang.pick("观测结果", "Observation result"), reply=lang.pick("有效 Tracker 回复", "Valid tracker reply"), latency=lang.pick("阶段延迟", "Stage latency"), target_label=lang.pick("目标 IP", "Target IP"), reason=lang.pick("原因", "Reason"),
-        single=lang.pick("观测来自单一网络位置；缺测和探针本地故障不等于 Tracker 离线。", "Measurements come from one network; missing data and local probe failures are not tracker downtime."));
-    let scripts = r#"<script src="/assets/chart.umd.js?v=4.6.1" defer></script><script src="/assets/charts.js?v=1.2.9" defer></script>"#;
+        time_label=lang.pick("时间", "Time"), family_label=lang.pick("地址族", "Family"), transport=lang.pick("协议状态", "Protocol status"), result=lang.pick("观测结果", "Observation result"), reply=lang.pick("有效 Tracker 回复", "Valid tracker reply"), latency=lang.pick("响应延迟", "Response latency"), target_label=lang.pick("目标 IP", "Target IP"), reason=lang.pick("原因", "Reason"),
+        single=lang.pick("观测来自单一网络位置；缺测和探针本地故障不等于 Tracker 离线。", "Measurements come from one network; missing data and local probe failures are not tracker downtime."),
+        timeline, observation_data);
+    let scripts = r#"<script src="/assets/chart.umd.js?v=4.6.1" defer></script><script src="/assets/charts.js?v=1.3.1" defer></script>"#;
     shell(
         &endpoint.host,
         lang,
         &format!(
-            r#"<div data-detail-root data-endpoint-id="{}" data-lang="{}" data-current-families="{}">{}{}</div>"#,
+            r#"<div data-detail-root data-endpoint-id="{}" data-lang="{}" data-window="{}" data-include-no-address="{}" data-current-families="{}">{}{}</div>"#,
             esc(&endpoint.id),
             lang.code(),
+            esc(&log.window),
+            if log.include_no_address { "1" } else { "0" },
             esc(&current_families),
             body,
             scripts

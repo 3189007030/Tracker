@@ -256,6 +256,12 @@
     const id = detail.dataset.endpointId;
     const observations = detail.querySelector("[data-observation-chart]");
     const timeline = detail.querySelector("[data-observation-timeline]");
+    const dataNode = detail.querySelector("[data-detail-observations]");
+    let entries = [];
+    try {
+        entries = JSON.parse(dataNode?.textContent || "[]");
+        if (!Array.isArray(entries)) entries = [];
+    } catch (_) { entries = []; }
     const svgNS = "http://www.w3.org/2000/svg";
     const svgNode = (name, attrs, parent) => {
         const node = document.createElementNS(svgNS, name);
@@ -306,14 +312,21 @@
             const y = 20 + index * 30;
             svgNode("text", {x:0,y:y+4}, svg).textContent = displayFamily(family);
             let previous = null;
-            const familyItems = items.filter((o) => o.family === family);
+            const familyItems = items.filter((entry) => entry.observation.family === family);
             if (!familyItems.length) svgNode("text", {x:60,y:y+4,class:"timeline-untested"}, svg).textContent = text("未测", "Not yet checked");
-            for (const item of familyItems) {
+            for (const entry of familyItems) {
+                const item = entry.observation;
                 const px = x(item.observed_at), currentState = state(item);
                 if (previous && item.observed_at > previous.at && item.observed_at - previous.at <= 7200 && previous.state !== "unknown" && currentState !== "unknown") svgNode("line", {class:"timeline-segment",x1:previous.x,y1:y,x2:px,y2:y}, svg);
-                const dot = svgNode("circle", {class:`timeline-point ${currentState}`,cx:px,cy:y,r:4}, svg);
+                const params = new URLSearchParams({lang:detail.dataset.lang || document.documentElement.lang,window:detail.dataset.window || "24h",focus:String(entry.id)});
+                if (detail.dataset.includeNoAddress === "1") params.set("include_no_address", "1");
+                const href = `/tracker/${encodeURIComponent(id)}?${params.toString()}#observation-${encodeURIComponent(entry.id)}`;
+                const link = svgNode("a", {class:"timeline-link",href}, svg);
+                const dot = svgNode("circle", {class:`timeline-point ${currentState}`,cx:px,cy:y,r:4}, link);
                 const when = formatTime(item.observed_at, "second");
-                svgNode("title", {}, dot).textContent = [when, displayFamily(family), stateLabel(item)].filter(Boolean).join(" · ");
+                const title = [when, displayFamily(family), stateLabel(item)].filter(Boolean).join(" · ");
+                link.setAttribute("aria-label", `${title}. ${text("定位到日志", "Open log entry")}`);
+                svgNode("title", {}, dot).textContent = title;
                 previous = {at:item.observed_at, x:px, state:currentState};
             }
         });
@@ -322,38 +335,39 @@
         svgNode("text", {x:width-60,y:axisY+16}, svg).textContent = text("现在", "Now");
     };
     if (timeline && observations) {
-        request(`/api/v1/trackers/${encodeURIComponent(id)}/observations?stage=announce&window=24h`).then((response) => {
-            const items = response.items.slice().sort((a, b) => a.observed_at - b.observed_at);
-            const current = (detail.dataset.currentFamilies || "").split(",");
-            const families = ["ipv4", "ipv6"].filter((family) => current.includes(family) || items.some((o) => o.family === family && o.result !== "unsupported" && !["family_unavailable", "unsupported"].includes(o.error_category)));
-            const end = Date.now() / 1000, start = end - 86400;
-            let lastTimelineWidth = null;
-            const redraw = () => {
-                const measured = timeline.clientWidth;
-                const width = Number.isFinite(measured) && measured > 0 ? Math.max(280, measured) : 760;
-                if (width === lastTimelineWidth) return;
-                lastTimelineWidth = width;
-                drawTimeline(items, families, start, end, width);
-            };
-            redraw();
-            if (typeof ResizeObserver === "function") {
-                const observer = new ResizeObserver(redraw);
-                observer.observe(timeline);
+        const items = entries
+            .filter((entry) => entry && Number.isInteger(entry.id) && entry.observation)
+            .slice()
+            .sort((a, b) => a.observation.observed_at - b.observation.observed_at);
+        const current = (detail.dataset.currentFamilies || "").split(",");
+        const families = ["ipv4", "ipv6"].filter((family) => current.includes(family) || items.some(({observation:o}) => o.family === family && o.result !== "unsupported" && !["family_unavailable", "unsupported"].includes(o.error_category)));
+        const end = Date.now() / 1000, start = end - 86400;
+        let lastTimelineWidth = null;
+        const redraw = () => {
+            const measured = timeline.clientWidth;
+            const width = Number.isFinite(measured) && measured > 0 ? Math.max(280, measured) : 760;
+            if (width === lastTimelineWidth) return;
+            lastTimelineWidth = width;
+            drawTimeline(items, families, start, end, width);
+        };
+        redraw();
+        if (typeof ResizeObserver === "function") {
+            const observer = new ResizeObserver(redraw);
+            observer.observe(timeline);
+        }
+        if (!families.length || !window.Chart) { observations.parentElement.hidden = true; return; }
+        const palette = themeColors();
+        const datasets = families.map((family) => {
+            const points = [];
+            let previous = null;
+            for (const {observation} of items.filter((entry) => entry.observation.family === family)) {
+                if (previous !== null && observation.observed_at - previous > 7200) points.push({x:(previous + observation.observed_at) / 2, y:null});
+                points.push({x:observation.observed_at, y:Number.isFinite(observation.latency_ms) ? observation.latency_ms : null});
+                previous = observation.observed_at;
             }
-            if (!families.length || !window.Chart) { observations.parentElement.hidden = true; return; }
-            const palette = themeColors();
-            const datasets = families.map((family) => {
-                const points = [];
-                let previous = null;
-                for (const observation of items.filter((item) => item.family === family)) {
-                    if (previous !== null && observation.observed_at - previous > 7200) points.push({x:(previous + observation.observed_at) / 2, y:null});
-                    points.push({x:observation.observed_at, y:Number.isFinite(observation.latency_ms) ? observation.latency_ms : null});
-                    previous = observation.observed_at;
-                }
-                return {label:displayFamily(family), lineKey:family === "ipv4" ? "line1" : "line2", borderColor:family === "ipv4" ? palette.line1 : palette.line2, pointRadius:2, pointHoverRadius:4, borderWidth:2, spanGaps:false, tension:0, data:points};
-            });
-            const makeOptions = (colors) => optionsForWindow(colors, 86400);
-            registerChart(new Chart(observations, {type:"line", data:{datasets}, options:makeOptions(palette)}), makeOptions);
-        }).catch(() => { timeline.textContent = text("观测数据暂不可用。", "Observations temporarily unavailable."); observations.parentElement.hidden = true; });
+            return {label:displayFamily(family), lineKey:family === "ipv4" ? "line1" : "line2", borderColor:family === "ipv4" ? palette.line1 : palette.line2, pointRadius:2, pointHoverRadius:4, borderWidth:2, spanGaps:false, tension:0, data:points};
+        });
+        const makeOptions = (colors) => optionsForWindow(colors, 86400);
+        registerChart(new Chart(observations, {type:"line", data:{datasets}, options:makeOptions(palette)}), makeOptions);
     }
 })();

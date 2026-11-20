@@ -129,6 +129,13 @@ async fn read<T: Send + 'static>(
 
 type Params = HashMap<String, String>;
 
+struct DetailFilters {
+    window: String,
+    page: usize,
+    include_no_address: bool,
+    focus: Option<i64>,
+}
+
 fn preferred_language(headers: &HeaderMap) -> Lang {
     let mut best: Option<(f32, bool)> = None;
     for value in headers.get_all(header::ACCEPT_LANGUAGE).iter() {
@@ -198,6 +205,44 @@ fn filters(params: &Params) -> Result<Filters, &'static str> {
         limit,
         protocol,
         query,
+    })
+}
+
+fn detail_filters(params: &Params) -> Result<DetailFilters, &'static str> {
+    let window = params
+        .get("window")
+        .map(String::as_str)
+        .unwrap_or("24h");
+    if !matches!(window, "24h" | "7d") {
+        return Err("invalid_window");
+    }
+    let page = params
+        .get("page")
+        .map(|value| value.parse::<usize>())
+        .transpose()
+        .map_err(|_| "invalid_page")?
+        .unwrap_or(1);
+    if !(1..=10_000).contains(&page) {
+        return Err("invalid_page");
+    }
+    let include_no_address = match params.get("include_no_address").map(String::as_str) {
+        None | Some("0") => false,
+        Some("1") => true,
+        Some(_) => return Err("invalid_include_no_address"),
+    };
+    let focus = params
+        .get("focus")
+        .map(|value| value.parse::<i64>())
+        .transpose()
+        .map_err(|_| "invalid_focus")?;
+    if focus.is_some_and(|value| value <= 0) {
+        return Err("invalid_focus");
+    }
+    Ok(DetailFilters {
+        window: window.to_owned(),
+        page,
+        include_no_address,
+        focus,
     })
 }
 
@@ -282,11 +327,16 @@ async fn trackers_partial(
 async fn tracker_detail(
     State(site): State<Site>,
     Path(id): Path<String>,
+    Query(params): Query<Params>,
     Extension(lang): Extension<Lang>,
 ) -> Response {
     if !store::valid_id(&id) {
         return not_found_page(lang);
     }
+    let filters = match detail_filters(&params) {
+        Ok(value) => value,
+        Err(_) => return (StatusCode::BAD_REQUEST, "invalid detail filters").into_response(),
+    };
     match read(move || {
         let now = unix_now();
         let mut endpoint = site.store.endpoint(&id, now)?;
@@ -295,25 +345,28 @@ async fn tracker_detail(
         if let Some(canonical_id) = endpoint.as_ref().and_then(|e| e.alias_of.clone())
             && let Some(canonical) = site.store.endpoint(&canonical_id, now)?
         {
-            let health =
-                site.store
-                    .observations(&canonical_id, None, Some("announce"), now, 500)?;
-            return Ok((Some(canonical), health, Some(canonical_id), now));
+            return Ok((Some(canonical), None, Some(canonical_id), now));
         }
         if let Some(current) = endpoint.as_mut() {
             current.alias_of = None;
         }
-        let health = if endpoint.is_some() {
-            site.store
-                .observations(&id, None, Some("announce"), now, 500)?
+        let detail_log = if endpoint.is_some() {
+            Some(site.store.detail_log(
+                &id,
+                now,
+                &filters.window,
+                filters.page,
+                filters.include_no_address,
+                filters.focus,
+            )?)
         } else {
-            Vec::new()
+            None
         };
-        Ok((endpoint, health, None, now))
+        Ok((endpoint, detail_log, None, now))
     })
     .await
     {
-        Ok((Some(_), _health, Some(canonical_id), _)) => (
+        Ok((Some(_), _, Some(canonical_id), _)) => (
             StatusCode::FOUND,
             [
                 (
@@ -325,12 +378,12 @@ async fn tracker_detail(
             "",
         )
             .into_response(),
-        Ok((Some(endpoint), health, None, now)) => (
+        Ok((Some(endpoint), Some(detail_log), None, now)) => (
             [(header::CACHE_CONTROL, "public, max-age=15, s-maxage=60")],
-            Html(html::detail(&endpoint, &health, now, lang)),
+            Html(html::detail(&endpoint, &detail_log, now, lang)),
         )
             .into_response(),
-        Ok((None, _, _, _)) => not_found_page(lang),
+        Ok((None, _, _, _)) | Ok((Some(_), None, None, _)) => not_found_page(lang),
         Err(_) => unavailable_page(lang),
     }
 }

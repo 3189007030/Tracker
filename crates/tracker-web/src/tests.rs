@@ -142,6 +142,8 @@ async fn timestamps_render_with_machine_values_and_utc_fallbacks() {
     assert!(detail.contains("data-title-timestamp="));
     assert!(detail.contains("data-title-utc="));
     assert!(detail.contains("<th>Time</th>"));
+    assert!(detail.contains("/assets/charts.js?v=1.3.1"));
+    assert!(!detail.contains("<th>Stage</th>"));
     assert!(detail.matches("<time datetime=").count() >= 3);
     assert!(detail.contains(" UTC</time>"));
 }
@@ -942,6 +944,196 @@ async fn search_input_is_escaped_and_corrupt_public_store_is_unavailable() {
     assert_eq!(get(&corrupt, "/healthz").await.0, StatusCode::OK);
 }
 
+#[tokio::test]
+async fn ip_search_matches_normalized_hosts_shared_targets_and_canonical_aliases() {
+    let dir = TempDir::new().unwrap();
+    fixture(dir.path());
+    let db = Connection::open(dir.path().join("public.sqlite3")).unwrap();
+    let now = tracker_model::unix_now();
+    let shared = Endpoint {
+        id: "shared_ip_id".into(),
+        service_id: "shared.example.org".into(),
+        url: "https://shared.example.org/announce".into(),
+        protocol: "https".into(),
+        host: "shared.example.org".into(),
+        updated_at: now,
+        ..Endpoint::default()
+    };
+    add_endpoint(&db, &shared);
+    add_observation(
+        &db,
+        &Observation {
+            observed_at: now - 1,
+            endpoint_id: shared.id.clone(),
+            family: "ipv4".into(),
+            stage: "announce".into(),
+            result: "accepted".into(),
+            protocol_reply: true,
+            http_status: Some(200),
+            latency_ms: Some(20.0),
+            error_category: None,
+            target_ip: Some("93.184.216.34".into()),
+        },
+    );
+    let canonical = Endpoint {
+        id: "canonical_v6_id".into(),
+        service_id: "v6.example.org".into(),
+        url: "https://v6.example.org/announce".into(),
+        protocol: "https".into(),
+        host: "v6.example.org".into(),
+        updated_at: now,
+        ..Endpoint::default()
+    };
+    add_endpoint(&db, &canonical);
+    let alias = Endpoint {
+        id: "v6_ip_alias".into(),
+        service_id: canonical.service_id.clone(),
+        url: "https://[2606:4700:4700::1111]/announce".into(),
+        protocol: "https".into(),
+        host: "2606:4700:4700::1111".into(),
+        updated_at: now,
+        alias_of: Some(canonical.id.clone()),
+        ..Endpoint::default()
+    };
+    add_endpoint(&db, &alias);
+    let path_only = Endpoint {
+        id: "path_only_ip".into(),
+        service_id: "path.example.org".into(),
+        url: "https://path.example.org/announce/8.8.4.4".into(),
+        protocol: "https".into(),
+        host: "path.example.org".into(),
+        updated_at: now,
+        ..Endpoint::default()
+    };
+    add_endpoint(&db, &path_only);
+    drop(db);
+
+    let router = app(dir.path().to_path_buf());
+    let (_, _, shared_page) = get(&router, "/trackers?q=93.184.216.34&lang=en").await;
+    assert!(shared_page.contains("example_id"));
+    assert!(shared_page.contains("shared_ip_id"));
+    assert!(shared_page.contains("target-ip-match"));
+    assert!(shared_page.contains("2 endpoints match this IP"));
+
+    let (_, _, v6_page) = get(
+        &router,
+        "/trackers?q=%5B2606%3A4700%3A4700%3A0000%3A0000%3A0000%3A0000%3A1111%5D&lang=en",
+    )
+    .await;
+    assert!(v6_page.contains("canonical_v6_id"));
+    assert!(!v6_page.contains("v6_ip_alias"));
+    assert!(!v6_page.contains("path_only_ip"));
+    let (_, _, path_ip_page) = get(&router, "/trackers?q=8.8.4.4&lang=en").await;
+    assert!(!path_ip_page.contains("path_only_ip"));
+
+    let (_, _, api) = get(&router, "/api/v1/trackers?q=93.184.216.34&lang=en").await;
+    let api: serde_json::Value = serde_json::from_str(&api).unwrap();
+    assert!(api.get("matched_ip").is_none());
+    assert!(api.get("shared_ip_count").is_none());
+}
+
+#[tokio::test]
+async fn detail_log_paginates_windows_collapses_no_address_and_focuses_across_pages() {
+    let dir = TempDir::new().unwrap();
+    fixture(dir.path());
+    let db = Connection::open(dir.path().join("public.sqlite3")).unwrap();
+    db.execute(
+        "DELETE FROM observations WHERE endpoint_id='example_id'",
+        [],
+    )
+    .unwrap();
+    let now = tracker_model::unix_now();
+    let mut focus_id = None;
+    let mut no_address_focus_id = None;
+    for index in 0..60 {
+        let no_address = index % 13 == 0;
+        add_observation(
+            &db,
+            &Observation {
+                endpoint_id: "example_id".into(),
+                observed_at: now - index,
+                family: "ipv4".into(),
+                stage: "announce".into(),
+                result: if no_address { "unsupported" } else { "accepted" }.into(),
+                protocol_reply: !no_address,
+                http_status: Some(200),
+                latency_ms: Some(25.0),
+                error_category: if no_address {
+                    Some("family_unavailable".into())
+                } else {
+                    None
+                },
+                target_ip: (!no_address).then(|| "93.184.216.34".into()),
+            },
+        );
+        if index == 57 {
+            focus_id = Some(db.last_insert_rowid());
+        }
+        if index == 52 {
+            no_address_focus_id = Some(db.last_insert_rowid());
+        }
+    }
+    add_observation(
+        &db,
+        &Observation {
+            endpoint_id: "example_id".into(),
+            observed_at: now - 2 * 86_400,
+            family: "ipv4".into(),
+            stage: "announce".into(),
+            result: "accepted".into(),
+            protocol_reply: true,
+            http_status: Some(200),
+            latency_ms: Some(30.0),
+            error_category: None,
+            target_ip: Some("93.184.216.34".into()),
+        },
+    );
+    drop(db);
+    let router = app(dir.path().to_path_buf());
+
+    let (_, _, first) = get(&router, "/tracker/example_id?lang=en").await;
+    assert!(first.contains("Entries 1–50 / 55"));
+    assert!(first.contains("Show no-address entries (5)"));
+    assert_eq!(first.matches("id=\"observation-").count(), 50);
+    assert!(first.contains("response bodies or returned peer lists"));
+    assert!(first.contains("Target IP is the Tracker address"));
+
+    let id = focus_id.unwrap();
+    let (_, _, focused) = get(
+        &router,
+        &format!("/tracker/example_id?lang=en&focus={id}"),
+    )
+    .await;
+    assert!(focused.contains("Page 2 / 2"));
+    assert!(focused.contains(&format!("id=\"observation-{id}\" tabindex=\"-1\" class=\"observation-focus\"")));
+    assert!(focused.contains(&format!("#observation-{id}")));
+
+    let no_address_id = no_address_focus_id.unwrap();
+    let (_, _, no_address_focused) = get(
+        &router,
+        &format!("/tracker/example_id?lang=en&focus={no_address_id}"),
+    )
+    .await;
+    assert!(no_address_focused.contains("Entries 51–60 / 60"));
+    assert!(no_address_focused.contains(&format!("id=\"observation-{no_address_id}\" tabindex=\"-1\" class=\"observation-focus\"")));
+    assert!(no_address_focused.contains("include_no_address=1"));
+
+    let (_, _, expanded) = get(
+        &router,
+        "/tracker/example_id?lang=en&include_no_address=1",
+    )
+    .await;
+    assert!(expanded.contains("Entries 1–50 / 60"));
+    assert!(expanded.contains("Hide no-address entries (5)"));
+
+    let (_, _, week) = get(&router, "/tracker/example_id?lang=en&window=7d").await;
+    assert!(week.contains("Entries 1–50 / 56"));
+    assert!(week.contains("window=7d"));
+
+    let (_, _, invalid) = get(&router, "/tracker/example_id?lang=en&window=30d").await;
+    assert_eq!(invalid, "invalid detail filters");
+}
+
 #[test]
 fn tracker_url_filter_rejects_credentials_and_untrusted_schemes() {
     assert!(public_tracker_url("udp://example.org:6969/announce").is_some());
@@ -981,7 +1173,7 @@ fn protocol_reply_uses_its_own_denominator() {
     };
     let page = crate::html::detail(
         &endpoint,
-        &[],
+        &crate::store::DetailLog::default(),
         tracker_model::unix_now(),
         crate::html::Lang::Zh,
     );
@@ -1033,10 +1225,10 @@ async fn legacy_pages_redirect_and_home_has_copyable_endpoints() {
             .count(),
         6
     );
-    assert!(home.contains("/assets/style.css?v=1.3.0"));
+    assert!(home.contains("/assets/style.css?v=1.3.1"));
     assert!(home.contains("href=\"https://github.com/3189007030/Tracker\""));
     assert!(home.contains("/assets/tools.js?v=1.2.9"));
-    assert!(home.contains("/assets/charts.js?v=1.2.9"));
+    assert!(home.contains("/assets/charts.js?v=1.3.1"));
     assert!(home.contains("/assets/chart.umd.js?v=4.6.1"));
     assert!(!home.contains("/api/v1/experiments"));
     assert!(!home.contains("href=\"/tools"));
@@ -1297,7 +1489,7 @@ async fn list_page_uses_live_search_and_accessible_pagination() {
     for needle in [
         "data-tracker-filters",
         "data-tracker-results",
-        "/assets/list.js?v=1.2.9",
+        "/assets/list.js?v=1.3.1",
         "data-page-jump",
         "name=\"limit\"",
         "第 1 / 2",
@@ -1378,8 +1570,14 @@ async fn detail_shows_target_ip_localized_reasons_and_dashes_for_no_address() {
     assert!(body.contains("HTTP 502 \u{b7} \u{7f51}\u{5173}\u{9519}\u{8bef}"));
     assert!(!body.contains("rate_limited"));
     assert!(!body.contains("family_unavailable"));
-    let row = body.split("<td>IPV6</td>").nth(1).unwrap_or("");
-    assert!(body.contains("<td>IPV6</td><td>\u{5065}\u{5eb7}\u{901a}\u{544a}</td><td>-</td><td>\u{672a}\u{53d1}\u{73b0}\u{5730}\u{5740}</td><td>-</td><td>\u{672a}\u{77e5}</td><td>-</td><td>-</td>"), "row was {}", &row[..row.len().min(200)]);
+    assert!(!body.contains("<td>IPV6</td>"));
+    assert!(!body.contains("<th>\u{9636}\u{6bb5}</th>"));
+    let (_, _, expanded) = get(
+        &router,
+        "/tracker/example_id?lang=zh&include_no_address=1",
+    )
+    .await;
+    assert!(expanded.contains("<td>IPV6</td><td>-</td><td>\u{672a}\u{53d1}\u{73b0}\u{5730}\u{5740}</td><td>-</td><td>-</td><td>-</td><td>-</td>"));
     assert!(body.contains("\u{4e0d}\u{8ba1}\u{5165} 24h \u{6210}\u{529f}\u{7387}"));
     assert!(body.contains("\u{5408}\u{8ba1}"));
 }

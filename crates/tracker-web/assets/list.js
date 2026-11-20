@@ -99,7 +99,19 @@
     };
     const schedule = () => {
         clearTimeout(timer);
-        timer = setTimeout(() => load(1, "replace"), 300);
+        timer = setTimeout(() => {
+            timer = 0;
+            load(1, "replace");
+        }, 300);
+    };
+    const clearSearch = () => {
+        cancelPending();
+        if (input) {
+            input.value = "";
+            input.focus();
+        }
+        updateClearBtn();
+        load(1, "replace");
     };
 
     if (input) {
@@ -107,17 +119,16 @@
             updateClearBtn();
             schedule();
         });
+        input.addEventListener("keydown", (event) => {
+            if (event.key !== "Escape" || event.repeat) return;
+            const updatePending = timer !== 0 || results.getAttribute("aria-busy") === "true";
+            if (!input.value && !updatePending) return;
+            event.preventDefault();
+            clearSearch();
+        });
     }
     if (clearBtn) {
-        clearBtn.addEventListener("click", () => {
-            cancelPending();
-            if (input) {
-                input.value = "";
-                input.focus();
-            }
-            updateClearBtn();
-            load(1, "replace");
-        });
+        clearBtn.addEventListener("click", clearSearch);
     }
     if (protocol) protocol.addEventListener("change", () => { cancelPending(); load(1, "replace"); });
     if (limit) limit.addEventListener("change", () => { cancelPending(); load(1, "replace"); });

@@ -21,6 +21,7 @@ This table summarizes each version's ledger and deployment evidence. Status term
 | 1.2.8 | superseded | 2026-11-18 06:53:42Z (`1.2.8-ec868f9d`) | `ec868f9d` | `v1.2.8` → `ec868f9d` | [1.2.8](1.2.8.md) | 163 tests. The native Tracker and Observatory processes continued running this build during the 1.2.9 Web cutover. |
 | 1.2.9 | superseded | 2026-11-18 08:31:33Z (`1.2.9-9aef69e7`) | `9aef69e7` | `v1.2.9` → `9aef69e7` | [1.2.9](1.2.9.md) | 165 tests. Web-only switch via a standby instance, with homepage layout, automatic language and local time. Public assets, lists and protocol smoke checks passed. |
 | 1.3.0 | promoted | 2026-11-18 10:47:15Z (`1.3.0-73e47a4f`) | `73e47a4f` | `v1.3.0` → `73e47a4f` | [1.3.0](1.3.0.md) | 168 tests. Per-family rechecks, updated Observatory and Web, continuously serving native Tracker. |
+| 1.3.1 | candidate | Not promoted | Not built | No tag | [1.3.1](1.3.1.md) | Search and detail-log behavior update; Linux gates are pending. S1 was read-only confirmed at 1.3.0 on 2026-11-20. |
 
 ## Known gaps in the record
 
