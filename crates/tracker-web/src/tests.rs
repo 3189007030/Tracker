@@ -1589,10 +1589,12 @@ async fn detail_shows_target_ip_localized_reasons_and_dashes_for_no_address() {
         .find(|entry| entry["observation"]["http_status"] == 429)
         .unwrap();
     assert_eq!(rate_limited["observation"]["display_state"], "neutral");
-    assert!(rate_limited["observation"]["display_reason"]
-        .as_str()
-        .unwrap()
-        .contains("\u{9891}\u{7387}\u{9650}\u{5236}"));
+    assert!(
+        rate_limited["observation"]["display_reason"]
+            .as_str()
+            .unwrap()
+            .contains("\u{9891}\u{7387}\u{9650}\u{5236}")
+    );
     let (_, _, expanded) = get(&router, "/tracker/example_id?lang=zh&include_no_address=1").await;
     assert!(expanded.contains("<td>IPV6</td><td>-</td><td>\u{672a}\u{53d1}\u{73b0}\u{5730}\u{5740}</td><td>-</td><td>-</td><td>-</td><td>-</td>"));
     assert!(body.contains("\u{4e0d}\u{8ba1}\u{5165} 24h \u{6210}\u{529f}\u{7387}"));
