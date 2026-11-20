@@ -319,9 +319,7 @@ fn sampling_respects_numwant_and_families_across_scan_threshold() {
                 reply.peers.iter().collect::<HashSet<_>>().len(),
                 reply.peers.len()
             );
-            assert!(!reply
-                .peers
-                .contains(&SocketAddr::new(probe.ip, probe.port)));
+            assert!(!reply.peers.contains(&SocketAddr::new(probe.ip, probe.port)));
             if wanted >= 2 {
                 assert!(reply.peers.iter().any(SocketAddr::is_ipv4));
                 assert!(reply.peers.iter().any(SocketAddr::is_ipv6));

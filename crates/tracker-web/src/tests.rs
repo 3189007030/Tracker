@@ -13,8 +13,9 @@ use tracker_model::{
 };
 
 use crate::{
-    ReadError, Site, app, app_with_site, read_store,
+    ReadError, Site, app, app_with_site,
     html::{Lang, compact_number},
+    read_store,
     store::{PublicStore, public_tracker_url},
 };
 
@@ -1736,8 +1737,7 @@ async fn detail_shows_target_ip_localized_reasons_and_dashes_for_no_address() {
     assert_eq!(cells[1], "IPV6");
     for index in [2, 4, 5, 6, 7] {
         assert_eq!(
-            cells[index],
-            "-",
+            cells[index], "-",
             "unexpected cell {index} for event {no_address_id}: {expanded_row}"
         );
     }

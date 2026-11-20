@@ -1237,11 +1237,8 @@ async fn discover(config: &Config, store: &mut Store, gate: &PressureGate) -> Re
     if !pressure_allows(gate).await || !begin_discovery(store, unix_now())? {
         return Ok(());
     }
-    let complete = discovery_completed(
-        discover_sources(config, store, gate),
-        SOURCE_CHECK_BUDGET,
-    )
-    .await;
+    let complete =
+        discovery_completed(discover_sources(config, store, gate), SOURCE_CHECK_BUDGET).await;
     finish_discovery(store, complete, unix_now())
 }
 
@@ -1616,10 +1613,7 @@ mod tests {
             &store,
             retry_at + SOURCE_CHECK_INTERVAL - 1
         )?);
-        assert!(begin_discovery(
-            &store,
-            retry_at + SOURCE_CHECK_INTERVAL
-        )?);
+        assert!(begin_discovery(&store, retry_at + SOURCE_CHECK_INTERVAL)?);
 
         drop(store);
         std::fs::remove_dir_all(dir)?;

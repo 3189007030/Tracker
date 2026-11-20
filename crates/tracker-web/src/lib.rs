@@ -438,10 +438,7 @@ async fn methodology(Extension(lang): Extension<Lang>) -> Response {
 }
 async fn sources(State(site): State<Site>, Extension(lang): Extension<Lang>) -> Response {
     match read_store(&site, move |store| {
-        Ok((
-            store.overview()?,
-            store.pools().unwrap_or_default(),
-        ))
+        Ok((store.overview()?, store.pools().unwrap_or_default()))
     })
     .await
     {
