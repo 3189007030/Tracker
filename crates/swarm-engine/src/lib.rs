@@ -790,20 +790,21 @@ impl SwarmEngine {
                 return result;
             }
         }
+        result.peers.reserve_exact(wanted);
         let mut rng = rand::rng();
         // Bounded sampling avoids scanning arbitrarily large hot swarms. Small
         // swarms are scanned fully to guarantee their only candidate is found.
-        let mut v4 = Vec::with_capacity(wanted);
-        let mut v6 = Vec::with_capacity(wanted);
         let self_present = swarm.existing_id(&shard.peers, &self_endpoint).is_some();
-        let v4_target = swarm
+        let v4_available = swarm
             .v4
-            .saturating_sub(usize::from(self_present && self_endpoint.is_ipv4()))
-            .min(wanted);
-        let v6_target = swarm
+            .saturating_sub(usize::from(self_present && self_endpoint.is_ipv4()));
+        let v6_available = swarm
             .v6
-            .saturating_sub(usize::from(self_present && self_endpoint.is_ipv6()))
-            .min(wanted);
+            .saturating_sub(usize::from(self_present && self_endpoint.is_ipv6()));
+        let v4_target = v4_available.min(wanted);
+        let v6_target = v6_available.min(wanted);
+        let mut v4 = Vec::with_capacity(v4_target);
+        let mut v6 = Vec::with_capacity(v6_target);
         if swarm.ids.len() <= MAX_RESPONSE_PEERS * 2 + 1 {
             let start = rng.random_range(0..swarm.ids.len());
             let mut v4_other = Vec::new();
@@ -847,7 +848,7 @@ impl SwarmEngine {
             mix(&mut v4, &mut v4_other, v4_target, &mut rng);
             mix(&mut v6, &mut v6_other, v6_target, &mut rng);
         } else {
-            let mut selected = HashSet::with_capacity(wanted.saturating_mul(2));
+            let mut selected = HashSet::with_capacity(v4_target.saturating_add(v6_target));
             for _ in 0..wanted.saturating_mul(16).max(32) {
                 // Each endpoint has one slab ID in this swarm while the shard is locked.
                 let id = swarm.ids[rng.random_range(0..swarm.ids.len())];

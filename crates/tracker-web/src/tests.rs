@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{path::Path, sync::Arc, time::Duration};
 
 use axum::{
     Router,
@@ -13,9 +13,9 @@ use tracker_model::{
 };
 
 use crate::{
-    app,
+    ReadError, Site, app, app_with_site, read_store,
     html::{Lang, compact_number},
-    store::public_tracker_url,
+    store::{PublicStore, public_tracker_url},
 };
 
 async fn get(router: &Router, uri: &str) -> (StatusCode, axum::http::HeaderMap, String) {
@@ -111,6 +111,59 @@ async fn browser_language_is_negotiated_without_shared_cache_leakage() {
 }
 
 #[tokio::test]
+async fn saturated_store_reads_return_fast_503() {
+    let dir = TempDir::new().unwrap();
+    let router = app_with_site(Site {
+        store: PublicStore::new(dir.path()),
+        read_permits: Arc::new(tokio::sync::Semaphore::new(0)),
+        feed_permits: Arc::new(tokio::sync::Semaphore::new(1)),
+    });
+    let (status, headers, body) = get(&router, "/api/v1/overview").await;
+    assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
+    assert_eq!(headers[header::RETRY_AFTER], "2");
+    assert!(body.contains("public_snapshot_busy"));
+}
+
+#[tokio::test]
+async fn cancelled_store_waiter_does_not_release_running_blocking_permit() {
+    let dir = TempDir::new().unwrap();
+    let site = Site {
+        store: PublicStore::new(dir.path()),
+        read_permits: Arc::new(tokio::sync::Semaphore::new(1)),
+        feed_permits: Arc::new(tokio::sync::Semaphore::new(1)),
+    };
+    let started = Arc::new(tokio::sync::Notify::new());
+    let started_in_job = Arc::clone(&started);
+    let (release_tx, release_rx) = std::sync::mpsc::channel();
+    let task_site = site.clone();
+    let task = tokio::spawn(async move {
+        read_store(&task_site, move |_store| {
+            started_in_job.notify_one();
+            release_rx.recv().unwrap();
+            Ok(())
+        })
+        .await
+    });
+    started.notified().await;
+    task.abort();
+    let _ = task.await;
+
+    assert!(matches!(
+        read_store(&site, |_store| Ok(())).await,
+        Err(ReadError::Busy)
+    ));
+    release_tx.send(()).unwrap();
+    let permit = tokio::time::timeout(
+        Duration::from_secs(3),
+        site.read_permits.clone().acquire_owned(),
+    )
+    .await
+    .unwrap()
+    .unwrap();
+    drop(permit);
+}
+
+#[tokio::test]
 async fn timestamps_render_with_machine_values_and_utc_fallbacks() {
     let dir = TempDir::new().unwrap();
     fixture(dir.path());
@@ -142,7 +195,7 @@ async fn timestamps_render_with_machine_values_and_utc_fallbacks() {
     assert!(detail.contains("data-title-timestamp="));
     assert!(detail.contains("data-title-utc="));
     assert!(detail.contains("<th>Time</th>"));
-    assert!(detail.contains("/assets/charts.js?v=1.3.1"));
+    assert!(detail.contains("/assets/charts.js?v=1.3.5"));
     assert!(!detail.contains("<th>Stage</th>"));
     assert!(detail.matches("<time datetime=").count() >= 3);
     assert!(detail.contains(" UTC</time>"));
@@ -295,6 +348,65 @@ fn fixture(root: &Path) {
         ..first
     };
     add_observation(&db, &future);
+}
+
+#[test]
+fn detail_counts_visible_and_hidden_rows_with_focus_semantics() {
+    let dir = TempDir::new().unwrap();
+    fixture(dir.path());
+    let db = Connection::open(dir.path().join("public.sqlite3")).unwrap();
+    let now = tracker_model::unix_now();
+    add_observation(
+        &db,
+        &Observation {
+            endpoint_id: "example_id".into(),
+            observed_at: now - 3,
+            family: "ipv4".into(),
+            stage: "announce".into(),
+            result: "unsupported".into(),
+            error_category: Some("unsupported".into()),
+            ..Observation::default()
+        },
+    );
+    add_observation(
+        &db,
+        &Observation {
+            endpoint_id: "example_id".into(),
+            observed_at: now - 2,
+            family: "ipv6".into(),
+            stage: "announce".into(),
+            result: "failed".into(),
+            error_category: Some("family_unavailable".into()),
+            ..Observation::default()
+        },
+    );
+    let focus_id: i64 = db
+        .query_row("SELECT last_insert_rowid()", [], |row| row.get(0))
+        .unwrap();
+    drop(db);
+
+    let store = PublicStore::new(dir.path());
+    let hidden = store
+        .detail_log("example_id", now, "24h", 1, false, None)
+        .unwrap();
+    assert_eq!(hidden.hidden_no_address, 2);
+    assert_eq!(hidden.total, 4);
+    assert!(!hidden.include_no_address);
+
+    let included = store
+        .detail_log("example_id", now, "24h", 1, true, None)
+        .unwrap();
+    assert_eq!(included.hidden_no_address, 2);
+    assert_eq!(included.total, 6);
+    assert!(included.include_no_address);
+
+    let focused = store
+        .detail_log("example_id", now, "24h", 1, false, Some(focus_id))
+        .unwrap();
+    assert_eq!(focused.hidden_no_address, 2);
+    assert_eq!(focused.total, 6);
+    assert!(focused.include_no_address);
+    assert_eq!(focused.focus_id, Some(focus_id));
 }
 
 #[tokio::test]
@@ -1226,10 +1338,10 @@ async fn legacy_pages_redirect_and_home_has_copyable_endpoints() {
             .count(),
         6
     );
-    assert!(home.contains("/assets/style.css?v=1.3.1"));
+    assert!(home.contains("/assets/style.css?v=1.3.5"));
     assert!(home.contains("href=\"https://github.com/3189007030/Tracker\""));
     assert!(home.contains("/assets/tools.js?v=1.2.9"));
-    assert!(home.contains("/assets/charts.js?v=1.3.1"));
+    assert!(home.contains("/assets/charts.js?v=1.3.5"));
     assert!(home.contains("/assets/chart.umd.js?v=4.6.1"));
     assert!(!home.contains("/api/v1/experiments"));
     assert!(!home.contains("href=\"/tools"));
@@ -1490,7 +1602,7 @@ async fn list_page_uses_live_search_and_accessible_pagination() {
     for needle in [
         "data-tracker-filters",
         "data-tracker-results",
-        "/assets/list.js?v=1.3.1",
+        "/assets/list.js?v=1.3.5",
         "data-page-jump",
         "name=\"limit\"",
         "第 1 / 2",
@@ -1506,6 +1618,9 @@ async fn list_page_uses_live_search_and_accessible_pagination() {
     assert!(fragment.contains("第 1 / 2"));
     let (_, _, second) = get(&router, "/trackers/partial?lang=zh&page=2").await;
     assert!(second.contains("第 2 / 2"));
+    let (status, _, clamped) = get(&router, "/trackers/partial?lang=zh&page=99").await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(clamped, second);
     let (status, _, _) = get(&router, "/trackers/partial?lang=zh&page=0").await;
     assert_eq!(status, StatusCode::BAD_REQUEST);
 }

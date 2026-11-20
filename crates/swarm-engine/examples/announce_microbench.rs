@@ -3,11 +3,41 @@
 //! --example announce_microbench -- 50000
 use bt_protocol::{AnnounceEvent, AnnounceRequest};
 use std::{
+    alloc::{GlobalAlloc, Layout, System},
     hint::black_box,
     net::{IpAddr, Ipv4Addr, Ipv6Addr},
+    sync::atomic::{AtomicBool, AtomicU64, Ordering},
     time::Instant,
 };
 use swarm_engine::{EngineConfig, SwarmEngine};
+
+struct CountingAllocator;
+
+static COUNT_ALLOCATIONS: AtomicBool = AtomicBool::new(false);
+static ALLOCATIONS: AtomicU64 = AtomicU64::new(0);
+
+unsafe impl GlobalAlloc for CountingAllocator {
+    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+        if COUNT_ALLOCATIONS.load(Ordering::Relaxed) {
+            ALLOCATIONS.fetch_add(1, Ordering::Relaxed);
+        }
+        unsafe { System.alloc(layout) }
+    }
+
+    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+        unsafe { System.dealloc(ptr, layout) }
+    }
+
+    unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
+        if COUNT_ALLOCATIONS.load(Ordering::Relaxed) {
+            ALLOCATIONS.fetch_add(1, Ordering::Relaxed);
+        }
+        unsafe { System.realloc(ptr, layout, new_size) }
+    }
+}
+
+#[global_allocator]
+static ALLOCATOR: CountingAllocator = CountingAllocator;
 
 fn request(index: usize, wanted: usize) -> AnnounceRequest {
     AnnounceRequest {
@@ -40,11 +70,11 @@ fn main() {
         .clamp(1, 500_000);
     let peer_filter = args.next().map(|v| v.parse::<usize>().expect("peer count"));
     let wanted_filter = args.next().map(|v| v.parse::<usize>().expect("numwant"));
-    for peers in [1usize, 2, 3, 4, 5, 8, 64, 512]
+    for peers in [1usize, 2, 3, 4, 5, 8, 64, 200, 201, 202, 512]
         .into_iter()
         .filter(|n| peer_filter.is_none_or(|peers| *n == peers))
     {
-        for wanted in [0usize, 50]
+        for wanted in [0usize, 1, 50, 100]
             .into_iter()
             .filter(|n| wanted_filter.is_none_or(|wanted| *n == wanted))
         {
@@ -57,6 +87,13 @@ fn main() {
                     engine.announce(&request(n, 0), 100).expect("prefill");
                 }
                 let probe = request(usize::from(peers > 1), wanted);
+                for _ in 0..1_000 {
+                    engine
+                        .announce(black_box(&probe), black_box(100))
+                        .expect("warmup");
+                }
+                ALLOCATIONS.store(0, Ordering::Relaxed);
+                COUNT_ALLOCATIONS.store(true, Ordering::Relaxed);
                 let start = Instant::now();
                 let mut returned = 0usize;
                 for index in 0..operations {
@@ -71,9 +108,12 @@ fn main() {
                     returned = returned.saturating_add(black_box(reply.peers.len()));
                 }
                 let seconds = start.elapsed().as_secs_f64();
+                COUNT_ALLOCATIONS.store(false, Ordering::Relaxed);
+                let allocations = ALLOCATIONS.load(Ordering::Relaxed);
                 println!(
-                    "{{\"peers\":{peers},\"numwant\":{wanted},\"fixed_second\":{fixed},\"operations\":{operations},\"seconds\":{seconds:.9},\"operations_per_second\":{:.3},\"returned_peers\":{returned}}}",
-                    operations as f64 / seconds
+                    "{{\"peers\":{peers},\"numwant\":{wanted},\"fixed_second\":{fixed},\"operations\":{operations},\"seconds\":{seconds:.9},\"operations_per_second\":{:.3},\"allocations\":{allocations},\"allocations_per_operation\":{:.3},\"returned_peers\":{returned}}}",
+                    operations as f64 / seconds,
+                    allocations as f64 / operations as f64
                 );
             }
         }

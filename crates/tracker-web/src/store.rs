@@ -1,13 +1,13 @@
 //! Read-only access to the observatory's explicitly public projection.
 use std::{
-    collections::HashSet,
+    collections::{HashSet, VecDeque},
     net::{IpAddr, Ipv4Addr, Ipv6Addr},
     path::{Path, PathBuf},
     time::Duration,
 };
 
 use percent_encoding::percent_decode_str;
-use rusqlite::{Connection, OpenFlags, OptionalExtension, params};
+use rusqlite::{Connection, OpenFlags, OptionalExtension, Transaction, params};
 use tracker_model::{
     Endpoint, FamilyStatus, Observation, Overview, PoolStatus, StatsHistory, StatsPoint, VERSION,
 };
@@ -64,6 +64,13 @@ pub(crate) struct DetailLog {
     pub include_no_address: bool,
     pub hidden_no_address: u64,
     pub focus_id: Option<i64>,
+}
+
+#[derive(Debug)]
+pub(crate) struct TrackerDetail {
+    pub endpoint: Option<Endpoint>,
+    pub log: Option<DetailLog>,
+    pub canonical_id: Option<String>,
 }
 
 impl Default for DetailLog {
@@ -193,7 +200,8 @@ impl PublicStore {
     }
 
     pub fn page(&self, filters: Filters, now: i64) -> Result<Page, StoreError> {
-        let page = filters.page.clamp(1, 10_000);
+        let requested_page = filters.page.clamp(1, 10_000);
+        let page = requested_page;
         let limit = filters.limit.clamp(1, 100);
         let Some(db) = self.open()? else {
             return Ok(Page {
@@ -262,6 +270,65 @@ impl PublicStore {
                 r.get::<_, String>(0)
             })
             .map_err(|_| StoreError)?;
+
+        if matched_ip.is_none() {
+            let query_lower = query.to_ascii_lowercase();
+            let offset = (page - 1).saturating_mul(limit);
+            let end = offset.saturating_add(limit);
+            let mut page_items = Vec::with_capacity(limit);
+            let mut last_page_items = VecDeque::with_capacity(limit);
+            let mut total = 0_u64;
+            for payload in rows.flatten() {
+                if payload.len() > 65_536 {
+                    continue;
+                }
+                let Ok(endpoint) = serde_json::from_str::<Endpoint>(&payload) else {
+                    continue;
+                };
+                let Some(endpoint) = sanitize_endpoint(endpoint, now) else {
+                    continue;
+                };
+                if endpoint.alias_of.is_some()
+                    || (!query_lower.is_empty()
+                        && !endpoint.url.to_ascii_lowercase().contains(&query_lower))
+                {
+                    continue;
+                }
+                if (offset as u64..end as u64).contains(&total) {
+                    page_items.push(endpoint.clone());
+                }
+                if last_page_items.len() == limit {
+                    last_page_items.pop_front();
+                }
+                last_page_items.push_back(endpoint);
+                total = total.saturating_add(1);
+            }
+            drop(statement);
+            let last_page = total.div_ceil(limit as u64).clamp(1, 10_000) as usize;
+            let page = page.min(last_page);
+            let items = if page == requested_page {
+                page_items
+            } else {
+                let last_page_len = (total - (last_page as u64 - 1) * limit as u64) as usize;
+                last_page_items
+                    .into_iter()
+                    .skip(limit.saturating_sub(last_page_len))
+                    .collect()
+            };
+            return Ok(Page {
+                items,
+                total: Some(total),
+                page,
+                limit,
+                warming,
+                has_snapshot,
+                matched_ip,
+                ip_match_ids,
+                url_ip_match_ids: HashSet::new(),
+                shared_ip_count: 0,
+            });
+        }
+
         let mut decoded = Vec::new();
         for payload in rows.flatten() {
             if payload.len() > 65_536 {
@@ -326,6 +393,65 @@ impl PublicStore {
         })
     }
 
+    pub fn tracker_detail(
+        &self,
+        id: &str,
+        now: i64,
+        window: &str,
+        requested_page: usize,
+        include_no_address: bool,
+        requested_focus: Option<i64>,
+    ) -> Result<TrackerDetail, StoreError> {
+        if !valid_id(id) {
+            return Ok(TrackerDetail {
+                endpoint: None,
+                log: None,
+                canonical_id: None,
+            });
+        }
+        let Some(mut db) = self.open()? else {
+            return Ok(TrackerDetail {
+                endpoint: None,
+                log: None,
+                canonical_id: None,
+            });
+        };
+        let tx = db.transaction().map_err(|_| StoreError)?;
+        let mut endpoint = Self::endpoint_from_db(&tx, id, now)?;
+        if let Some(canonical_id) = endpoint.as_ref().and_then(|value| value.alias_of.clone())
+            && let Some(canonical) = Self::endpoint_from_db(&tx, &canonical_id, now)?
+        {
+            tx.commit().map_err(|_| StoreError)?;
+            return Ok(TrackerDetail {
+                endpoint: Some(canonical),
+                log: None,
+                canonical_id: Some(canonical_id),
+            });
+        }
+        if let Some(current) = endpoint.as_mut() {
+            current.alias_of = None;
+        }
+        let log = if endpoint.is_some() {
+            Some(Self::detail_log_in_transaction(
+                &tx,
+                id,
+                now,
+                window,
+                requested_page,
+                include_no_address,
+                requested_focus,
+            )?)
+        } else {
+            None
+        };
+        tx.commit().map_err(|_| StoreError)?;
+        Ok(TrackerDetail {
+            endpoint,
+            log,
+            canonical_id: None,
+        })
+    }
+
     pub fn detail_log(
         &self,
         id: &str,
@@ -338,17 +464,39 @@ impl PublicStore {
         if !valid_id(id) {
             return Ok(DetailLog::default());
         }
-        let (window, span) = match window {
-            "7d" => ("7d", 7 * 86_400),
-            _ => ("24h", 86_400),
-        };
         let Some(mut db) = self.open()? else {
             return Ok(DetailLog {
-                window: window.to_owned(),
+                window: (if window == "7d" { "7d" } else { "24h" }).to_owned(),
                 ..DetailLog::default()
             });
         };
         let tx = db.transaction().map_err(|_| StoreError)?;
+        let detail = Self::detail_log_in_transaction(
+            &tx,
+            id,
+            now,
+            window,
+            requested_page,
+            include_no_address,
+            requested_focus,
+        )?;
+        tx.commit().map_err(|_| StoreError)?;
+        Ok(detail)
+    }
+
+    fn detail_log_in_transaction(
+        tx: &Transaction<'_>,
+        id: &str,
+        now: i64,
+        window: &str,
+        requested_page: usize,
+        include_no_address: bool,
+        requested_focus: Option<i64>,
+    ) -> Result<DetailLog, StoreError> {
+        let (window, span) = match window {
+            "7d" => ("7d", 7 * 86_400),
+            _ => ("24h", 86_400),
+        };
         let url: Option<String> = tx
             .query_row("SELECT url FROM endpoints WHERE id=?1", [id], |row| {
                 row.get(0)
@@ -368,14 +516,6 @@ impl PublicStore {
         let start = now.saturating_sub(span);
         let event_clause = "CASE WHEN json_valid(payload) AND length(CAST(payload AS BLOB))<=4096 THEN json_type(payload,'$.observed_at')='integer' AND json_extract(payload,'$.observed_at')=observed_at AND json_type(payload,'$.endpoint_id')='text' AND json_extract(payload,'$.endpoint_id')=endpoint_id AND json_type(payload,'$.family')='text' AND json_extract(payload,'$.family')=family AND family IN ('ipv4','ipv6') AND json_extract(payload,'$.stage')='announce' AND json_type(payload,'$.result')='text' AND (json_type(payload,'$.protocol_reply') IS NULL OR json_type(payload,'$.protocol_reply') IN ('true','false')) AND (json_type(payload,'$.http_status') IS NULL OR json_type(payload,'$.http_status')='null' OR (json_type(payload,'$.http_status')='integer' AND json_extract(payload,'$.http_status') BETWEEN 100 AND 599)) AND (json_type(payload,'$.latency_ms') IS NULL OR json_type(payload,'$.latency_ms') IN ('null','integer','real')) AND (json_type(payload,'$.error_category') IS NULL OR json_type(payload,'$.error_category') IN ('null','text')) AND (json_type(payload,'$.target_ip') IS NULL OR json_type(payload,'$.target_ip') IN ('null','text')) ELSE 0 END";
         let no_address_clause = "(COALESCE(CASE WHEN json_valid(payload) THEN json_extract(payload,'$.result') END,'')='unsupported' OR COALESCE(CASE WHEN json_valid(payload) THEN json_extract(payload,'$.error_category') END,'') IN ('family_unavailable','unsupported'))";
-
-        let hidden_no_address: u64 = tx
-            .query_row(
-                &format!("SELECT COUNT(*) FROM observations WHERE endpoint_id=?1 AND observed_at>=?2 AND observed_at<=?3 AND {event_clause} AND {no_address_clause}"),
-                params![id, start, now],
-                |row| row.get(0),
-            )
-            .map_err(|_| StoreError)?;
 
         let mut focus_id = None;
         let mut focus_rank = None;
@@ -407,11 +547,11 @@ impl PublicStore {
             }
         }
 
-        let total: u64 = tx
+        let (total, hidden_no_address): (u64, u64) = tx
             .query_row(
-                &format!("SELECT COUNT(*) FROM observations WHERE endpoint_id=?1 AND observed_at>=?2 AND observed_at<=?3 AND {event_clause} AND (?4=1 OR NOT {no_address_clause})"),
+                &format!("SELECT COALESCE(SUM(CASE WHEN {no_address_clause} THEN 1 ELSE 0 END),0), COALESCE(SUM(CASE WHEN (?4=1 OR NOT {no_address_clause}) THEN 1 ELSE 0 END),0) FROM observations WHERE endpoint_id=?1 AND observed_at>=?2 AND observed_at<=?3 AND {event_clause}"),
                 params![id, start, now, effective_include_no_address],
-                |row| row.get(0),
+                |row| Ok((row.get(1)?, row.get(0)?)),
             )
             .map_err(|_| StoreError)?;
         let pages = total.div_ceil(50).max(1);
@@ -470,7 +610,6 @@ impl PublicStore {
             }
         }
         drop(statement);
-        tx.commit().map_err(|_| StoreError)?;
         Ok(DetailLog {
             items,
             timeline,
@@ -491,6 +630,14 @@ impl PublicStore {
         let Some(db) = self.open()? else {
             return Ok(None);
         };
+        Self::endpoint_from_db(&db, id, now)
+    }
+
+    fn endpoint_from_db(
+        db: &Connection,
+        id: &str,
+        now: i64,
+    ) -> Result<Option<Endpoint>, StoreError> {
         let payload: Option<String> = db.query_row(
             "SELECT payload FROM endpoints WHERE id=?1 AND length(CAST(payload AS BLOB))<=65536", [id], |r| r.get(0),
         ).optional().map_err(|_| StoreError)?;
@@ -500,20 +647,38 @@ impl PublicStore {
             .and_then(|ep| sanitize_endpoint(ep, now)))
     }
 
-    pub fn observations(
+    pub fn endpoint_observations(
         &self,
         id: &str,
         family: Option<&str>,
         stage: Option<&str>,
         now: i64,
         limit: usize,
-    ) -> Result<Vec<Observation>, StoreError> {
+    ) -> Result<Option<Vec<Observation>>, StoreError> {
         if !valid_id(id) {
-            return Ok(Vec::new());
+            return Ok(None);
         }
-        let Some(db) = self.open()? else {
-            return Ok(Vec::new());
+        let Some(mut db) = self.open()? else {
+            return Ok(None);
         };
+        let tx = db.transaction().map_err(|_| StoreError)?;
+        if Self::endpoint_from_db(&tx, id, now)?.is_none() {
+            tx.commit().map_err(|_| StoreError)?;
+            return Ok(None);
+        }
+        let observations = Self::observations_from_db(&tx, id, family, stage, now, limit)?;
+        tx.commit().map_err(|_| StoreError)?;
+        Ok(Some(observations))
+    }
+
+    fn observations_from_db(
+        db: &Connection,
+        id: &str,
+        family: Option<&str>,
+        stage: Option<&str>,
+        now: i64,
+        limit: usize,
+    ) -> Result<Vec<Observation>, StoreError> {
         let url: Option<String> = db
             .query_row("SELECT url FROM endpoints WHERE id=?1", [id], |r| r.get(0))
             .optional()

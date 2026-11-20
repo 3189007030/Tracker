@@ -855,7 +855,9 @@ impl Store {
             prune.commit()?;
         }
         let mut query = self.private.prepare(
-            "SELECT e.id,e.service_id,e.url,e.first_seen,e.baseline,v4.until,v6.until
+            "SELECT e.id,e.service_id,e.url,e.first_seen,e.baseline,v4.until,v6.until,
+                    COALESCE((SELECT o.id FROM observations o WHERE o.endpoint_id=e.id ORDER BY o.id DESC LIMIT 1),0),
+                    COALESCE((SELECT s.id FROM samples s WHERE s.endpoint_id=e.id ORDER BY s.id DESC LIMIT 1),0)
              FROM endpoints e
              LEFT JOIN announce_due v4 ON v4.endpoint_id=e.id AND v4.family='ipv4' AND v4.resource='health'
              LEFT JOIN announce_due v6 ON v6.endpoint_id=e.id AND v6.family='ipv6' AND v6.resource='health'
@@ -871,6 +873,8 @@ impl Store {
                     r.get::<_, i64>(4)?,
                     r.get::<_, Option<i64>>(5)?,
                     r.get::<_, Option<i64>>(6)?,
+                    r.get::<_, i64>(7)?,
+                    r.get::<_, i64>(8)?,
                 ))
             })?
             .collect::<rusqlite::Result<Vec<_>>>()?;
@@ -902,6 +906,13 @@ impl Store {
             self.value("pool_forum_fresh_at")?,
         ];
         let tx = self.public.transaction()?;
+        use rusqlite::OptionalExtension;
+        let mut cached_publication = tx.prepare_cached(
+            "SELECT e.payload,c.all_eligible FROM publication_cache c
+             JOIN endpoints e ON e.id=c.endpoint_id
+             WHERE c.endpoint_id=?1 AND c.event_revision=?2 AND c.sample_revision=?3
+               AND c.next_refresh>?4 AND c.service_id=?5 AND c.colocated=?6 AND c.interval_sec=?7",
+        )?;
         // A cursor is committed with the public rows, so an interrupted pass
         // can be retried without gaps or duplication. IDs never reuse after prune.
         let cursor: i64 =
@@ -1011,7 +1022,18 @@ impl Store {
         let mut all_candidates = Vec::new();
         let mut standard_candidates = Vec::new();
         let mut best_candidates = Vec::new();
-        for (endpoint_id, service_id, url, first_seen, _, next_v4, next_v6) in &rows {
+        for (
+            endpoint_id,
+            service_id,
+            url,
+            first_seen,
+            _,
+            next_v4,
+            next_v6,
+            event_revision,
+            sample_revision,
+        ) in &rows
+        {
             let (service_first_seen, service_baseline) = service_discovery[service_id.as_str()];
             let alias_of = aliases.get(endpoint_id).cloned();
             let parsed = Url::parse(url)?;
@@ -1029,18 +1051,20 @@ impl Store {
             let colocated = own_hosts
                 .iter()
                 .any(|h| h.eq_ignore_ascii_case(parsed.host_str().unwrap_or_default()));
-            let event_revision: i64 = self.private.query_row(
-                "SELECT COALESCE(MAX(id),0) FROM observations WHERE endpoint_id=?1",
-                [endpoint_id],
-                |r| r.get(0),
-            )?;
-            let sample_revision: i64 = self.private.query_row(
-                "SELECT COALESCE(MAX(rowid),0) FROM samples WHERE endpoint_id=?1",
-                [endpoint_id],
-                |r| r.get(0),
-            )?;
-            use rusqlite::OptionalExtension;
-            let cached:Option<(String,i64)>=tx.query_row("SELECT e.payload,c.all_eligible FROM publication_cache c JOIN endpoints e ON e.id=c.endpoint_id WHERE c.endpoint_id=?1 AND c.event_revision=?2 AND c.sample_revision=?3 AND c.next_refresh>?4 AND c.service_id=?5 AND c.colocated=?6 AND c.interval_sec=?7",params![endpoint_id,event_revision,sample_revision,now,service_id,colocated as i64,interval as i64],|r|Ok((r.get(0)?,r.get(1)?))).optional()?;
+            let cached: Option<(String, i64)> = cached_publication
+                .query_row(
+                    params![
+                        endpoint_id,
+                        *event_revision,
+                        *sample_revision,
+                        now,
+                        service_id,
+                        colocated as i64,
+                        interval as i64
+                    ],
+                    |r| Ok((r.get(0)?, r.get(1)?)),
+                )
+                .optional()?;
             if let Some((payload, all_eligible)) = cached
                 && let Ok(mut endpoint) = serde_json::from_str::<Endpoint>(&payload)
                 && endpoint.first_seen == service_first_seen
@@ -1332,6 +1356,7 @@ impl Store {
                 ],
             )?;
         }
+        drop(cached_publication);
         let choose =
             |mut candidates: Vec<(String, String, f64, usize, f64)>, limit: usize| -> Vec<String> {
                 candidates.sort_by(|a, b| {
@@ -2068,6 +2093,80 @@ mod tests {
         let updated: Endpoint = serde_json::from_str(&updated)?;
         assert_eq!(updated.evidence.checks_24h, 2);
         assert_eq!(updated.evidence.replies_24h, 1);
+        drop(store);
+        std::fs::remove_dir_all(dir)?;
+        Ok(())
+    }
+
+    #[test]
+    fn publication_cache_tracks_sample_revision_and_seven_day_expiry() -> Result<()> {
+        let dir = std::env::temp_dir().join(format!(
+            "tracker-publication-revision-{}",
+            rand::random::<u64>()
+        ));
+        let mut store = Store::open(&dir)?;
+        let url = "https://revision.example.org/announce";
+        store.ingest(&[url.into()], &Default::default())?;
+        let endpoint = target_id(&store, url)?;
+        let now = unix_now();
+        let old_observation_at = now - 7 * 86400 + 1000;
+        store.record(&Observation {
+            endpoint_id: endpoint.clone(),
+            observed_at: old_observation_at,
+            family: "ipv4".into(),
+            stage: "announce".into(),
+            result: "accepted".into(),
+            protocol_reply: true,
+            ..Default::default()
+        })?;
+        store.publish(1800, &[])?;
+
+        let next_refresh: i64 = store.public.query_row(
+            "SELECT next_refresh FROM publication_cache WHERE endpoint_id=?1",
+            [&endpoint],
+            |row| row.get(0),
+        )?;
+        assert_eq!(next_refresh, old_observation_at + 7 * 86400 + 1);
+
+        let peer: std::net::SocketAddr = "1.1.1.1:6881".parse()?;
+        let peers = [peer];
+        let stages: [Observation; 0] = [];
+        let first_sample = crate::samples::Sample {
+            info_hash: [1; 20],
+            piece_count: 1,
+            piece_length: 16,
+            total_length: 16,
+        };
+        store.sample_evidence(ActivityEvidence {
+            endpoint: &endpoint,
+            source: "test",
+            sample: &first_sample,
+            peers: &peers,
+            bitmaps: 1,
+            coverage: Some(0.5),
+            stages: &stages,
+        })?;
+        store.publish(1800, &[])?;
+        assert_eq!(published_endpoint(&store, url)?.evidence.sample_count_7d, 1);
+
+        let second_sample = crate::samples::Sample {
+            info_hash: [2; 20],
+            piece_count: 1,
+            piece_length: 16,
+            total_length: 16,
+        };
+        store.sample_evidence(ActivityEvidence {
+            endpoint: &endpoint,
+            source: "test",
+            sample: &second_sample,
+            peers: &peers,
+            bitmaps: 1,
+            coverage: Some(0.5),
+            stages: &stages,
+        })?;
+        store.publish(1800, &[])?;
+        assert_eq!(published_endpoint(&store, url)?.evidence.sample_count_7d, 2);
+
         drop(store);
         std::fs::remove_dir_all(dir)?;
         Ok(())

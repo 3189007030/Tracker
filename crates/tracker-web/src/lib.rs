@@ -23,18 +23,26 @@ use tracker_model::{VERSION, unix_now};
 use html::Lang;
 use store::{Filters, PublicStore, StoreError};
 
+// Shared by every database-backed route, including readiness and feed HEAD.
+const STORE_READ_CONCURRENCY: usize = 4;
+
 #[derive(Clone)]
 struct Site {
     store: PublicStore,
+    read_permits: Arc<Semaphore>,
     feed_permits: Arc<Semaphore>,
 }
 
 /// Build a router without initializing, modifying or creating any database.
 pub fn app(data_dir: PathBuf) -> Router {
-    let state = Site {
+    app_with_site(Site {
         store: PublicStore::new(data_dir),
+        read_permits: Arc::new(Semaphore::new(STORE_READ_CONCURRENCY)),
         feed_permits: Arc::new(Semaphore::new(1)),
-    };
+    })
+}
+
+fn app_with_site(state: Site) -> Router {
     let pages = Router::new()
         .route("/", get(home))
         .route("/trackers", get(trackers_page))
@@ -119,12 +127,33 @@ async fn security_headers(request: Request, next: Next) -> Response {
     response
 }
 
-async fn read<T: Send + 'static>(
-    job: impl FnOnce() -> Result<T, StoreError> + Send + 'static,
-) -> Result<T, StoreError> {
-    tokio::task::spawn_blocking(job)
-        .await
-        .map_err(|_| StoreError)?
+#[derive(Debug)]
+enum ReadError {
+    Busy,
+    Unavailable,
+}
+
+async fn read_store<T: Send + 'static>(
+    site: &Site,
+    job: impl FnOnce(PublicStore) -> Result<T, StoreError> + Send + 'static,
+) -> Result<T, ReadError> {
+    // Reject before spawning: neither the semaphore nor the blocking pool may
+    // accumulate an unbounded queue of storage reads.
+    let permit = site
+        .read_permits
+        .clone()
+        .try_acquire_owned()
+        .map_err(|_| ReadError::Busy)?;
+    let store = site.store.clone();
+    tokio::task::spawn_blocking(move || {
+        // The blocking task owns the permit, not its awaiting HTTP future.
+        // Disconnecting or cancelling the request must not admit another read
+        // until this closure has actually stopped accessing SQLite.
+        let _permit = permit;
+        job(store).map_err(|_| ReadError::Unavailable)
+    })
+    .await
+    .map_err(|_| ReadError::Unavailable)?
 }
 
 type Params = HashMap<String, String>;
@@ -259,10 +288,33 @@ fn unavailable() -> Response {
     )
 }
 
+fn read_error(error: ReadError) -> Response {
+    match error {
+        ReadError::Busy => {
+            let mut response = api_error(StatusCode::SERVICE_UNAVAILABLE, "public_snapshot_busy");
+            response
+                .headers_mut()
+                .insert(header::RETRY_AFTER, HeaderValue::from_static("2"));
+            response
+        }
+        ReadError::Unavailable => unavailable(),
+    }
+}
+
+fn read_error_page(error: ReadError, lang: Lang) -> Response {
+    let mut response = unavailable_page(lang);
+    if matches!(error, ReadError::Busy) {
+        response
+            .headers_mut()
+            .insert(header::RETRY_AFTER, HeaderValue::from_static("2"));
+    }
+    response
+}
+
 async fn home(State(site): State<Site>, Extension(lang): Extension<Lang>) -> Response {
-    match read(move || {
-        let overview = site.store.overview()?;
-        let native = site.store.native_summary(unix_now()).unwrap_or(None);
+    match read_store(&site, move |store| {
+        let overview = store.overview()?;
+        let native = store.native_summary(unix_now()).unwrap_or(None);
         Ok((overview, native))
     })
     .await
@@ -272,7 +324,7 @@ async fn home(State(site): State<Site>, Extension(lang): Extension<Lang>) -> Res
             Html(html::home(&overview, native.as_ref(), lang)),
         )
             .into_response(),
-        Err(_) => unavailable_page(lang),
+        Err(error) => read_error_page(error, lang),
     }
 }
 
@@ -287,13 +339,13 @@ async fn trackers_page(
     };
     let query = filters.query.clone();
     let protocol = filters.protocol.clone();
-    match read(move || site.store.page(filters, unix_now())).await {
+    match read_store(&site, move |store| store.page(filters, unix_now())).await {
         Ok(page) => (
             [(header::CACHE_CONTROL, "public, max-age=10, s-maxage=30")],
             Html(html::listing(&page, &query, &protocol, lang)),
         )
             .into_response(),
-        Err(_) => unavailable_page(lang),
+        Err(error) => read_error_page(error, lang),
     }
 }
 
@@ -311,13 +363,13 @@ async fn trackers_partial(
     };
     let query = filters.query.clone();
     let protocol = filters.protocol.clone();
-    match read(move || site.store.page(filters, unix_now())).await {
+    match read_store(&site, move |store| store.page(filters, unix_now())).await {
         Ok(page) => (
             [(header::CACHE_CONTROL, HeaderValue::from_static("no-store"))],
             Html(html::listing_results(&page, &query, &protocol, lang)),
         )
             .into_response(),
-        Err(_) => unavailable_page(lang),
+        Err(error) => read_error_page(error, lang),
     }
 }
 
@@ -334,54 +386,46 @@ async fn tracker_detail(
         Ok(value) => value,
         Err(_) => return (StatusCode::BAD_REQUEST, "invalid detail filters").into_response(),
     };
-    match read(move || {
+    match read_store(&site, move |store| {
         let now = unix_now();
-        let mut endpoint = site.store.endpoint(&id, now)?;
-        // An alias resolves to its canonical endpoint. If the canonical
-        // disappeared between snapshots, keep serving the alias itself.
-        if let Some(canonical_id) = endpoint.as_ref().and_then(|e| e.alias_of.clone())
-            && let Some(canonical) = site.store.endpoint(&canonical_id, now)?
-        {
-            return Ok((Some(canonical), None, Some(canonical_id), now));
-        }
-        if let Some(current) = endpoint.as_mut() {
-            current.alias_of = None;
-        }
-        let detail_log = if endpoint.is_some() {
-            Some(site.store.detail_log(
+        store
+            .tracker_detail(
                 &id,
                 now,
                 &filters.window,
                 filters.page,
                 filters.include_no_address,
                 filters.focus,
-            )?)
-        } else {
-            None
-        };
-        Ok((endpoint, detail_log, None, now))
+            )
+            .map(|detail| (detail, now))
     })
     .await
     {
-        Ok((Some(_), _, Some(canonical_id), _)) => (
-            StatusCode::FOUND,
-            [
-                (
-                    header::LOCATION,
-                    format!("/tracker/{canonical_id}?lang={}", lang.code()),
-                ),
-                (header::CACHE_CONTROL, "no-store".to_owned()),
-            ],
-            "",
-        )
-            .into_response(),
-        Ok((Some(endpoint), Some(detail_log), None, now)) => (
-            [(header::CACHE_CONTROL, "public, max-age=15, s-maxage=60")],
-            Html(html::detail(&endpoint, &detail_log, now, lang)),
-        )
-            .into_response(),
-        Ok((None, _, _, _)) | Ok((Some(_), None, None, _)) => not_found_page(lang),
-        Err(_) => unavailable_page(lang),
+        Ok((detail, now)) => {
+            if let Some(canonical_id) = detail.canonical_id {
+                return (
+                    StatusCode::FOUND,
+                    [
+                        (
+                            header::LOCATION,
+                            format!("/tracker/{canonical_id}?lang={}", lang.code()),
+                        ),
+                        (header::CACHE_CONTROL, "no-store".to_owned()),
+                    ],
+                    "",
+                )
+                    .into_response();
+            }
+            match (detail.endpoint, detail.log) {
+                (Some(endpoint), Some(detail_log)) => (
+                    [(header::CACHE_CONTROL, "public, max-age=15, s-maxage=60")],
+                    Html(html::detail(&endpoint, &detail_log, now, lang)),
+                )
+                    .into_response(),
+                _ => not_found_page(lang),
+            }
+        }
+        Err(error) => read_error_page(error, lang),
     }
 }
 
@@ -393,10 +437,10 @@ async fn methodology(Extension(lang): Extension<Lang>) -> Response {
         .into_response()
 }
 async fn sources(State(site): State<Site>, Extension(lang): Extension<Lang>) -> Response {
-    match read(move || {
+    match read_store(&site, move |store| {
         Ok((
-            site.store.overview()?,
-            site.store.pools().unwrap_or_default(),
+            store.overview()?,
+            store.pools().unwrap_or_default(),
         ))
     })
     .await
@@ -406,7 +450,7 @@ async fn sources(State(site): State<Site>, Extension(lang): Extension<Lang>) -> 
             Html(html::simple("sources", &overview, None, &pools, lang)),
         )
             .into_response(),
-        Err(_) => unavailable_page(lang),
+        Err(error) => read_error_page(error, lang),
     }
 }
 async fn tools(Extension(lang): Extension<Lang>) -> Response {
@@ -446,7 +490,7 @@ async fn health() -> impl IntoResponse {
 }
 
 async fn ready(State(site): State<Site>) -> Response {
-    match read(move || site.store.overview()).await {
+    match read_store(&site, move |store| store.overview()).await {
         Ok(overview) => {
             let age = unix_now().saturating_sub(overview.generated_at);
             // A fresh, valid snapshot can have no eligible trackers for days.
@@ -459,12 +503,12 @@ async fn ready(State(site): State<Site>) -> Response {
             };
             (status, [(header::CACHE_CONTROL, "no-store")], Json(json!({"status":if ready {"ready"} else {"warming"},"evidence":if overview.warming {"warming"} else {"available"},"version":VERSION,"generated_at":overview.generated_at}))).into_response()
         }
-        Err(_) => unavailable(),
+        Err(error) => read_error(error),
     }
 }
 
 async fn api_overview(State(site): State<Site>) -> Response {
-    match read(move || site.store.overview()).await {
+    match read_store(&site, move |store| store.overview()).await {
         Ok(overview) => {
             let cache = if overview.warming {
                 "no-store"
@@ -489,7 +533,7 @@ async fn api_overview(State(site): State<Site>) -> Response {
             }
             ([(header::CACHE_CONTROL, cache)], Json(body)).into_response()
         }
-        Err(_) => unavailable(),
+        Err(error) => read_error(error),
     }
 }
 
@@ -498,13 +542,13 @@ async fn api_trackers(State(site): State<Site>, Query(params): Query<Params>) ->
         Ok(value) => value,
         Err(code) => return api_error(StatusCode::BAD_REQUEST, code),
     };
-    match read(move || site.store.page(filters, unix_now())).await {
+    match read_store(&site, move |store| store.page(filters, unix_now())).await {
         Ok(page) => (
             [(header::CACHE_CONTROL, "public, max-age=15, s-maxage=30")],
             Json(page),
         )
             .into_response(),
-        Err(_) => unavailable(),
+        Err(error) => read_error(error),
     }
 }
 
@@ -512,14 +556,14 @@ async fn api_detail(State(site): State<Site>, Path(id): Path<String>) -> Respons
     if !store::valid_id(&id) {
         return api_error(StatusCode::NOT_FOUND, "not_found");
     }
-    match read(move || site.store.endpoint(&id, unix_now())).await {
+    match read_store(&site, move |store| store.endpoint(&id, unix_now())).await {
         Ok(Some(endpoint)) => (
             [(header::CACHE_CONTROL, "public, max-age=15, s-maxage=60")],
             Json(endpoint),
         )
             .into_response(),
         Ok(None) => api_error(StatusCode::NOT_FOUND, "not_found"),
-        Err(_) => unavailable(),
+        Err(error) => read_error(error),
     }
 }
 
@@ -529,13 +573,13 @@ async fn api_history(State(site): State<Site>, Query(params): Query<Params>) -> 
         return api_error(StatusCode::BAD_REQUEST, "invalid_window");
     }
     let window = window.to_owned();
-    match read(move || site.store.history(&window, unix_now())).await {
+    match read_store(&site, move |store| store.history(&window, unix_now())).await {
         Ok(history) => (
             [(header::CACHE_CONTROL, "public, max-age=30, s-maxage=120")],
             Json(history),
         )
             .into_response(),
-        Err(_) => unavailable(),
+        Err(error) => read_error(error),
     }
 }
 
@@ -569,14 +613,9 @@ async fn api_observations(
         Ok(None) => 500,
         _ => return api_error(StatusCode::BAD_REQUEST, "invalid_limit"),
     };
-    match read(move || {
+    match read_store(&site, move |store| {
         let now = unix_now();
-        if site.store.endpoint(&id, now)?.is_none() {
-            return Ok(None);
-        }
-        site.store
-            .observations(&id, family.as_deref(), stage.as_deref(), now, limit)
-            .map(Some)
+        store.endpoint_observations(&id, family.as_deref(), stage.as_deref(), now, limit)
     })
     .await
     {
@@ -586,7 +625,7 @@ async fn api_observations(
         )
             .into_response(),
         Ok(None) => api_error(StatusCode::NOT_FOUND, "not_found"),
-        Err(_) => unavailable(),
+        Err(error) => read_error(error),
     }
 }
 
@@ -659,9 +698,9 @@ async fn feed_head(State(site): State<Site>, Path(filename): Path<String>) -> Re
     let Some((name, format)) = feed_name(&filename) else {
         return (StatusCode::NOT_FOUND, "not found").into_response();
     };
-    let published = match read(move || site.store.feed_published(name)).await {
+    let published = match read_store(&site, move |store| store.feed_published(name)).await {
         Ok(value) => value,
-        Err(_) => return unavailable(),
+        Err(error) => return read_error(error),
     };
     let content_type = match format {
         "json" => "application/json; charset=utf-8",
@@ -707,9 +746,9 @@ async fn feed(
                 .into_response();
         }
     };
-    let entries = match read(move || site.store.feed(name)).await {
+    let entries = match read_store(&site, move |store| store.feed(name)).await {
         Ok(value) => value,
-        Err(_) => return unavailable(),
+        Err(error) => return read_error(error),
     };
     let published = entries.is_some();
     let entries = entries.unwrap_or_default();

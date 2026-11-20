@@ -377,12 +377,16 @@ async fn collect_samples(store: &Store, start: usize, gate: &PressureGate) -> bo
         ("fedora", "https://torrent.fedoraproject.org/torrents.json"),
         ("arch", "https://archlinux.org/download/"),
     ];
+    let mut complete = true;
     for offset in 0..roots.len() {
         if !pressure_allows(gate).await {
             return false;
         }
         let (source, root) = roots[(start + offset) % roots.len()];
-        let Ok(root) = Url::parse(root) else { continue };
+        let Ok(root) = Url::parse(root) else {
+            complete = false;
+            continue;
+        };
         if source == "fedora" {
             if let Ok(body) = official_body(store, &root, 2 * 1024 * 1024).await
                 && let Ok(serde_json::Value::Array(releases)) = serde_json::from_slice(&body)
@@ -413,14 +417,19 @@ async fn collect_samples(store: &Store, start: usize, gate: &PressureGate) -> bo
                         if !pressure_allows(gate).await {
                             return false;
                         }
-                        if let Ok(bytes) = official_body(store, &link, 4 * 1024 * 1024).await
-                            && let Ok(sample) = crate::samples::validate_torrent(&bytes)
-                        {
-                            let _ = store.save_sample(source, &sample);
-                            found += 1;
-                            if found >= 4 {
-                                break;
+                        match official_body(store, &link, 4 * 1024 * 1024).await {
+                            Ok(bytes) => {
+                                if let Ok(sample) = crate::samples::validate_torrent(&bytes) {
+                                    if store.save_sample(source, &sample).is_err() {
+                                        complete = false;
+                                    }
+                                    found += 1;
+                                    if found >= 4 {
+                                        break;
+                                    }
+                                }
                             }
+                            Err(_) => complete = false,
                         }
                     }
                     if found >= 4 {
@@ -430,6 +439,8 @@ async fn collect_samples(store: &Store, start: usize, gate: &PressureGate) -> bo
                 if found == 0 {
                     tracing::debug!(source, "no public v1 sample discovered");
                 }
+            } else {
+                complete = false;
             }
             tokio::time::sleep(Duration::from_secs(2)).await;
             continue;
@@ -442,6 +453,7 @@ async fn collect_samples(store: &Store, start: usize, gate: &PressureGate) -> bo
                 return false;
             }
             let Ok(body) = official_body(store, &page, 2 * 1024 * 1024).await else {
+                complete = false;
                 continue;
             };
             let text = String::from_utf8_lossy(&body);
@@ -467,14 +479,19 @@ async fn collect_samples(store: &Store, start: usize, gate: &PressureGate) -> bo
                     if !pressure_allows(gate).await {
                         return false;
                     }
-                    if let Ok(bytes) = official_body(store, &link, 4 * 1024 * 1024).await
-                        && let Ok(sample) = crate::samples::validate_torrent(&bytes)
-                    {
-                        let _ = store.save_sample(source, &sample);
-                        found += 1;
-                        if found >= 4 {
-                            break;
+                    match official_body(store, &link, 4 * 1024 * 1024).await {
+                        Ok(bytes) => {
+                            if let Ok(sample) = crate::samples::validate_torrent(&bytes) {
+                                if store.save_sample(source, &sample).is_err() {
+                                    complete = false;
+                                }
+                                found += 1;
+                                if found >= 4 {
+                                    break;
+                                }
+                            }
                         }
+                        Err(_) => complete = false,
                     }
                 } else if page == root
                     && link.path().starts_with(root.path())
@@ -497,7 +514,7 @@ async fn collect_samples(store: &Store, start: usize, gate: &PressureGate) -> bo
         }
         tokio::time::sleep(Duration::from_secs(2)).await;
     }
-    true
+    complete
 }
 
 const MAX_HEALTH_BODY: usize = 1024 * 1024;
@@ -1171,59 +1188,109 @@ async fn observe_sample(
     }
 }
 
-async fn discover(config: &Config, store: &mut Store, gate: &PressureGate) -> Result<()> {
-    if !pressure_allows(gate).await {
-        return Ok(());
-    }
-    let now = unix_now();
+const SOURCE_CHECK_INTERVAL: i64 = 6 * 3600;
+const SOURCE_RETRY_DELAY: i64 = 15 * 60;
+const SOURCE_CHECK_BUDGET: Duration = Duration::from_secs(60);
+
+fn begin_discovery(store: &Store, now: i64) -> Result<bool> {
     if store
-        .value("sources_checked_at")?
-        .is_none_or(|then| now - then >= 6 * 3600)
-        && let Ok(text) = std::fs::read_to_string(&config.settings.sources_file)
+        .value("sources_completed_at")?
+        .is_some_and(|at| at > 0 && now.saturating_sub(at) < SOURCE_CHECK_INTERVAL)
+        || store
+            .value("sources_attempted_at")?
+            .is_some_and(|at| now.saturating_sub(at) < SOURCE_RETRY_DELAY)
     {
-        store.set_value("sources_checked_at", now)?;
-        let sources: Sources = toml::from_str(&text)?;
-        let mut urls = sources.seed_endpoints.clone();
-        store.ingest(&urls, &config.settings.service_aliases)?;
-        for s in &sources.tracker_lists {
-            if !pressure_allows(gate).await {
-                store.set_value("sources_checked_at", 0)?;
-                return Ok(());
-            }
-            let host = Url::parse(s)
-                .ok()
-                .and_then(|u| u.host_str().map(|h| format!("source:{h}")))
-                .unwrap_or_default();
-            if store.paused(&host, now)? {
-                continue;
-            }
-            match source(s).await {
-                Ok((items, delay)) => {
-                    urls.extend(items);
-                    if let Some(seconds) = delay {
-                        store.pause(&host, deadline(unix_now(), seconds))?;
-                    }
-                }
-                Err(e) => tracing::warn!(%e,"source deferred"),
-            }
-            tokio::time::sleep(Duration::from_secs(2)).await;
+        return Ok(false);
+    }
+    // Persist before any fallible or cancellable work. A timeout or process
+    // restart must neither look successful nor cause a retry every minute.
+    store.set_value("sources_attempted_at", now)?;
+    Ok(true)
+}
+
+async fn discovery_completed(
+    work: impl std::future::Future<Output = Result<bool>>,
+    budget: Duration,
+) -> bool {
+    match tokio::time::timeout(budget, work).await {
+        Ok(Ok(complete)) => complete,
+        // Do not log errors that may contain private source URLs.
+        Ok(Err(_)) => {
+            tracing::warn!("source check failed; retry deferred");
+            false
         }
-        urls.sort();
-        urls.dedup();
-        urls.truncate(20_000);
-        if !urls.is_empty() {
-            store.ingest(&urls, &config.settings.service_aliases)?;
+        Err(_) => {
+            tracing::warn!("source check timed out; retry deferred");
+            false
         }
-        let source_cursor = store
-            .value("official_source_cursor")?
-            .unwrap_or(0)
-            .rem_euclid(4) as usize;
-        store.set_value("official_source_cursor", ((source_cursor + 1) % 4) as i64)?;
-        if !collect_samples(store, source_cursor, gate).await {
-            store.set_value("sources_checked_at", 0)?;
-        }
+    }
+}
+
+fn finish_discovery(store: &Store, complete: bool, now: i64) -> Result<()> {
+    if complete {
+        store.set_value("sources_completed_at", now)?;
     }
     Ok(())
+}
+
+async fn discover(config: &Config, store: &mut Store, gate: &PressureGate) -> Result<()> {
+    if !pressure_allows(gate).await || !begin_discovery(store, unix_now())? {
+        return Ok(());
+    }
+    let complete = discovery_completed(
+        discover_sources(config, store, gate),
+        SOURCE_CHECK_BUDGET,
+    )
+    .await;
+    finish_discovery(store, complete, unix_now())
+}
+
+async fn discover_sources(config: &Config, store: &mut Store, gate: &PressureGate) -> Result<bool> {
+    let text = std::fs::read_to_string(&config.settings.sources_file)?;
+    let sources: Sources = toml::from_str(&text)?;
+    let mut complete = true;
+    let mut urls = sources.seed_endpoints.clone();
+    store.ingest(&urls, &config.settings.service_aliases)?;
+    for s in &sources.tracker_lists {
+        if !pressure_allows(gate).await {
+            return Ok(false);
+        }
+        let host = Url::parse(s)
+            .ok()
+            .and_then(|u| u.host_str().map(|h| format!("source:{h}")))
+            .unwrap_or_default();
+        if store.paused(&host, unix_now())? {
+            complete = false;
+            continue;
+        }
+        match source(s).await {
+            Ok((items, delay)) => {
+                urls.extend(items);
+                if let Some(seconds) = delay {
+                    store.pause(&host, deadline(unix_now(), seconds))?;
+                    complete = false;
+                }
+            }
+            Err(_) => {
+                tracing::warn!("tracker list deferred");
+                complete = false;
+            }
+        }
+        tokio::time::sleep(Duration::from_secs(2)).await;
+    }
+    urls.sort();
+    urls.dedup();
+    urls.truncate(20_000);
+    if !urls.is_empty() {
+        store.ingest(&urls, &config.settings.service_aliases)?;
+    }
+    let source_cursor = store
+        .value("official_source_cursor")?
+        .unwrap_or(0)
+        .rem_euclid(4) as usize;
+    store.set_value("official_source_cursor", ((source_cursor + 1) % 4) as i64)?;
+    let samples_complete = collect_samples(store, source_cursor, gate).await;
+    Ok(complete && samples_complete)
 }
 
 async fn health_task(
@@ -1414,13 +1481,7 @@ pub async fn cycle(config: &Config, store: &mut Store, full_cycle: bool) -> Resu
         let candidates = health_candidates(store, unix_now())?;
         return health_batch(config, store, &candidates[..candidates.len().min(4)], &gate).await;
     }
-    if tokio::time::timeout(Duration::from_secs(60), discover(config, store, &gate))
-        .await
-        .is_err()
-        && !pressure_allows(&gate).await
-    {
-        store.set_value("sources_checked_at", 0)?;
-    }
+    discover(config, store, &gate).await?;
     let now = unix_now();
     let daily_due = store
         .value("pool_updated_at")?
@@ -1525,6 +1586,69 @@ pub async fn cycle(config: &Config, store: &mut Store, full_cycle: bool) -> Resu
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn discovery_attempts_back_off_and_completion_controls_six_hour_interval() -> Result<()> {
+        let dir = std::env::temp_dir().join(format!(
+            "tracker-source-discovery-{}",
+            rand::random::<u64>()
+        ));
+        let store = Store::open(&dir)?;
+        let first_attempt = 1_700_000_000;
+
+        // The legacy key could be written before source work began. It must
+        // not be treated as proof that a discovery completed successfully.
+        store.set_value("sources_checked_at", first_attempt)?;
+        assert!(begin_discovery(&store, first_attempt)?);
+        finish_discovery(&store, false, first_attempt + 30)?;
+        assert_eq!(store.value("sources_completed_at")?, None);
+        assert_eq!(store.value("sources_attempted_at")?, Some(first_attempt));
+        assert!(!begin_discovery(
+            &store,
+            first_attempt + SOURCE_RETRY_DELAY - 1
+        )?);
+
+        let retry_at = first_attempt + SOURCE_RETRY_DELAY;
+        assert!(begin_discovery(&store, retry_at)?);
+        finish_discovery(&store, true, retry_at)?;
+        assert_eq!(store.value("sources_completed_at")?, Some(retry_at));
+        assert!(!begin_discovery(
+            &store,
+            retry_at + SOURCE_CHECK_INTERVAL - 1
+        )?);
+        assert!(begin_discovery(
+            &store,
+            retry_at + SOURCE_CHECK_INTERVAL
+        )?);
+
+        drop(store);
+        std::fs::remove_dir_all(dir)?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn discovery_completion_rejects_errors_and_timeouts() {
+        assert!(discovery_completed(async { Ok(true) }, Duration::from_secs(1)).await);
+        assert!(!discovery_completed(async { Ok(false) }, Duration::from_secs(1)).await);
+        assert!(
+            !discovery_completed(
+                async { Err(anyhow::anyhow!("source failure")) },
+                Duration::from_secs(1)
+            )
+            .await
+        );
+        assert!(
+            !discovery_completed(
+                async {
+                    tokio::time::sleep(Duration::from_millis(20)).await;
+                    Ok(true)
+                },
+                Duration::from_millis(1)
+            )
+            .await
+        );
+    }
+
     #[test]
     fn activity_family_selection_never_bypasses_due_and_can_pick_both() {
         assert_eq!(choose_due_family(false, true, true), Some(false));

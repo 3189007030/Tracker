@@ -1,6 +1,18 @@
 # Changelog
 
+## 1.3.5 — resource use and request-path efficiency
+
+- Keep native peer sampling limits and selection policy while reducing temporary allocation capacity to actual response needs.
+- Bound concurrent Web snapshot reads and reject overload promptly with `503` and `Retry-After`, rather than allowing storage work to queue without limit. Stream URL-only tracker filtering with bounded memory and combine detail-page reads in a consistent SQLite snapshot.
+- Reduce repeated Observatory publication-cache work, and distinguish attempted source refreshes from completed refreshes so transient failures back off and retry without being recorded as success.
+- Raise Observatory's service memory budget to reduce repeated cgroup reclaim pressure observed on S1. No public API fields, schema, tracker-selection policy, or page layout are intentionally changed.
+- Include the unpromoted 1.3.1 search and observation-diagnostics work in this release.
+
+See the [1.3.5 validation ledger](docs/releases/1.3.5.md).
+
 ## 1.3.1 — search and observation diagnostics
+
+This candidate was not promoted; its changes are included in 1.3.5. See the [1.3.1 validation ledger](docs/releases/1.3.1.md).
 
 - Search public IPv4/IPv6 addresses by normalized URL host or the most recent announced target for each address family. Results explain shared IP matches and do not imply that endpoints are duplicates. Internal match metadata is not added to the public list JSON.
 - Clear a pending list search with Escape while keeping the selected protocol and page size.

@@ -297,6 +297,40 @@ fn hot_swarm_sampling_is_bounded_and_timer_refresh_is_not_duplicated() {
 }
 
 #[test]
+fn sampling_respects_numwant_and_families_across_scan_threshold() {
+    for preloaded in [200usize, 201, 512] {
+        for wanted in [0usize, 1, 50, 100] {
+            let engine = engine();
+            for n in 0..preloaded {
+                let peer = if n.is_multiple_of(2) {
+                    request(14, v4((n / 2 % 250 + 1) as u8), 2000 + n as u16, 0)
+                } else {
+                    request(14, v6(n as u16), 2000 + n as u16, 0)
+                };
+                engine.announce(&peer, 0).unwrap();
+            }
+
+            let mut probe = request(14, v6(60_000), 60_000, 1);
+            probe.numwant = wanted;
+            let reply = engine.announce(&probe, 1).unwrap();
+
+            assert!(reply.peers.len() <= wanted);
+            assert_eq!(
+                reply.peers.iter().collect::<HashSet<_>>().len(),
+                reply.peers.len()
+            );
+            assert!(!reply
+                .peers
+                .contains(&SocketAddr::new(probe.ip, probe.port)));
+            if wanted >= 2 {
+                assert!(reply.peers.iter().any(SocketAddr::is_ipv4));
+                assert!(reply.peers.iter().any(SocketAddr::is_ipv6));
+            }
+        }
+    }
+}
+
+#[test]
 fn production_address_policy_rejects_private_and_unspecified() {
     let engine = SwarmEngine::new(EngineConfig::default());
     assert_eq!(
