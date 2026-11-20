@@ -890,11 +890,12 @@ fn public_search_ip(query: &str) -> Option<String> {
 
 fn endpoint_url_ip_matches(raw_url: &str, expected: &str) -> bool {
     public_tracker_url(raw_url)
-        .and_then(|url| {
-            let host = url.host_str()?;
-            host.parse::<IpAddr>().ok().map(|ip| ip.to_string())
+        .and_then(|url| match url.host()? {
+            url::Host::Ipv4(ip) => Some(IpAddr::V4(ip)),
+            url::Host::Ipv6(ip) => Some(IpAddr::V6(ip)),
+            url::Host::Domain(_) => None,
         })
-        .is_some_and(|ip| ip == expected)
+        .is_some_and(|ip| ip.to_string() == expected)
 }
 
 fn latest_target_endpoints(

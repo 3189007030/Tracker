@@ -1099,7 +1099,7 @@ async fn detail_log_paginates_windows_collapses_no_address_and_focuses_across_pa
     let (_, _, first) = get(&router, "/tracker/example_id?lang=en").await;
     assert!(first.contains("Entries 1–50 / 55"));
     assert!(first.contains("Show no-address entries (5)"));
-    assert_eq!(first.matches("id=\"observation-").count(), 50);
+    assert_eq!(first.matches("<tr id=\"observation-").count(), 50);
     assert!(first.contains("response bodies or returned peer lists"));
     assert!(first.contains("Target IP is the Tracker address"));
 
@@ -1573,6 +1573,26 @@ async fn detail_shows_target_ip_localized_reasons_and_dashes_for_no_address() {
     assert!(!body.contains("family_unavailable"));
     assert!(!body.contains("<td>IPV6</td>"));
     assert!(!body.contains("<th>\u{9636}\u{6bb5}</th>"));
+    let chart_json = body
+        .split("<script type=\"application/json\" data-detail-observations>")
+        .nth(1)
+        .unwrap()
+        .split("</script>")
+        .next()
+        .unwrap();
+    let chart_data: serde_json::Value = serde_json::from_str(chart_json).unwrap();
+    assert!(!chart_json.contains("error_category"));
+    let rate_limited = chart_data
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|entry| entry["observation"]["http_status"] == 429)
+        .unwrap();
+    assert_eq!(rate_limited["observation"]["display_state"], "neutral");
+    assert!(rate_limited["observation"]["display_reason"]
+        .as_str()
+        .unwrap()
+        .contains("\u{9891}\u{7387}\u{9650}\u{5236}"));
     let (_, _, expanded) = get(&router, "/tracker/example_id?lang=zh&include_no_address=1").await;
     assert!(expanded.contains("<td>IPV6</td><td>-</td><td>\u{672a}\u{53d1}\u{73b0}\u{5730}\u{5740}</td><td>-</td><td>-</td><td>-</td><td>-</td>"));
     assert!(body.contains("\u{4e0d}\u{8ba1}\u{5165} 24h \u{6210}\u{529f}\u{7387}"));

@@ -1836,8 +1836,28 @@ pub(crate) fn detail(endpoint: &Endpoint, log: &DetailLog, now: i64, lang: Lang)
         now,
         lang,
     );
+    let chart_observations: Vec<_> = log
+        .timeline
+        .iter()
+        .map(|entry| {
+            let observation = &entry.observation;
+            serde_json::json!({
+                "id": entry.id,
+                "observation": {
+                    "observed_at": observation.observed_at,
+                    "family": observation.family,
+                    "result": observation.result,
+                    "http_status": observation.http_status,
+                    "latency_ms": observation.latency_ms,
+                    "display_state": observation_state(observation),
+                    "display_reason": reason_cell(observation, lang),
+                    "family_supported": !no_address(observation),
+                }
+            })
+        })
+        .collect();
     let mut observation_data =
-        serde_json::to_string(&log.timeline).unwrap_or_else(|_| "[]".to_owned());
+        serde_json::to_string(&chart_observations).unwrap_or_else(|_| "[]".to_owned());
     observation_data = observation_data
         .replace('&', "\\u0026")
         .replace('<', "\\u003c")
