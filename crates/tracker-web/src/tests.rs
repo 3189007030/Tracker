@@ -1572,7 +1572,13 @@ async fn detail_shows_target_ip_localized_reasons_and_dashes_for_no_address() {
     assert!(body.contains("HTTP 502 \u{b7} \u{7f51}\u{5173}\u{9519}\u{8bef}"));
     assert!(!body.contains("rate_limited"));
     assert!(!body.contains("family_unavailable"));
-    let default_rows = body.split("<tbody>").nth(1).unwrap().split("</tbody>").next().unwrap();
+    let default_rows = body
+        .split("<tbody>")
+        .nth(1)
+        .unwrap()
+        .split("</tbody>")
+        .next()
+        .unwrap();
     let no_address_row = format!("id=\"observation-{no_address_id}\"");
     assert!(!default_rows.contains(no_address_row.as_str()));
     assert!(!body.contains("<th>\u{9636}\u{6bb5}</th>"));
