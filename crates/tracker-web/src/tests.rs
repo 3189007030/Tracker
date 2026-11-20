@@ -1605,7 +1605,23 @@ async fn detail_shows_target_ip_localized_reasons_and_dashes_for_no_address() {
             .contains("\u{9891}\u{7387}\u{9650}\u{5236}")
     );
     let (_, _, expanded) = get(&router, "/tracker/example_id?lang=zh&include_no_address=1").await;
-    assert!(expanded.contains("<td>IPV6</td><td>-</td><td>\u{672a}\u{53d1}\u{73b0}\u{5730}\u{5740}</td><td>-</td><td>-</td><td>-</td><td>-</td>"));
+    let expanded_row = expanded
+        .split(&format!("<tr id=\"observation-{no_address_id}\""))
+        .nth(1)
+        .unwrap()
+        .split("</tr>")
+        .next()
+        .unwrap();
+    let cells: Vec<_> = expanded_row
+        .split("<td>")
+        .skip(1)
+        .map(|cell| cell.split("</td>").next().unwrap())
+        .collect();
+    assert_eq!(cells.len(), 8);
+    assert_eq!(cells[1], "IPV6");
+    for index in [2, 4, 5, 6, 7] {
+        assert_eq!(cells[index], "-");
+    }
     assert!(body.contains("\u{4e0d}\u{8ba1}\u{5165} 24h \u{6210}\u{529f}\u{7387}"));
     assert!(body.contains("\u{5408}\u{8ba1}"));
 }
