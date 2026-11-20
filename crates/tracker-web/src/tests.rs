@@ -1624,6 +1624,12 @@ async fn list_page_uses_live_search_and_accessible_pagination() {
     assert_eq!(clamped, second);
     let (status, _, _) = get(&router, "/trackers/partial?lang=zh&page=0").await;
     assert_eq!(status, StatusCode::BAD_REQUEST);
+
+    let (_, _, body) = get(&router, "/api/v1/trackers?q=extra&page=2&limit=100").await;
+    let filtered: serde_json::Value = serde_json::from_str(&body).unwrap();
+    assert_eq!(filtered["total"], 30);
+    assert_eq!(filtered["page"], 1);
+    assert_eq!(filtered["items"].as_array().unwrap().len(), 30);
 }
 
 #[tokio::test]

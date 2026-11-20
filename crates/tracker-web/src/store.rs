@@ -203,7 +203,7 @@ impl PublicStore {
         let requested_page = filters.page.clamp(1, 10_000);
         let page = requested_page;
         let limit = filters.limit.clamp(1, 100);
-        let Some(db) = self.open()? else {
+        let Some(mut db) = self.open()? else {
             return Ok(Page {
                 items: Vec::new(),
                 total: None,
@@ -217,7 +217,8 @@ impl PublicStore {
                 shared_ip_count: 0,
             });
         };
-        let overview: Option<Option<String>> = db.query_row("SELECT CASE WHEN length(CAST(payload AS BLOB))<=32768 THEN payload ELSE NULL END FROM documents WHERE key='overview'", [], |r| r.get(0))
+        let tx = db.transaction().map_err(|_| StoreError)?;
+        let overview: Option<Option<String>> = tx.query_row("SELECT CASE WHEN length(CAST(payload AS BLOB))<=32768 THEN payload ELSE NULL END FROM documents WHERE key='overview'", [], |r| r.get(0))
             .optional().map_err(|_| StoreError)?;
         let overview = match overview {
             None => None,
@@ -232,7 +233,7 @@ impl PublicStore {
         let matched_ip = public_search_ip(&query);
         let ip_match_ids = matched_ip
             .as_deref()
-            .map(|ip| latest_target_endpoints(&db, now, ip))
+            .map(|ip| latest_target_endpoints(&tx, now, ip))
             .transpose()?
             .unwrap_or_default();
         let pattern = format!(
@@ -262,7 +263,7 @@ impl PublicStore {
         } else {
             format!("{protocol}://%")
         };
-        let mut statement = db.prepare(&format!(
+        let mut statement = tx.prepare(&format!(
             "SELECT payload FROM endpoints WHERE length(CAST(payload AS BLOB))<=65536 AND json_valid(payload) AND {alias_clause} AND lower(url) LIKE ?1 ESCAPE '\\' AND lower(url) LIKE ?2 ORDER BY COALESCE(CAST(json_extract(payload,'$.evidence.success_rate_24h') AS REAL),-1.0) DESC, COALESCE(CAST(json_extract(payload,'$.evidence.sample_count_7d') AS INTEGER),0) DESC, COALESCE(CAST(json_extract(payload,'$.evidence.median_latency_ms') AS REAL),1.0e99) ASC, url COLLATE NOCASE"
         )).map_err(|_| StoreError)?;
         let rows = statement
@@ -304,15 +305,17 @@ impl PublicStore {
                 total = total.saturating_add(1);
             }
             drop(statement);
+            tx.commit().map_err(|_| StoreError)?;
             let last_page = total.div_ceil(limit as u64).clamp(1, 10_000) as usize;
             let page = page.min(last_page);
             let items = if page == requested_page {
                 page_items
             } else {
                 let last_page_len = (total - (last_page as u64 - 1) * limit as u64) as usize;
+                let skip = last_page_items.len().saturating_sub(last_page_len);
                 last_page_items
                     .into_iter()
-                    .skip(limit.saturating_sub(last_page_len))
+                    .skip(skip)
                     .collect()
             };
             return Ok(Page {
@@ -341,6 +344,8 @@ impl PublicStore {
                 decoded.push(endpoint);
             }
         }
+        drop(statement);
+        tx.commit().map_err(|_| StoreError)?;
         let mut url_ip_alias_ids = HashSet::new();
         let mut url_ip_match_ids = HashSet::new();
         if let Some(ip) = matched_ip.as_deref() {
