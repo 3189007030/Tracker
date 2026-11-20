@@ -1620,7 +1620,11 @@ async fn detail_shows_target_ip_localized_reasons_and_dashes_for_no_address() {
     assert_eq!(cells.len(), 8);
     assert_eq!(cells[1], "IPV6");
     for index in [2, 4, 5, 6, 7] {
-        assert_eq!(cells[index], "-");
+        assert_eq!(
+            cells[index],
+            "-",
+            "unexpected cell {index} for event {no_address_id}: {expanded_row}"
+        );
     }
     assert!(body.contains("\u{4e0d}\u{8ba1}\u{5165} 24h \u{6210}\u{529f}\u{7387}"));
     assert!(body.contains("\u{5408}\u{8ba1}"));
