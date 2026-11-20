@@ -313,10 +313,7 @@ impl PublicStore {
             } else {
                 let last_page_len = (total - (last_page as u64 - 1) * limit as u64) as usize;
                 let skip = last_page_items.len().saturating_sub(last_page_len);
-                last_page_items
-                    .into_iter()
-                    .skip(skip)
-                    .collect()
+                last_page_items.into_iter().skip(skip).collect()
             };
             return Ok(Page {
                 items,
