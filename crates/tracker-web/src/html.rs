@@ -1073,7 +1073,6 @@ pub(crate) fn listing_results(page: &Page, query: &str, protocol: &str, lang: La
             esc(&endpoint.id),
             esc(&endpoint.host),
             copy_endpoint_url(&endpoint.url, lang),
-            target_ip_note,
             esc(&rate_title),
             lang.pick("24h 成功率", "24h success"),
             esc(&pct(endpoint.evidence.success_rate_24h, lang)),
