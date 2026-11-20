@@ -1725,13 +1725,25 @@ pub(crate) fn detail(endpoint: &Endpoint, log: &DetailLog, now: i64, lang: Lang)
             };
         let reason = reason_cell(o, lang);
         let target = o.target_ip.as_deref().unwrap_or("-");
+        let latency = if no_address(o) {
+            "-".to_owned()
+        } else {
+            millis(
+                if measured_reply(o) {
+                    o.latency_ms
+                } else {
+                    None
+                },
+                lang,
+            )
+        };
         let focus_class = if log.focus_id == Some(entry.id) {
             " class=\"observation-focus\""
         } else {
             ""
         };
         rows.push_str(&format!(r#"<tr id="observation-{}" tabindex="-1"{focus_class}><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>"#,
-            entry.id, time_element(Some(o.observed_at), lang), esc(&o.family.to_uppercase()), esc(&transport), esc(observed_result(&o.stage, &o.result, o.error_category.as_deref(), lang)), reply, esc(&millis(if measured_reply(o) { o.latency_ms } else { None }, lang)), esc(target), esc(&reason)));
+            entry.id, time_element(Some(o.observed_at), lang), esc(&o.family.to_uppercase()), esc(&transport), esc(observed_result(&o.stage, &o.result, o.error_category.as_deref(), lang)), reply, esc(&latency), esc(target), esc(&reason)));
     }
     if rows.is_empty() {
         rows = format!(
