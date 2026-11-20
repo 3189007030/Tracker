@@ -450,10 +450,9 @@ impl PublicStore {
             .prepare(&format!("SELECT id,payload FROM observations WHERE endpoint_id=?1 AND observed_at>=?2 AND observed_at<=?3 AND {event_clause} ORDER BY observed_at DESC,id DESC LIMIT 500"))
             .map_err(|_| StoreError)?;
         let rows = statement
-            .query_map(
-                params![id, now.saturating_sub(86_400), now],
-                |row| Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?)),
-            )
+            .query_map(params![id, now.saturating_sub(86_400), now], |row| {
+                Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?))
+            })
             .map_err(|_| StoreError)?;
         let mut timeline = Vec::new();
         for (event_id, payload) in rows.flatten() {
@@ -909,9 +908,10 @@ fn latest_target_endpoints(
         )
         .map_err(|_| StoreError)?;
     let rows = statement
-        .query_map(params![now.saturating_sub(7 * 86_400), now, target_ip], |row| {
-            row.get::<_, String>(0)
-        })
+        .query_map(
+            params![now.saturating_sub(7 * 86_400), now, target_ip],
+            |row| row.get::<_, String>(0),
+        )
         .map_err(|_| StoreError)?;
     Ok(rows.flatten().collect())
 }

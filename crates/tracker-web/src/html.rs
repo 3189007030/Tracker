@@ -1591,26 +1591,26 @@ fn detail_log_controls(endpoint_id: &str, log: &DetailLog, lang: Lang) -> String
         ("24h", lang.pick("24 小时", "24 hours")),
         ("7d", lang.pick("7 天", "7 days")),
     ]
-        .into_iter()
-        .map(|(window, label)| {
-            let current = if log.window == window {
-                r#" aria-current="page""#
-            } else {
-                ""
-            };
-            format!(
-                r#"<a class="window-option" href="{}"{current}>{label}</a>"#,
-                esc(&detail_url(
-                    endpoint_id,
-                    lang,
-                    window,
-                    1,
-                    log.include_no_address,
-                    None
-                ))
-            )
-        })
-        .collect::<String>();
+    .into_iter()
+    .map(|(window, label)| {
+        let current = if log.window == window {
+            r#" aria-current="page""#
+        } else {
+            ""
+        };
+        format!(
+            r#"<a class="window-option" href="{}"{current}>{label}</a>"#,
+            esc(&detail_url(
+                endpoint_id,
+                lang,
+                window,
+                1,
+                log.include_no_address,
+                None
+            ))
+        )
+    })
+    .collect::<String>();
     let range_start = if log.total == 0 {
         0
     } else {
@@ -1681,12 +1681,7 @@ fn detail_log_controls(endpoint_id: &str, log: &DetailLog, lang: Lang) -> String
             lang.pick("下一页", "Next")
         )
     };
-    let page = format!(
-        "{} {} / {}",
-        lang.pick("第", "Page"),
-        log.page,
-        log.pages
-    );
+    let page = format!("{} {} / {}", lang.pick("第", "Page"), log.page, log.pages);
     format!(
         r#"<div class="detail-log-tools"><nav class="window-options" aria-label="{}">{windows}</nav><span class="log-range">{range}</span>{no_address_toggle}</div><nav class="detail-pagination" aria-label="{}">{previous}<span>{page}</span>{next}</nav>"#,
         lang.pick("日志时间范围", "Log time range"),
@@ -1694,12 +1689,7 @@ fn detail_log_controls(endpoint_id: &str, log: &DetailLog, lang: Lang) -> String
     )
 }
 
-pub(crate) fn detail(
-    endpoint: &Endpoint,
-    log: &DetailLog,
-    now: i64,
-    lang: Lang,
-) -> String {
+pub(crate) fn detail(endpoint: &Endpoint, log: &DetailLog, now: i64, lang: Lang) -> String {
     let health_observations: Vec<_> = log
         .timeline
         .iter()

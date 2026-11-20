@@ -1054,7 +1054,12 @@ async fn detail_log_paginates_windows_collapses_no_address_and_focuses_across_pa
                 observed_at: now - index,
                 family: "ipv4".into(),
                 stage: "announce".into(),
-                result: if no_address { "unsupported" } else { "accepted" }.into(),
+                result: if no_address {
+                    "unsupported"
+                } else {
+                    "accepted"
+                }
+                .into(),
                 protocol_reply: !no_address,
                 http_status: Some(200),
                 latency_ms: Some(25.0),
@@ -1099,13 +1104,11 @@ async fn detail_log_paginates_windows_collapses_no_address_and_focuses_across_pa
     assert!(first.contains("Target IP is the Tracker address"));
 
     let id = focus_id.unwrap();
-    let (_, _, focused) = get(
-        &router,
-        &format!("/tracker/example_id?lang=en&focus={id}"),
-    )
-    .await;
+    let (_, _, focused) = get(&router, &format!("/tracker/example_id?lang=en&focus={id}")).await;
     assert!(focused.contains("Page 2 / 2"));
-    assert!(focused.contains(&format!("id=\"observation-{id}\" tabindex=\"-1\" class=\"observation-focus\"")));
+    assert!(focused.contains(&format!(
+        "id=\"observation-{id}\" tabindex=\"-1\" class=\"observation-focus\""
+    )));
     assert!(focused.contains(&format!("#observation-{id}")));
 
     let no_address_id = no_address_focus_id.unwrap();
@@ -1115,14 +1118,12 @@ async fn detail_log_paginates_windows_collapses_no_address_and_focuses_across_pa
     )
     .await;
     assert!(no_address_focused.contains("Entries 51–60 / 60"));
-    assert!(no_address_focused.contains(&format!("id=\"observation-{no_address_id}\" tabindex=\"-1\" class=\"observation-focus\"")));
+    assert!(no_address_focused.contains(&format!(
+        "id=\"observation-{no_address_id}\" tabindex=\"-1\" class=\"observation-focus\""
+    )));
     assert!(no_address_focused.contains("include_no_address=1"));
 
-    let (_, _, expanded) = get(
-        &router,
-        "/tracker/example_id?lang=en&include_no_address=1",
-    )
-    .await;
+    let (_, _, expanded) = get(&router, "/tracker/example_id?lang=en&include_no_address=1").await;
     assert!(expanded.contains("Entries 1–50 / 60"));
     assert!(expanded.contains("Hide no-address entries (5)"));
 
@@ -1572,11 +1573,7 @@ async fn detail_shows_target_ip_localized_reasons_and_dashes_for_no_address() {
     assert!(!body.contains("family_unavailable"));
     assert!(!body.contains("<td>IPV6</td>"));
     assert!(!body.contains("<th>\u{9636}\u{6bb5}</th>"));
-    let (_, _, expanded) = get(
-        &router,
-        "/tracker/example_id?lang=zh&include_no_address=1",
-    )
-    .await;
+    let (_, _, expanded) = get(&router, "/tracker/example_id?lang=zh&include_no_address=1").await;
     assert!(expanded.contains("<td>IPV6</td><td>-</td><td>\u{672a}\u{53d1}\u{73b0}\u{5730}\u{5740}</td><td>-</td><td>-</td><td>-</td><td>-</td>"));
     assert!(body.contains("\u{4e0d}\u{8ba1}\u{5165} 24h \u{6210}\u{529f}\u{7387}"));
     assert!(body.contains("\u{5408}\u{8ba1}"));

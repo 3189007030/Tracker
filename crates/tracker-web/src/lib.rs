@@ -209,10 +209,7 @@ fn filters(params: &Params) -> Result<Filters, &'static str> {
 }
 
 fn detail_filters(params: &Params) -> Result<DetailFilters, &'static str> {
-    let window = params
-        .get("window")
-        .map(String::as_str)
-        .unwrap_or("24h");
+    let window = params.get("window").map(String::as_str).unwrap_or("24h");
     if !matches!(window, "24h" | "7d") {
         return Err("invalid_window");
     }
