@@ -1926,7 +1926,7 @@ pub(crate) fn detail(endpoint: &Endpoint, log: &DetailLog, now: i64, lang: Lang)
         latency_chart=lang.pick("实测响应延迟 (ms)", "Observed response latency (ms)"),
         time_label=lang.pick("时间", "Time"), family_label=lang.pick("地址族", "Family"), transport=lang.pick("协议状态", "Protocol status"), result=lang.pick("观测结果", "Observation result"), reply=lang.pick("有效 Tracker 回复", "Valid tracker reply"), latency=lang.pick("响应延迟", "Response latency"), target_label=lang.pick("目标 IP", "Target IP"), reason=lang.pick("原因", "Reason"),
         single=lang.pick("观测来自单一网络位置；缺测和探针本地故障不等于 Tracker 离线。", "Measurements come from one network; missing data and local probe failures are not tracker downtime."),
-        timeline, observation_data);
+        timeline=timeline, observation_data=observation_data);
     let scripts = r#"<script src="/assets/chart.umd.js?v=4.6.1" defer></script><script src="/assets/charts.js?v=1.3.1" defer></script>"#;
     shell(
         &endpoint.host,
