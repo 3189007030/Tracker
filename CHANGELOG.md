@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.3.6 — indexed IP search and service headroom
+
+- Preserve per-family latest-announce IP-search results with an expression index and indexed top-1 lookups instead of sorting the entire recent observation window for each search.
+- Create the public observation target index idempotently when Observatory opens its database; no API or row schema changes.
+- Carry forward the Observatory `MemoryHigh=256M` and `MemoryMax=320M` service limits. This entry describes source changes, not a completed deployment.
+
+See the [1.3.6 validation ledger](docs/releases/1.3.6.md).
+
 ## 1.3.5 — resource use and request-path efficiency
 
 - Keep native peer sampling limits and selection policy while reducing temporary allocation capacity to actual response needs.

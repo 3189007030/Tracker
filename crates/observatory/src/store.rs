@@ -4,7 +4,7 @@ use sha2::{Digest, Sha256};
 use std::path::Path;
 use tracker_model::{
     Endpoint, Evidence, FamilyStatus, Infrastructure, Observation, Overview, PUBLIC_SCHEMA,
-    PoolStatus, StatsPoint, VERSION, unix_now,
+    PoolStatus, StatsPoint, VERSION, public_observation_target_index_sql, unix_now,
 };
 use url::Url;
 
@@ -154,6 +154,7 @@ impl Store {
             [hex::encode(rand::random::<[u8; 32]>())],
         )?;
         public.execute_batch(PUBLIC_SCHEMA)?;
+        public.execute_batch(&public_observation_target_index_sql())?;
         // Upgrade old public databases in place; aggregate evidence and history
         // remain intact while sample identities and per-node traces disappear.
         public.execute_batch("PRAGMA secure_delete=ON; BEGIN; DROP TABLE IF EXISTS public_runs; DROP TABLE IF EXISTS public_samples; COMMIT;")?;

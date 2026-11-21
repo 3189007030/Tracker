@@ -3,6 +3,14 @@ use serde::{Deserialize, Serialize};
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const PUBLIC_SCHEMA: &str = "CREATE TABLE IF NOT EXISTS endpoints(id TEXT PRIMARY KEY, service_id TEXT NOT NULL, url TEXT NOT NULL, first_seen INTEGER NOT NULL, baseline INTEGER NOT NULL, updated_at INTEGER NOT NULL, payload TEXT NOT NULL); CREATE INDEX IF NOT EXISTS endpoints_service ON endpoints(service_id); CREATE TABLE IF NOT EXISTS observations(id INTEGER PRIMARY KEY, endpoint_id TEXT NOT NULL, observed_at INTEGER NOT NULL, family TEXT NOT NULL, payload TEXT NOT NULL); CREATE INDEX IF NOT EXISTS observations_endpoint_time ON observations(endpoint_id,observed_at); CREATE TABLE IF NOT EXISTS documents(key TEXT PRIMARY KEY,payload TEXT NOT NULL,updated_at INTEGER NOT NULL); CREATE TABLE IF NOT EXISTS stats_history(bucket INTEGER PRIMARY KEY,instance TEXT NOT NULL,payload TEXT NOT NULL);";
+/// Evaluates to one only for bounded, valid announce payloads.
+pub const PUBLIC_ANNOUNCE_STAGE_EXPR: &str = "CASE WHEN length(CAST(payload AS BLOB))<=4096 THEN CASE WHEN json_valid(payload) THEN CASE WHEN json_extract(payload,'$.stage')='announce' THEN 1 ELSE 0 END ELSE 0 END ELSE 0 END";
+
+pub fn public_observation_target_index_sql() -> String {
+    format!(
+        "CREATE INDEX IF NOT EXISTS public_observations_latest_announce ON observations(endpoint_id,family,({PUBLIC_ANNOUNCE_STAGE_EXPR}),observed_at DESC,id DESC);",
+    )
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct FamilyStatus {

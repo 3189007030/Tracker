@@ -10,6 +10,7 @@ use tempfile::TempDir;
 use tower::ServiceExt;
 use tracker_model::{
     Endpoint, Evidence, FamilyStatus, Infrastructure, Observation, Overview, PUBLIC_SCHEMA, VERSION,
+    public_observation_target_index_sql,
 };
 
 use crate::{
@@ -225,6 +226,8 @@ fn add_observation(db: &Connection, observation: &Observation) {
 fn fixture(root: &Path) {
     let db = Connection::open(root.join("public.sqlite3")).unwrap();
     db.execute_batch(PUBLIC_SCHEMA).unwrap();
+    db.execute_batch(&public_observation_target_index_sql())
+        .unwrap();
     let now = tracker_model::unix_now();
     let overview = Overview {
         version: VERSION.to_owned(),

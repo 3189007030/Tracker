@@ -22,7 +22,8 @@ This table summarizes each version's ledger and deployment evidence. Status term
 | 1.2.9 | superseded | 2026-11-18 08:31:33Z (`1.2.9-9aef69e7`) | `9aef69e7` | `v1.2.9` → `9aef69e7` | [1.2.9](1.2.9.md) | 165 tests. Web-only switch via a standby instance, with homepage layout, automatic language and local time. Public assets, lists and protocol smoke checks passed. |
 | 1.3.0 | promoted | 2026-11-18 10:47:15Z (`1.3.0-73e47a4f`) | `73e47a4f` | `v1.3.0` → `73e47a4f` | [1.3.0](1.3.0.md) | 168 tests. Per-family rechecks, updated Observatory and Web, continuously serving native Tracker. |
 | 1.3.1 | not promoted | Not promoted | Not built | No tag | [1.3.1](1.3.1.md) | Candidate work was folded into 1.3.5 before build or cutover. |
-| 1.3.5 | candidate | Not promoted | Not built | No tag | [1.3.5](1.3.5.md) | Resource and request-path optimization; S1 gates and performance validation are pending. |
+| 1.3.5 | not promoted | Not promoted | `a48f9c9` | No tag | [1.3.5](1.3.5.md) | Four gates passed (177 tests); staged on S1 at 2026-11-20 20:57:20Z but not cut over after the standby IP-search check measured 2.9 s median. Superseded as a candidate by 1.3.6. |
+| 1.3.6 | candidate | Not promoted | Not built | No tag | [1.3.6](1.3.6.md) | Indexed latest-target IP lookup; Linux gates and S1 promotion are pending. |
 
 ## Known gaps in the record
 

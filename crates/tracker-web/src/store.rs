@@ -9,7 +9,8 @@ use std::{
 use percent_encoding::percent_decode_str;
 use rusqlite::{Connection, OpenFlags, OptionalExtension, Transaction, params};
 use tracker_model::{
-    Endpoint, FamilyStatus, Observation, Overview, PoolStatus, StatsHistory, StatsPoint, VERSION,
+    Endpoint, FamilyStatus, Observation, Overview, PoolStatus, PUBLIC_ANNOUNCE_STAGE_EXPR,
+    StatsHistory, StatsPoint, VERSION,
 };
 use url::Url;
 
@@ -1066,15 +1067,30 @@ fn endpoint_url_ip_matches(raw_url: &str, expected: &str) -> bool {
         .is_some_and(|ip| ip.to_string() == expected)
 }
 
+// Public health observations use exactly these two address families.
+fn latest_target_endpoints_sql() -> String {
+    format!(
+        "SELECT DISTINCT endpoint.id FROM endpoints AS endpoint \
+         CROSS JOIN (SELECT 'ipv4' AS family UNION ALL SELECT 'ipv6') AS families \
+         WHERE CASE WHEN json_valid(endpoint.payload) \
+             THEN json_extract(endpoint.payload,'$.alias_of') IS NULL ELSE 0 END \
+         AND (SELECT json_extract(latest.payload,'$.target_ip') \
+              FROM observations AS latest INDEXED BY public_observations_latest_announce \
+              WHERE latest.endpoint_id=endpoint.id \
+                AND latest.family=families.family \
+                AND ({PUBLIC_ANNOUNCE_STAGE_EXPR})=1 \
+                AND latest.observed_at>=?1 AND latest.observed_at<=?2 \
+              ORDER BY latest.observed_at DESC,latest.id DESC LIMIT 1)=?3",
+    )
+}
+
 fn latest_target_endpoints(
     db: &Connection,
     now: i64,
     target_ip: &str,
 ) -> Result<HashSet<String>, StoreError> {
     let mut statement = db
-        .prepare(
-            "SELECT recent.endpoint_id FROM (SELECT endpoint_id,family,payload,ROW_NUMBER() OVER (PARTITION BY endpoint_id,family ORDER BY observed_at DESC,id DESC) AS position FROM observations WHERE observed_at>=?1 AND observed_at<=?2 AND length(CAST(payload AS BLOB))<=4096 AND json_valid(payload) AND json_extract(payload,'$.stage')='announce') AS recent JOIN endpoints AS endpoint ON endpoint.id=recent.endpoint_id WHERE recent.position=1 AND json_extract(recent.payload,'$.target_ip')=?3 AND json_valid(endpoint.payload) AND json_extract(endpoint.payload,'$.alias_of') IS NULL",
-        )
+        .prepare(&latest_target_endpoints_sql())
         .map_err(|_| StoreError)?;
     let rows = statement
         .query_map(
@@ -1332,6 +1348,140 @@ fn sanitize_observation(
         observation.latency_ms = None;
     }
     Some(observation)
+}
+
+#[cfg(test)]
+mod target_ip_tests {
+    use super::*;
+    use rusqlite::{Connection, params};
+    use tracker_model::{PUBLIC_SCHEMA, public_observation_target_index_sql};
+
+    const NOW: i64 = 1_800_000_000;
+
+    fn test_db() -> rusqlite::Result<Connection> {
+        let db = Connection::open_in_memory()?;
+        db.execute_batch(PUBLIC_SCHEMA)?;
+        db.execute_batch(&public_observation_target_index_sql())?;
+        Ok(db)
+    }
+
+    fn endpoint(db: &Connection, id: &str, alias: bool) -> rusqlite::Result<()> {
+        let url = format!("https://{id}.example.org/announce");
+        let payload = if alias {
+            r#"{"alias_of":"canonical"}"#
+        } else {
+            "{}"
+        };
+        db.execute(
+            "INSERT INTO endpoints(id,service_id,url,first_seen,baseline,updated_at,payload) VALUES(?1,?1,?2,?3,0,?3,?4)",
+            params![id, url, NOW, payload],
+        )?;
+        Ok(())
+    }
+
+    fn event(
+        db: &Connection,
+        endpoint_id: &str,
+        family: &str,
+        observed_at: i64,
+        stage: &str,
+        target_ip: &str,
+    ) -> rusqlite::Result<()> {
+        let payload = serde_json::json!({"stage": stage, "target_ip": target_ip}).to_string();
+        db.execute(
+            "INSERT INTO observations(endpoint_id,observed_at,family,payload) VALUES(?1,?2,?3,?4)",
+            params![endpoint_id, observed_at, family, payload],
+        )?;
+        Ok(())
+    }
+
+    #[test]
+    fn indexed_lookup_preserves_latest_announce_semantics() -> anyhow::Result<()> {
+        let db = test_db()?;
+        for id in [
+            "same_family",
+            "multi_family",
+            "same_time",
+            "non_announce",
+            "corrupt_newer",
+            "oversized_newer",
+            "outside_window",
+            "future_newer",
+            "alias",
+        ] {
+            endpoint(&db, id, id == "alias")?;
+        }
+
+        event(&db, "same_family", "ipv4", NOW - 2, "announce", "1.1.1.1")?;
+        event(&db, "same_family", "ipv4", NOW - 1, "announce", "8.8.8.8")?;
+        event(&db, "multi_family", "ipv4", NOW - 2, "announce", "1.1.1.1")?;
+        event(&db, "multi_family", "ipv6", NOW - 1, "announce", "8.8.8.8")?;
+        event(&db, "same_time", "ipv4", NOW - 1, "announce", "1.1.1.1")?;
+        event(&db, "same_time", "ipv4", NOW - 1, "announce", "8.8.8.8")?;
+        event(&db, "non_announce", "ipv4", NOW - 2, "announce", "1.1.1.1")?;
+        event(&db, "non_announce", "ipv4", NOW - 1, "handshake", "8.8.8.8")?;
+        event(&db, "corrupt_newer", "ipv4", NOW - 2, "announce", "1.1.1.1")?;
+        db.execute(
+            "INSERT INTO observations(endpoint_id,observed_at,family,payload) VALUES(?1,?2,'ipv4',?3)",
+            params!["corrupt_newer", NOW - 1, "{broken"],
+        )?;
+        event(&db, "oversized_newer", "ipv4", NOW - 2, "announce", "1.1.1.1")?;
+        let oversized = format!(
+            "{{\"stage\":\"announce\",\"target_ip\":\"8.8.8.8\",\"padding\":\"{}\"}}",
+            "x".repeat(4_200)
+        );
+        db.execute(
+            "INSERT INTO observations(endpoint_id,observed_at,family,payload) VALUES(?1,?2,'ipv4',?3)",
+            params!["oversized_newer", NOW - 1, oversized],
+        )?;
+        event(
+            &db,
+            "outside_window",
+            "ipv4",
+            NOW - 8 * 86_400,
+            "announce",
+            "1.1.1.1",
+        )?;
+        event(&db, "future_newer", "ipv4", NOW - 2, "announce", "1.1.1.1")?;
+        event(&db, "future_newer", "ipv4", NOW + 1, "announce", "8.8.8.8")?;
+        event(&db, "alias", "ipv4", NOW - 1, "announce", "1.1.1.1")?;
+
+        let one_one = latest_target_endpoints(&db, NOW, "1.1.1.1")?;
+        assert_eq!(
+            one_one,
+            HashSet::from([
+                "multi_family".to_owned(),
+                "non_announce".to_owned(),
+                "corrupt_newer".to_owned(),
+                "oversized_newer".to_owned(),
+                "future_newer".to_owned(),
+            ])
+        );
+        let eight_eight = latest_target_endpoints(&db, NOW, "8.8.8.8")?;
+        assert_eq!(
+            eight_eight,
+            HashSet::from([
+                "same_family".to_owned(),
+                "multi_family".to_owned(),
+                "same_time".to_owned(),
+            ])
+        );
+
+        let mut plan = db.prepare(&format!("EXPLAIN QUERY PLAN {}", latest_target_endpoints_sql()))?;
+        let details = plan
+            .query_map(params![NOW - 7 * 86_400, NOW, "1.1.1.1"], |row| {
+                row.get::<_, String>(3)
+            })?
+            .collect::<rusqlite::Result<Vec<_>>>()?;
+        let index_seek = details
+            .iter()
+            .find(|detail| detail.contains("public_observations_latest_announce"))
+            .expect("query plan did not use the latest-announce index");
+        assert!(index_seek.contains("endpoint_id=?"), "{index_seek}");
+        assert!(index_seek.contains("family=?"), "{index_seek}");
+        assert!(index_seek.contains("observed_at>?"), "{index_seek}");
+        Ok(())
+    }
 }
 
 #[cfg(test)]
