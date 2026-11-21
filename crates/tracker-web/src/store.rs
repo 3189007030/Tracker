@@ -1453,7 +1453,7 @@ mod target_ip_tests {
         event(&db, "future_newer", "ipv4", NOW + 1, "announce", "8.8.8.8")?;
         event(&db, "alias", "ipv4", NOW - 1, "announce", "1.1.1.1")?;
 
-        let one_one = latest_target_endpoints(&db, NOW, "1.1.1.1")?;
+        let one_one = latest_target_endpoints(&db, NOW, "1.1.1.1").unwrap();
         assert_eq!(
             one_one,
             HashSet::from([
@@ -1464,7 +1464,7 @@ mod target_ip_tests {
                 "future_newer".to_owned(),
             ])
         );
-        let eight_eight = latest_target_endpoints(&db, NOW, "8.8.8.8")?;
+        let eight_eight = latest_target_endpoints(&db, NOW, "8.8.8.8").unwrap();
         assert_eq!(
             eight_eight,
             HashSet::from([
