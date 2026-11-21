@@ -9,7 +9,7 @@ use std::{
 use percent_encoding::percent_decode_str;
 use rusqlite::{Connection, OpenFlags, OptionalExtension, Transaction, params};
 use tracker_model::{
-    Endpoint, FamilyStatus, Observation, Overview, PoolStatus, PUBLIC_ANNOUNCE_STAGE_EXPR,
+    Endpoint, FamilyStatus, Observation, Overview, PUBLIC_ANNOUNCE_STAGE_EXPR, PoolStatus,
     StatsHistory, StatsPoint, VERSION,
 };
 use url::Url;
@@ -1425,7 +1425,14 @@ mod target_ip_tests {
             "INSERT INTO observations(endpoint_id,observed_at,family,payload) VALUES(?1,?2,'ipv4',?3)",
             params!["corrupt_newer", NOW - 1, "{broken"],
         )?;
-        event(&db, "oversized_newer", "ipv4", NOW - 2, "announce", "1.1.1.1")?;
+        event(
+            &db,
+            "oversized_newer",
+            "ipv4",
+            NOW - 2,
+            "announce",
+            "1.1.1.1",
+        )?;
         let oversized = format!(
             "{{\"stage\":\"announce\",\"target_ip\":\"8.8.8.8\",\"padding\":\"{}\"}}",
             "x".repeat(4_200)
@@ -1467,7 +1474,10 @@ mod target_ip_tests {
             ])
         );
 
-        let mut plan = db.prepare(&format!("EXPLAIN QUERY PLAN {}", latest_target_endpoints_sql()))?;
+        let mut plan = db.prepare(&format!(
+            "EXPLAIN QUERY PLAN {}",
+            latest_target_endpoints_sql()
+        ))?;
         let details = plan
             .query_map(params![NOW - 7 * 86_400, NOW, "1.1.1.1"], |row| {
                 row.get::<_, String>(3)

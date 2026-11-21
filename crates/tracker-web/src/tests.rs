@@ -9,8 +9,8 @@ use rusqlite::{Connection, params};
 use tempfile::TempDir;
 use tower::ServiceExt;
 use tracker_model::{
-    Endpoint, Evidence, FamilyStatus, Infrastructure, Observation, Overview, PUBLIC_SCHEMA, VERSION,
-    public_observation_target_index_sql,
+    Endpoint, Evidence, FamilyStatus, Infrastructure, Observation, Overview, PUBLIC_SCHEMA,
+    VERSION, public_observation_target_index_sql,
 };
 
 use crate::{
